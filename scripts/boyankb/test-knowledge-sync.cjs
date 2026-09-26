@@ -341,7 +341,12 @@ async function main() {
       }
       return {
         document_id: token,
-        title: 'Synthetic document',
+        title:
+          {
+            fixture_document: 'AI 营地课程样例',
+            fixture_overview: '科创教育目录',
+            fixture_partial: '部分可解析资料',
+          }[token] || '合成资料',
         revision_id: token === 'fixture_document' ? state.version : 1,
       };
     },
@@ -477,6 +482,7 @@ async function main() {
   ensure(state.rootCalls === 2, 'LEAF_TO_SPACE_ENUMERATION');
   const document = await documentRecord();
   const original = status(await readDocument(document.id), 200, 'DOCUMENT_READ').data;
+  ensure(original.title === 'AI 营地课程样例', 'CANONICAL_DOCUMENT_TITLE');
   ensure(original.assets.length === 1, 'IMAGE_REFERENCE');
   const originalAsset = original.assets[0].id;
   const initialFiles = await service.activeFileIds();
@@ -522,6 +528,7 @@ async function main() {
     child.items.length === 1 && child.items[0].documentId === document.id,
     'SHORTCUT_DEDUPLICATION',
   );
+  ensure(child.items[0].title === '营地课程快捷方式', 'SHORTCUT_DIRECTORY_TITLE');
   ensure(
     !JSON.stringify({ original, firstPage, secondPage, initialRun }).includes('fixture_document'),
     'SOURCE_TOKEN_REDACTION',

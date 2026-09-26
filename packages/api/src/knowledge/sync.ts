@@ -605,10 +605,11 @@ export class KnowledgeService extends KnowledgeStore {
     await this.models.KnowledgeDocument.updateOne(
       { id: documentId },
       {
-        $set: { title: node.title, ...(sourceUpdatedAt ? { sourceUpdatedAt } : {}) },
+        $set: { ...(sourceUpdatedAt ? { sourceUpdatedAt } : {}) },
         $setOnInsert: {
           id: documentId,
           sourceId: this.sourceId,
+          title: node.title,
           objType: node.obj_type,
           objToken: node.obj_token,
           status: inScope && node.obj_type === 'docx' ? 'pending' : 'unsupported',
@@ -817,7 +818,9 @@ export class KnowledgeService extends KnowledgeStore {
       if (!extracted.complete) {
         return;
       }
-      await this.publish(lease, item, document, revisionId);
+      const title =
+        typeof after.title === 'string' && after.title.trim() ? after.title : document.title;
+      await this.publish(lease, item, document, revisionId, title);
       return;
     }
     throw new KnowledgeError('KNOWLEDGE_SOURCE_VERSION_CHANGED');
@@ -828,6 +831,7 @@ export class KnowledgeService extends KnowledgeStore {
     item: KnowledgeItemRecord,
     document: KnowledgeDocumentRecord,
     revisionId: string,
+    title: string,
   ): Promise<void> {
     const revision = (await this.models.KnowledgeRevision.findOne({
       id: revisionId,
@@ -853,7 +857,7 @@ export class KnowledgeService extends KnowledgeStore {
       const indexed = await this.indexer.index({
         documentId: document.id,
         revisionId,
-        title: document.title,
+        title,
         text: revision.text,
         idempotencyKey: revision.idempotencyKey,
       });
@@ -887,6 +891,7 @@ export class KnowledgeService extends KnowledgeStore {
         {
           $set: {
             activeRevisionId: revisionId,
+            title,
             accessEpoch: source.accessEpoch,
             requiresRevalidation: false,
             status: 'published',

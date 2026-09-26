@@ -121,9 +121,11 @@ describe('knowledge sync with MongoDB transactions', () => {
       resolveSpace: jest.fn().mockResolvedValue({ spaceId: 'space_fixture', node: node('leaf') }),
       listNodes: jest.fn().mockResolvedValue({ items: [node('a')], hasMore: false }),
       getNode: jest.fn().mockResolvedValue(node('a')),
-      getDocument: jest
-        .fn()
-        .mockResolvedValue({ document_id: 'object_a', title: 'Title a', revision_id: 1 }),
+      getDocument: jest.fn().mockImplementation(async (token) => ({
+        document_id: token,
+        title: `Title ${token.replace(/^object_/, '')}`,
+        revision_id: 1,
+      })),
       getBlocks: jest.fn().mockResolvedValue(blocks()),
       getMetadata: jest.fn().mockResolvedValue({ metas: [], failed_list: [] }),
       downloadMedia: jest
@@ -193,19 +195,78 @@ describe('knowledge sync with MongoDB transactions', () => {
     await sync('first');
     const first = await active();
     reader.listNodes.mockResolvedValue({
-      items: [node('a', { title: 'Renamed' })],
+      items: [node('a', { title: 'Directory alias' })],
       hasMore: false,
     });
-    reader.getDocument.mockResolvedValue({
-      document_id: 'object_a',
-      title: 'Renamed',
-      revision_id: 2,
-    });
+    reader.getDocument
+      .mockResolvedValueOnce({ document_id: 'object_a', title: 'Before rename', revision_id: 2 })
+      .mockResolvedValueOnce({ document_id: 'object_a', title: 'Renamed', revision_id: 2 });
     const run = await sync('rename', 'incremental');
     expect(run.counts.unchanged).toBe(1);
     expect(indexer.index).toHaveBeenCalledTimes(1);
     expect((await active()).activeRevisionId).toBe(first.activeRevisionId);
     expect((await service.readDocument(first.id)).title).toBe('Renamed');
+    expect((await service.listTree()).items[0].title).toBe('Directory alias');
+  });
+
+  it('publishes canonical document titles independently from shortcut labels', async () => {
+    reader.listNodes.mockResolvedValue({
+      items: [node('a'), node('alias', { obj_token: 'object_a', title: 'Shortcut label' })],
+      hasMore: false,
+    });
+    reader.getDocument.mockResolvedValue({
+      document_id: 'object_a',
+      title: 'Canonical title',
+      revision_id: 1,
+    });
+    indexer.index.mockImplementationOnce(async ({ revisionId, title }) => {
+      expect(title).toBe('Canonical title');
+      expect((await active()).title).toBe('Title a');
+      expect((await active()).activeRevisionId).toBeUndefined();
+      return { fileIds: [`file_${revisionId}`] };
+    });
+    await sync('canonical');
+    expect(indexer.index).toHaveBeenCalledTimes(1);
+    expect((await service.readDocument((await active()).id)).title).toBe('Canonical title');
+    expect((await service.listTree()).items.map((item) => item.title).sort()).toEqual([
+      'Shortcut label',
+      'Title a',
+    ]);
+  });
+
+  it.each(['', '   '])(
+    'retains the published title for empty canonical title %p',
+    async (title) => {
+      await sync('original');
+      const original = await active();
+      reader.listNodes.mockResolvedValue({
+        items: [node('a', { title: 'Changed alias' })],
+        hasMore: false,
+      });
+      reader.getDocument.mockResolvedValue({ document_id: 'object_a', title, revision_id: 2 });
+      await sync('empty-title');
+      expect((await service.readDocument(original.id)).title).toBe(original.title);
+      expect((await active()).activeRevisionId).toBe(original.activeRevisionId);
+      expect(indexer.index).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('does not replace a published title when source access fails after discovery', async () => {
+    await sync('original');
+    const original = await active();
+    reader.listNodes.mockResolvedValue({
+      items: [node('a', { title: 'Unpublished alias' })],
+      hasMore: false,
+    });
+    reader.getDocument.mockResolvedValue({
+      document_id: 'object_a',
+      title: 'Unpublished title',
+      revision_id: 2,
+    });
+    reader.getBlocks.mockRejectedValueOnce(new FeishuError('auth', 'source'));
+    expect((await sync('source-failure')).status).toBe('failed');
+    expect((await active()).title).toBe(original.title);
+    expect((await active()).activeRevisionId).toBe(original.activeRevisionId);
   });
 
   it('persists page cursors and resumes a crashed worker without duplicate publishing', async () => {
@@ -277,11 +338,21 @@ describe('knowledge sync with MongoDB transactions', () => {
   it('keeps an old snapshot when extraction or indexing fails', async () => {
     await sync('old');
     const original = await active();
+    reader.listNodes.mockResolvedValue({
+      items: [node('a', { title: 'Changed alias' })],
+      hasMore: false,
+    });
+    reader.getDocument.mockResolvedValue({
+      document_id: 'object_a',
+      title: 'Changed title',
+      revision_id: 2,
+    });
     reader.getBlocks.mockResolvedValue(blocks('Changed body'));
     indexer.index.mockRejectedValue(new Error('fixture failure'));
     const result = await sync('index-failure');
     expect(result.status).toBe('partial');
     expect((await active()).activeRevisionId).toBe(original.activeRevisionId);
+    expect((await service.readDocument(original.id)).title).toBe(original.title);
     expect(JSON.stringify((await service.readDocument(original.id)).blocks)).toContain(
       'Synthetic knowledge',
     );
