@@ -4,7 +4,7 @@ const { readFile, writeFile } = require('node:fs/promises');
 const mongoose = require('mongoose');
 const yaml = require('js-yaml');
 const { runAsSystem } = require('@librechat/data-schemas');
-const { connectDb } = require('~/db/connect');
+const { connectDb } = require('~/db');
 const { getKnowledgeService } = require('~/server/services/Knowledge');
 
 let stopping = false;
@@ -63,7 +63,8 @@ main()
     process.stderr.write('KNOWLEDGE_WORKER_START_FAILED\n');
     process.exitCode = 1;
   })
-  .finally(() => {
+  .finally(async () => {
     clearInterval(heartbeat);
-    return mongoose.disconnect();
+    await mongoose.disconnect();
+    process.exit(process.exitCode ?? 0);
   });
