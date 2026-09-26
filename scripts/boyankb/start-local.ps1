@@ -20,5 +20,9 @@ if ($LASTEXITCODE -ne 0) {
     throw "Image unavailable: boyankb:$imageTag"
 }
 Write-BoyanPrivateFile -Path $context.ImageTagFile -Content "$imageTag`n"
-Invoke-BoyanCompose -Context $context -ImageTag $imageTag -DockerArguments @('up', '--detach', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '240', 'app')
+$services = @('app')
+if ((Get-Content -LiteralPath $context.Environment -Raw) -match '(?m)^BOYANKB_SYNC_ENABLED=1\r?$') {
+    $services += 'worker'
+}
+Invoke-BoyanCompose -Context $context -ImageTag $imageTag -DockerArguments (@('up', '--detach', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '600') + $services)
 Write-Output (Get-BoyanLocalUrl -Context $context)

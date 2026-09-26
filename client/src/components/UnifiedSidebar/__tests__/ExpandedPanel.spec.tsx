@@ -111,6 +111,7 @@ function renderPanel({
   onExpand = jest.fn(),
   onNavigate,
   initialPanel = DEFAULT_PANEL,
+  initialPath = '/',
   initializeState,
 }: {
   expanded?: boolean;
@@ -119,6 +120,7 @@ function renderPanel({
   onExpand?: jest.Mock;
   onNavigate?: jest.Mock;
   initialPanel?: string;
+  initialPath?: string;
   initializeState?: (snapshot: MutableSnapshot) => void;
 } = {}) {
   if (initialPanel !== DEFAULT_PANEL) {
@@ -126,7 +128,7 @@ function renderPanel({
   }
 
   const result = render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[initialPath]}>
       <QueryClientProvider client={createQueryClient()}>
         <RecoilRoot initializeState={initializeState}>
           <ActivePanelProvider>
@@ -153,6 +155,26 @@ describe('ExpandedPanel', () => {
   });
 
   describe('NavIconButton collapse toggle', () => {
+    it('marks the knowledge route active without selecting the chat history panel', () => {
+      renderPanel({
+        initialPath: '/knowledge/documents/doc-1',
+        links: [
+          ...createLinks(),
+          {
+            id: 'knowledge',
+            title: 'com_knowledge_library',
+            icon: NotebookPen,
+            onClick: jest.fn(),
+          },
+        ],
+      });
+      expect(screen.getByTestId('nav-panel-knowledge')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('nav-panel-conversations')).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+    });
+
     it('collapses sidebar when clicking the active icon while expanded', () => {
       const { onCollapse } = renderPanel({ expanded: true });
       const activeButton = screen.getByRole('button', { name: 'com_ui_chat_history' });

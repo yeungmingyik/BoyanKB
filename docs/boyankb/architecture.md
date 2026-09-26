@@ -52,14 +52,14 @@ flowchart LR
 
 ## 模块落点
 
-保留上游 workspace 结构。账号授权已落地，资料同步与检索模块按后续版本交付。
+保留上游 workspace 结构。业务逻辑、数据库模型、共享契约与运行接线分别位于现有工作区。
 
 | 模块 | 路径 | 职责 |
 |---|---|---|
 | 知识授权 | `packages/api/src/knowledge/access.ts` | 逐用户 VIEW、封禁接线、操作范围与撤权会话清理 |
 | 同步与发布 | `packages/api/src/knowledge/` | FeishuClient、同步任务、解析、快照、有效版本清单 |
-| MongoDB 模型 | `packages/data-schemas/src/` | 源、节点、版本、任务、审计；沿用现有模型工厂 |
-| 请求与响应契约 | `packages/data-provider/src/` | 知识 API 类型、客户端请求、配置 schema |
+| MongoDB 模型 | `packages/data-schemas/src/models/knowledge.ts` | 源、节点、文档、版本、素材、任务、审计；沿用现有模型工厂 |
+| 请求与响应契约 | `packages/data-provider/src/types/knowledge.ts`、`config.ts` | 知识 API 类型与配置 schema |
 | API 接线 | `api/server/routes/knowledge.js` | 路由挂载与原生中间件连接 |
 | Worker 接线 | `api/server/knowledge-worker.js` | 独立进程启动，调用 TypeScript 模块 |
 | 资料与同步页面 | `client/src/components/Knowledge/` | 目录、阅读、引用、ADMIN 同步状态 |
@@ -71,31 +71,35 @@ flowchart LR
 
 | 实体 | 核心字段 | 唯一性与约束 |
 |---|---|---|
-| KnowledgeSource | id、spaceId、agentId、enabled、pollInterval、lastCompleteScan | 一个源对应一个已验证空间 |
-| SourceNode | sourceId、nodeToken、parentNodeToken、documentId、title、path、lastSeenScanId | sourceId + nodeToken 唯一；记录目录与快捷方式 |
-| KnowledgeDocument | id、sourceId、objType、objToken、activeRevisionId、status | sourceId + objType + objToken 唯一；同源重复节点共享正文 |
-| KnowledgeRevision | id、documentId、sourceRevision、contentHash、blobKey、nativeFileIds、parserVersion、indexVersion、publishedAt | 文档 + 内容与解析版本唯一；已发布快照不可覆盖 |
-| SyncRun | id、sourceId、lease、cursor、status、counts、startedAt、finishedAt | 同源只有一个有效租约；游标可恢复 |
-| SyncItem | runId、documentId、step、status、errorCode、retryAt | 阶段幂等；失败可追踪 |
+| KnowledgeSource | id、spaceId、agentId、enabled、health、leaseOwner、leaseFence、leaseUntil、accessEpoch、lastCompleteScan | 一个源对应一个已验证空间；同源只有一个有效租约 |
+| KnowledgeNode | sourceId、nodeToken、parentId、documentId、title、hasChildren、lastSeenRunId、accessEpoch、state | sourceId + nodeToken 唯一；目录与快捷方式独立于正文 |
+| KnowledgeDocument | id、sourceId、objType、objToken、activeRevisionId、accessEpoch、requiresRevalidation、status | sourceId + objType + objToken 唯一；同源重复节点共享正文 |
+| KnowledgeRevision | id、documentId、idempotencyKey、sourceRevision、contentHash、blobKey、nativeFileIds、assetIds、parserVersion、indexVersion、publishedAt | sourceId + idempotencyKey 唯一；已发布快照不可覆盖 |
+| KnowledgeAsset | id、sourceId、documentId、revisionId、mediaId、blobKey、contentType、name、size | 同一版本的素材 ID 唯一；读取受所属文档与版本约束 |
+| KnowledgeRun | id、sourceId、idempotencyKey、mode、phase、enumerationComplete、reconcileCursor、status、counts | sourceId + idempotencyKey 唯一；任务与阶段可恢复 |
+| KnowledgeItem | runId、kind、key、documentId、cursor、cursorHistory、status、errorCode、retryAt | runId + kind + key 唯一；分页与失败项持久化 |
 | KnowledgeAudit | actorId、action、resourceId、result、at | 不保存密钥、全文或问答正文 |
 
 用户、Agent、ACL、会话与刷新会话继续使用原生模型。PartnerOrganization、PartnerGrant、第二套角色表不在首期范围内。
 
-快照采用可替换 BlobStore 接口：首期 Docker 命名卷中的文件，后续接入 S3 兼容存储。数据库只保存相对对象键，不保存 Windows 绝对路径。
+MongoDB 必须使用副本集；本地 PC 使用单节点副本集。同步写入采用快照读和多数派提交的事务，将租约栅栏检查、版本指针、资料状态和 Agent 文件范围一起提交。租约到期或被新 Worker 接管后，旧 Worker 不得提交结果。
+
+快照采用可替换 BlobStore 接口：首期 Docker 命名卷中的文件，后续接入 S3 兼容存储。数据库只保存相对对象键，不保存 Windows 绝对路径。正文与素材按 SHA-256 寻址并校验读取完整性，同内容重试复用已有对象。
 
 ## 接口契约
 
 | 路由 | 权限 | 结果 |
 |---|---|---|
 | `GET /api/knowledge/access` | 登录并通过封禁检查 | 当前用户授权状态、知识 Agent 配置状态 |
-| `GET /api/knowledge/tree` | Agent VIEW | 目录、类型、可读状态；游标分页 |
+| `GET /api/knowledge/tree` | Agent VIEW | 按 parentId 查询子目录、类型与可读状态；游标分页 |
 | `GET /api/knowledge/documents/:id` | Agent VIEW | 生效版本与阅读内容 |
 | `GET /api/knowledge/documents/:id/revisions/:revisionId` | Agent VIEW | 授权且未下线资料的被引用快照 |
 | `GET /api/knowledge/assets/:id` | Agent VIEW | 鉴权后的素材流，支持 Range |
 | `POST /api/knowledge/search` | Agent VIEW | 关键词或语义结果、片段、内部引用 |
 | `GET /api/knowledge/sync-runs` | ADMIN | 分页任务与覆盖率 |
-| `POST /api/knowledge/sync-runs` | ADMIN | 202 和任务 ID；支持幂等键 |
-| `POST /api/knowledge/sync-runs/:id/retry` | ADMIN | 失败项重试任务 |
+| `GET /api/knowledge/sync-runs/:id` | ADMIN | 任务详情、分页文档状态与缺失项 |
+| `POST /api/knowledge/sync-runs` | ADMIN | 202 和任务对象；mode 为 full 或 incremental，使用 Idempotency-Key |
+| `POST /api/knowledge/sync-runs/:id/retry` | ADMIN | 为失败或部分完成任务创建完整扫描，复用已有快照与索引 |
 
 知识问答复用原生各供应商会话与临时 Agent 调用链。已保存的知识 Agent 维护 ACL 与资料映射，不给伙伴 EDIT 以修改供应商。alpha.4 在原生模型执行前接入统一服务端检索，向用户选择的模型传递受控上下文；不依赖模型自行触发检索工具。错误使用稳定机器码；401 表示未登录，403 表示无 Agent 或管理权限，404 避免泄露无权资源是否存在，409 表示同步冲突，429 表示限流，503 表示依赖暂不可用。响应不返回飞书令牌、源地址中的 token 或存储内部地址给伙伴。
 
@@ -107,13 +111,15 @@ flowchart LR
 
 RAG API 的 owner/file 过滤不替代用户授权。调用方必须验证 Agent VIEW，并从服务端生效版本清单计算 `file_ids`；不得采信浏览器提交的 Agent、owner 或文件范围。RAG API 与向量库仅容器内部可达。
 
-新版本先写快照与独立检索文件，验证完成后原子切换 MongoDB 的 `activeRevisionId`。检索前从该清单提取生效文件 ID；切换前的未发布文件和切换后的旧文件均不能进入新回答。旧索引清理允许异步失败，但不改变有效文件过滤。跨 MongoDB 与 pgvector 不宣称具有分布式事务。
+新版本先写快照与独立检索文件。发布前必须验证快照与素材可读、原生文件属于配置的 Agent、向量记录存在且文件与实体范围匹配；仅收到入库成功响应不足以发布。验证通过后，在 MongoDB 事务内切换 `activeRevisionId` 并更新 Agent 文件范围。检索前从该清单提取生效文件 ID；切换前的未发布文件和切换后的旧文件均不能进入新回答。旧索引清理允许异步失败，但不改变有效文件过滤。跨 MongoDB 与 pgvector 不宣称具有分布式事务。
+
+空间级授权失效时暂停源并使旧授权代次失效。连接恢复后逐篇重新验证和发布，不能仅恢复连接就放行所有旧快照。目录只显示当前授权代次的节点；已撤权资料在重新验证完成前保持隐藏。正文、历史版本与素材读取均检查源状态及文档有效性；保留文件不等于保留访问权限。
 
 首期精确检索覆盖标题、目录、标签和抽取正文的关键词子串；使用游标、输入长度限制和转义，不直接运行用户正则。以 18 文档起步，性能超过预算后评估专用知识全文索引。原生 Meilisearch 的消息搜索不等于企业知识全文搜索。
 
 语义检索固定 embedding 模型与维度。模型或解析器升级创建新索引版本，验证后切换。保持上下文预算和命中片段数量可配置。业务回答只能基于命中资料；无法找到依据时返回资料不足，冲突资料并列给出来源。
 
-引用使用系统生成的 documentId、revisionId、片段位置和内部链接，打开系统内原文。飞书 URL 仅对管理员提供运维入口。HTML、Markdown、图片和文件名按不可信内容处理：清洗脚本与事件属性、禁止任意外链自动抓取、防止路径穿越。文档内指令不获得调用工具或改变权限的能力。
+引用使用系统生成的 documentId、revisionId、片段位置和内部链接，打开系统内原文。资料页面只渲染结构化正文和纯文本，不执行源 HTML，也不自动抓取外链。素材通过鉴权后的内部 ID 读取；图片限制可预览格式，其余文件按附件下载。伙伴响应不包含飞书源地址或 token。文档内指令不获得调用工具或改变权限的能力。
 
 ## 先行验证
 

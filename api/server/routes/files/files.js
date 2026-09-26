@@ -71,10 +71,13 @@ const AGENT_TOOL_RESOURCE_KEYS = new Set([
 const isAgentToolResourceKey = (toolResource) =>
   typeof toolResource === 'string' && AGENT_TOOL_RESOURCE_KEYS.has(toolResource);
 
+const knowledgeFiles = require('~/server/middleware/knowledgeFiles');
+
 router.get('/', async (req, res) => {
   try {
     const appConfig = req.config;
-    const files = await db.getFiles({ user: req.user.id });
+    const allFiles = await db.getFiles({ user: req.user.id });
+    const files = res.locals.knowledgeEnabled ? await knowledgeFiles.filter(allFiles) : allFiles;
     if (appConfig.fileStrategy === FileSources.s3) {
       try {
         const cache = getLogStores(CacheKeys.S3_EXPIRY_INTERVAL);
@@ -145,7 +148,7 @@ router.get('/agent/:agent_id', async (req, res) => {
       text: 0,
     });
 
-    res.status(200).json(files);
+    res.status(200).json(res.locals.knowledgeEnabled ? await knowledgeFiles.filter(files) : files);
   } catch (error) {
     logger.error('[/files/agent/:agent_id] Error fetching agent files:', error);
     res.status(500).json({ error: 'Failed to fetch agent files' });

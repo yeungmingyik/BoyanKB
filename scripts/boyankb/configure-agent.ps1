@@ -21,6 +21,10 @@ $environment = [regex]::Replace($environment, $pattern, "BOYANKB_KNOWLEDGE_AGENT
 Write-BoyanPrivateFile -Path $environmentPath -Content $environment
 
 if (-not $NoRestart) {
-    Invoke-BoyanCompose -Context $context -DockerArguments @('up', '--detach', '--no-deps', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '240', 'app')
+    $services = @('app')
+    if ((Get-Content -LiteralPath $context.Environment -Raw) -match '(?m)^BOYANKB_SYNC_ENABLED=1\r?$') {
+        $services += 'worker'
+    }
+    Invoke-BoyanCompose -Context $context -DockerArguments (@('up', '--detach', '--no-deps', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '240') + $services)
 }
 Write-Output '知识 Agent 已设置。'

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useRecoilValue } from 'recoil';
-import { BarChart3, MessagesSquare } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { BarChart3, BookOpen, MessagesSquare } from 'lucide-react';
 import { useUserKeyQuery } from 'librechat-data-provider/react-query';
 import { getConfigDefaults, getEndpointField } from 'librechat-data-provider';
 import type { TEndpointsConfig } from 'librechat-data-provider';
@@ -29,6 +29,7 @@ export default function useUnifiedSidebarLinks() {
     [startupConfig],
   );
   const insightsFeatureEnabled = startupConfig?.insightsEnabled === true;
+  const knowledgeEnabled = startupConfig?.knowledge?.enabled === true;
   const isInsightsRoute = location.pathname.startsWith('/insights');
   const { data: insightsAccess, isLoading: isInsightsAccessLoading } = useInsightsAccessQuery(
     user?.id,
@@ -71,12 +72,22 @@ export default function useUnifiedSidebarLinks() {
       id: 'conversations',
       Component: ConversationsSection,
     };
+    const primaryLinks = [conversationLink];
+    if (knowledgeEnabled) {
+      primaryLinks.push({
+        title: 'com_knowledge_library',
+        label: '',
+        icon: BookOpen,
+        id: 'knowledge',
+        onClick: () => navigate('/knowledge'),
+      });
+    }
 
     if (
       !insightsFeatureEnabled ||
       (!isInsightsRoute && !isInsightsAccessLoading && insightsAccess?.access !== true)
     ) {
-      return [conversationLink, ...sideNavLinks];
+      return [...primaryLinks, ...sideNavLinks];
     }
 
     const insightsLink: NavLink = {
@@ -95,10 +106,11 @@ export default function useUnifiedSidebarLinks() {
     const nextLinks = [...sideNavLinks];
     nextLinks.splice(mcpIndex >= 0 ? mcpIndex + 1 : nextLinks.length, 0, insightsLink);
 
-    return [conversationLink, ...nextLinks];
+    return [...primaryLinks, ...nextLinks];
   }, [
     insightsAccess?.access,
     insightsFeatureEnabled,
+    knowledgeEnabled,
     isInsightsAccessLoading,
     isInsightsRoute,
     location.pathname,

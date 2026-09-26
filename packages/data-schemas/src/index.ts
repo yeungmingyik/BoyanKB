@@ -5,6 +5,9 @@ export * from './crypto';
 export * from './schema';
 export * from './utils';
 export { createModels } from './models';
+export { createKnowledgeModels } from './models/knowledge';
+export type { KnowledgeModels } from './models/knowledge';
+export type * from './types/knowledge';
 export {
   createMethods,
   CLIENT_MESSAGE_SELECT,

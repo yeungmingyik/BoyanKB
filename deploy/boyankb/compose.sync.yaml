@@ -1,0 +1,90 @@
+services:
+  app:
+    environment:
+      RAG_API_URL: http://rag:8000
+      BOYANKB_INDEX_VERSION: bge-small-zh-v1.5-7999e1d-v1
+  worker:
+    image: boyankb:${BOYANKB_IMAGE_TAG:-local}
+    pull_policy: never
+    init: true
+    restart: unless-stopped
+    command: ['node', 'api/server/knowledge-worker.js']
+    depends_on:
+      mongodb-init:
+        condition: service_completed_successfully
+      rag:
+        condition: service_healthy
+    env_file:
+      - ${BOYANKB_STATE_DIR:?}/app.env
+      - ${BOYANKB_STATE_DIR:?}/feishu.env
+    environment:
+      RAG_API_URL: http://rag:8000
+      BOYANKB_INDEX_VERSION: bge-small-zh-v1.5-7999e1d-v1
+    volumes:
+      - ${BOYANKB_STATE_DIR:?}/librechat.yaml:/app/librechat.yaml:ro
+      - app-data:/app/data
+      - app-logs:/app/logs
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    stop_grace_period: 180s
+    healthcheck:
+      test: ['CMD', 'node', '-e', 'const fs=require("node:fs");const value=Number(fs.readFileSync("data/knowledge-worker-heartbeat","utf8"));if(!Number.isFinite(value)||Date.now()-value>60000)process.exit(1)']
+      interval: 20s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+  vectordb:
+    image: pgvector/pgvector:0.8.0-pg15-trixie@sha256:8809cfffff0082cf260c9ac752f1dd1afc77f6f0a55c4e6411321e78efc3d9a5
+    restart: unless-stopped
+    env_file:
+      - ${BOYANKB_STATE_DIR:?}/rag.env
+    volumes:
+      - vector-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    security_opt:
+      - no-new-privileges:true
+  embedding-init:
+    image: registry.librechat.ai/librechat-ai/librechat-rag-api-dev@sha256:13898be3c4ce9ce60d40606c426929d504fef4d89dfddeac966e12fb740cae5c
+    restart: 'no'
+    entrypoint: ['python', '/config/prepare-embedding.py']
+    environment:
+      BOYANKB_MODEL_DOWNLOAD_SOURCE: ${BOYANKB_MODEL_DOWNLOAD_SOURCE:-huggingface}
+    volumes:
+      - ./prepare-embedding.py:/config/prepare-embedding.py:ro
+      - ./embedding.lock.json:/config/embedding.lock.json:ro
+      - embedding-models:/models
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+  rag:
+    image: registry.librechat.ai/librechat-ai/librechat-rag-api-dev@sha256:13898be3c4ce9ce60d40606c426929d504fef4d89dfddeac966e12fb740cae5c
+    restart: unless-stopped
+    depends_on:
+      vectordb:
+        condition: service_healthy
+      embedding-init:
+        condition: service_completed_successfully
+    env_file:
+      - ${BOYANKB_STATE_DIR:?}/rag.env
+    volumes:
+      - embedding-models:/models:ro
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8000/health", timeout=5)']
+      interval: 20s
+      timeout: 10s
+      start_period: 120s
+      retries: 9
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 2g
+    cpus: 2
+
+volumes:
+  vector-data:
+  embedding-models:

@@ -141,7 +141,9 @@ function ExpandedPanel({
   const location = useLocation();
   const { active, setActive } = useActivePanel();
   const effectiveActive = resolveActivePanel(active, links);
-  const isInsightsRoute = location.pathname.startsWith('/insights');
+  const routeActiveId = ['knowledge', 'insights'].find(
+    (route) => location.pathname === `/${route}` || location.pathname.startsWith(`/${route}/`),
+  );
 
   const toggleLabel = expanded ? 'com_nav_close_sidebar' : 'com_nav_open_sidebar';
   const toggleClick = expanded ? onCollapse : onExpand;
@@ -177,17 +179,13 @@ function ExpandedPanel({
           <NavIconButton
             key={link.id}
             link={link}
-            isActive={
-              link.id === 'insights'
-                ? isInsightsRoute
-                : !isInsightsRoute && link.id === effectiveActive
-            }
+            isActive={routeActiveId ? link.id === routeActiveId : link.id === effectiveActive}
             expanded={expanded ?? true}
             setActive={setActive}
             onExpand={onExpand}
             onCollapse={onCollapse}
             onNavigate={onNavigate}
-            onLeaveInsights={isInsightsRoute ? onLeaveInsights : undefined}
+            onLeaveInsights={routeActiveId ? onLeaveInsights : undefined}
           />
         ))}
       </div>

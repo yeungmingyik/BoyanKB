@@ -59,8 +59,10 @@ function UnifiedSidebar({ isSliding = false }: { isSliding?: boolean }) {
   const resizeHandlers = useRef<{ move: (e: MouseEvent) => void; up: () => void } | null>(null);
 
   const links = useUnifiedSidebarLinks();
-  const isInsightsRoute = location.pathname.startsWith('/insights');
-  const panelExpanded = expanded && !isInsightsRoute;
+  const routeActiveId = ['knowledge', 'insights'].find(
+    (route) => location.pathname === `/${route}` || location.pathname.startsWith(`/${route}/`),
+  );
+  const panelExpanded = expanded && !routeActiveId;
 
   /** The aside's max width is a viewport percentage, so the announced range has to track
    *  the viewport rather than a render-time snapshot of it. */
@@ -94,11 +96,11 @@ function UnifiedSidebar({ isSliding = false }: { isSliding?: boolean }) {
   }, [navigate]);
 
   const handlePanelExpand = useCallback(() => {
-    if (isInsightsRoute) {
+    if (routeActiveId) {
       handleLeaveInsights();
     }
     handleExpand();
-  }, [handleExpand, handleLeaveInsights, isInsightsRoute]);
+  }, [handleExpand, handleLeaveInsights, routeActiveId]);
 
   const handleResizeStart = useCallback(() => {
     setIsResizing(true);
@@ -218,7 +220,7 @@ function UnifiedSidebar({ isSliding = false }: { isSliding?: boolean }) {
               expanded={expanded}
               onClose={handleCollapse}
               onLeaveInsights={handleLeaveInsights}
-              routeActiveId={isInsightsRoute ? 'insights' : undefined}
+              routeActiveId={routeActiveId}
             />
             <nav
               id="chat-history-nav"
@@ -229,7 +231,7 @@ function UnifiedSidebar({ isSliding = false }: { isSliding?: boolean }) {
             <MobileShortcutTargets
               links={links}
               onLeaveInsights={handleLeaveInsights}
-              routeActiveId={isInsightsRoute ? 'insights' : undefined}
+              routeActiveId={routeActiveId}
             />
             <MobileBottomBar links={links} onNewChat={handleCollapse} />
           </ActivePanelProvider>

@@ -16,6 +16,12 @@ if (Test-Path -LiteralPath $context.State) {
             throw "Configuration incomplete: $($context.State)"
         }
     }
+    $mongoPath = Join-Path $context.State 'mongo.env'
+    $mongoConfig = Get-Content -LiteralPath $mongoPath -Raw
+    if ($mongoConfig -notmatch '(?m)^BOYANKB_MONGO_KEY=.+$') {
+        $replicaKey = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(512))
+        Write-BoyanPrivateFile -Path $mongoPath -Content "$($mongoConfig.TrimEnd())`nBOYANKB_MONGO_KEY=$replicaKey`n"
+    }
     Write-Output '配置已存在。'
     return
 }
@@ -54,11 +60,13 @@ $mongoEnvironment = @(
     'MONGO_INITDB_DATABASE=BoyanKB'
     "MONGO_APP_USERNAME=$appUser"
     "MONGO_APP_PASSWORD=$appPassword"
+    "BOYANKB_MONGO_KEY=$([Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(512)))"
 ) -join "`n"
 
 Write-BoyanPrivateFile -Path (Join-Path $staging '.env') -Content "$composeEnvironment`n"
 Write-BoyanPrivateFile -Path (Join-Path $staging 'app.env') -Content $appEnvironment
 Write-BoyanPrivateFile -Path (Join-Path $staging 'mongo.env') -Content "$mongoEnvironment`n"
+Write-BoyanPrivateFile -Path (Join-Path $staging 'feishu.env') -Content "FEISHU_APP_ID=`nFEISHU_APP_SECRET=`nFEISHU_WIKI_URL=`nFEISHU_SPACE_ID=`n"
 Copy-Item -LiteralPath (Join-Path $context.Repository 'deploy/boyankb/librechat.yaml') -Destination (Join-Path $staging 'librechat.yaml')
 
 $localRoot = [IO.Path]::GetFullPath((Join-Path $context.Repository '.local'))

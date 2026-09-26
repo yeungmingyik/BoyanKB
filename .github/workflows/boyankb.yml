@@ -27,7 +27,7 @@ jobs:
       - run: npm install --global npm@11.13.0
       - run: npm ci --no-audit --no-fund
       - run: npm run frontend
-      - run: npm run test:ci --workspace=@librechat/api -- --runInBand --coverage=false --testPathPatterns='knowledge/access|app/permissions|images/authorization|endpoints/config/models|endpoints/custom/config'
-      - run: npm run test:ci --workspace=@librechat/backend -- --runInBand --testPathPatterns='checkBan|convoAccess|loadConfigModels'
+      - run: npm run test:ci --workspace=@librechat/api -- --runInBand --coverage=false --testPathPatterns='knowledge/|app/permissions|images/authorization|endpoints/config/models|endpoints/custom/config'
+      - run: npm run test:ci --workspace=@librechat/backend -- --runInBand --testPathPatterns='checkBan|convoAccess|loadConfigModels|fileSearch'
       - run: npx jest --config config/jest.config.js --runInBand --runTestsByPath config/__tests__/ban-user.spec.js
-      - run: npm run test:ci --workspace=@librechat/frontend -- --runInBand --coverage=false --testPathPatterns='KnowledgeAccessGate|About.spec|Footer.spec|SetKeyDialog.*models|ConversationsSection.spec|useAppStartup.spec|Settings/__tests__/registry.spec|ConvoOptions.archive.test'
+      - run: npm run test:ci --workspace=@librechat/frontend -- --runInBand --coverage=false --testPathPatterns='components/Knowledge/|KnowledgeAccessGate|About.spec|Footer.spec|SetKeyDialog.*models|ConversationsSection.spec|useAppStartup.spec|Settings/__tests__/registry.spec|ConvoOptions.archive.test'

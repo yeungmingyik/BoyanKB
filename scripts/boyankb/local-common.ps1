@@ -122,7 +122,11 @@ function Invoke-BoyanCompose {
             [Environment]::SetEnvironmentVariable($key, $values[$key], 'Process')
         }
 
-        & docker compose --project-name $Context.Name --env-file $Context.Environment --file $Context.Compose @DockerArguments
+        $composeFiles = @('--file', $Context.Compose)
+        if ((Get-Content -LiteralPath $Context.Environment -Raw) -match '(?m)^BOYANKB_SYNC_ENABLED=1\r?$') {
+            $composeFiles += @('--file', (Join-Path $Context.Repository 'deploy/boyankb/compose.sync.yaml'))
+        }
+        & docker compose --project-name $Context.Name --env-file $Context.Environment @composeFiles @DockerArguments
         if ($LASTEXITCODE -ne 0) {
             throw "Docker Compose failed ($LASTEXITCODE)."
         }

@@ -102,21 +102,51 @@ const createFileSearchTool = async ({
   appConfig,
 }) => {
   return tool(
-    ({ query }) =>
-      executeFileSearchQuery({
-        query,
-        userId,
-        files,
-        entity_id,
-        fileCitations,
-        appConfig,
-        ragApiUrl: process.env.RAG_API_URL,
-        httpClient: axios,
-        generateShortLivedToken,
-        logAxiosError,
-        selectFileCitationSources,
-        logger,
-      }),
+    async ({ query }) => {
+      const knowledge = appConfig?.config?.knowledge;
+      const knowledgeEnabled = knowledge?.enabled && knowledge.sync?.enabled;
+      const search = (currentFiles) =>
+        executeFileSearchQuery({
+          query,
+          userId,
+          files: currentFiles,
+          entity_id,
+          fileCitations,
+          appConfig,
+          ragApiUrl: process.env.RAG_API_URL,
+          httpClient: axios,
+          generateShortLivedToken,
+          logAxiosError: knowledgeEnabled
+            ? () => {
+                logger.error('KNOWLEDGE_SEARCH_FAILED');
+                return 'KNOWLEDGE_SEARCH_FAILED';
+              }
+            : logAxiosError,
+          selectFileCitationSources,
+          logger: knowledgeEnabled
+            ? { debug: () => logger.debug('KNOWLEDGE_SEARCH_REQUEST') }
+            : logger,
+        });
+      if (!knowledgeEnabled) {
+        return search(files);
+      }
+      try {
+        const service = await require('~/server/services/Knowledge').getKnowledgeService();
+        const active = new Set(await service.activeFileIds());
+        const currentFiles = files.filter((file) => active.has(file.file_id));
+        if (currentFiles.length === 0) {
+          return ['KNOWLEDGE_NO_ACTIVE_FILES', undefined];
+        }
+        const result = await search(currentFiles);
+        const latest = new Set(await service.activeFileIds());
+        if (currentFiles.some((file) => !latest.has(file.file_id))) {
+          return ['KNOWLEDGE_SOURCE_CHANGED', undefined];
+        }
+        return result;
+      } catch {
+        return ['KNOWLEDGE_SOURCE_UNAVAILABLE', undefined];
+      }
+    },
     {
       name: Tools.file_search,
       responseFormat: 'content_and_artifact',

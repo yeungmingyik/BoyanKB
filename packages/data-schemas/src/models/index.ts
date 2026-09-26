@@ -1,3 +1,4 @@
+import type { KnowledgeModels } from './knowledge';
 import { createAgentQueuedTurnModel, createAgentQueuedTurnSequenceModel } from './queuedTurn';
 import { createAgentTriggerLaneSequenceModel } from './triggerLaneSequence';
 import { createScheduleModel, createScheduleRunModel } from './schedule';
@@ -20,6 +21,7 @@ import { createPluginAuthModel } from './pluginAuth';
 import { createSharedLinkModel } from './sharedLink';
 import { createAccessRoleModel } from './accessRole';
 import { createToolFavoriteModel } from './favorite';
+import { createKnowledgeModels } from './knowledge';
 import { createMCPServerModel } from './mcpServer';
 import { createAssistantModel } from './assistant';
 import { createSkillFileModel } from './skillFile';
@@ -49,7 +51,7 @@ import logger from '~/config/winston';
 /**
  * Creates all database models for all collections
  */
-export function createModels(mongoose: typeof import('mongoose')): {
+export function createModels(mongoose: typeof import('mongoose')): KnowledgeModels & {
   User: ReturnType<typeof createUserModel>;
   Token: ReturnType<typeof createTokenModel>;
   Session: ReturnType<typeof createSessionModel>;
@@ -99,6 +101,7 @@ export function createModels(mongoose: typeof import('mongoose')): {
   OpenIDRefreshFlight: ReturnType<typeof createOpenIDRefreshFlightModel>;
 } {
   const models = {
+    ...createKnowledgeModels(mongoose),
     User: createUserModel(mongoose),
     Token: createTokenModel(mongoose),
     Session: createSessionModel(mongoose),

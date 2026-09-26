@@ -2,29 +2,29 @@
 
 ## 版本来源
 
-BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前为 `0.1.0-alpha.2`。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
+BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前为 `0.1.0-alpha.3` 开发版，集成验收完成前不创建发布标签。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
 
-| 版本类型 | 使用范围 |
-|---|---|
-| `0.1.0-alpha.N` | 本地集成与功能开发 |
-| `0.1.0-beta.N` | 完成主要流程后的伙伴试点 |
-| `0.1.0` | 本地正式版，通过全部 P0 门槛 |
-| `0.1.x` | 兼容修复 |
-| `0.2.0` | 云端部署与迁移能力 |
-| `1.0.0` | 核心数据契约和交付标准稳定后发布 |
+| 版本类型        | 使用范围                         |
+| --------------- | -------------------------------- |
+| `0.1.0-alpha.N` | 本地集成与功能开发               |
+| `0.1.0-beta.N`  | 完成主要流程后的伙伴试点         |
+| `0.1.0`         | 本地正式版，通过全部 P0 门槛     |
+| `0.1.x`         | 兼容修复                         |
+| `0.2.0`         | 云端部署与迁移能力               |
+| `1.0.0`         | 核心数据契约和交付标准稳定后发布 |
 
 ## 仓库与分支
 
-| 项目 | 规则 |
-|---|---|
-| origin | `https://github.com/yeungmingyik/BoyanKB.git` |
-| upstream | `https://github.com/danny-avila/LibreChat.git` |
-| 稳定分支 | `main` |
-| 当前开发分支 | `local-deployment` |
+| 项目         | 规则                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------- |
+| origin       | `https://github.com/yeungmingyik/BoyanKB.git`                                               |
+| upstream     | `https://github.com/danny-avila/LibreChat.git`                                              |
+| 稳定分支     | `main`                                                                                      |
+| 当前开发分支 | `feishu-sync`                                                                               |
 | 后续功能分支 | `local-deployment`、`account-access`、`feishu-sync`、`knowledge-reader`、`knowledge-search` |
-| 版本标签 | `v` + VERSION，例如 `v0.1.0-alpha.1` |
-| 提交规范 | Conventional Commits；无表情或非标准前缀 |
-| 提交身份 | 仓库所有者的已验证 Git 身份，无机器人共同作者 |
+| 版本标签     | `v` + VERSION，例如 `v0.1.0-alpha.1`                                                        |
+| 提交规范     | Conventional Commits；无表情或非标准前缀                                                    |
+| 提交身份     | 仓库所有者的已验证 Git 身份，无机器人共同作者                                               |
 
 初始导入采用锁定上游提交的源代码快照，在 BoyanKB 建立独立提交历史，保留 MIT 文本与来源记录。不得声称上游代码由 BoyanKB 维护者原创。上游提交对象保留于本地 upstream 引用，不推送为产品分支或产品标签。
 
@@ -48,6 +48,8 @@ chore(release): prepare 0.1.0-beta.1
 每个版本同步更新 `VERSION`、README 能力状态和 `CHANGELOG.md`。日志采用“新增、变更、修复、移除”中的适用类别；计划留在路线图，验收结果留在验收记录。
 
 应用开发后，构建读取 `VERSION` 显示产品版本，构建产物标记源码提交；不要求手动修改所有上游 npm 包版本。交付记录包含镜像 digest、数据迁移、配置兼容性、验证结果和回滚版本。
+
+同步依赖镜像固定于 `deploy/boyankb/compose.yaml` 和 `compose.sync.yaml` 的 digest。向量模型修订、维度与文件摘要固定于 `deploy/boyankb/embedding.lock.json`。更换模型、维度或解析器须建立新的索引版本，验证后发布，不能复用不兼容的现有索引。
 
 ## 上游更新
 

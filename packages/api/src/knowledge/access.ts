@@ -104,7 +104,30 @@ export function resolveKnowledgeConfig(
   return knowledgeConfigSchema.parse({
     ...config,
     agentId: variable ? (environment[variable] ?? '') : config.agentId,
+    ...(config.sync
+      ? {
+          sync: {
+            ...config.sync,
+            wikiUrl: resolveValue(config.sync.wikiUrl, environment),
+            spaceId: resolveValue(config.sync.spaceId, environment),
+          },
+        }
+      : {}),
   });
+}
+
+function resolveValue(value: string, environment: Record<string, string | undefined>): string {
+  const variable = extractVariableName(value);
+  return variable ? (environment[variable] ?? '') : value;
+}
+
+export function publicKnowledgeConfig(
+  config: TKnowledgeConfig | undefined,
+): Pick<TKnowledgeConfig, 'enabled' | 'agentId'> | undefined {
+  if (!config) {
+    return;
+  }
+  return { enabled: config.enabled, agentId: config.agentId };
 }
 
 function requestPath(req: Request): string {
@@ -122,6 +145,12 @@ function emptySelection(value: unknown): boolean {
 function allowedUserRequest(req: Request, agentId: string): boolean {
   const path = requestPath(req);
   const read = req.method === 'GET' || req.method === 'HEAD';
+  if (
+    read &&
+    /^\/api\/knowledge\/(?:tree|documents\/[^/]+(?:\/revisions\/[^/]+)?|assets\/[^/]+)$/.test(path)
+  ) {
+    return true;
+  }
   if (read && path.startsWith('/images/')) {
     return true;
   }

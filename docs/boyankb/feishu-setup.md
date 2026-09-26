@@ -1,6 +1,6 @@
 # 飞书自建应用接入
 
-本指南用于准备 BoyanKB 自动同步所需的飞书身份和资源授权。当前 `0.1.0-alpha.2` 不包含飞书同步 Worker；完成以下配置不会启动同步。整空间同步按 [同步规格](sync.md) 在后续版本交付。
+本指南用于配置 BoyanKB 自动同步所需的飞书身份和资源授权。`0.1.0-alpha.3` 开发版包含同步 Worker，完成凭据、空间权限和知识 Agent 配置后按第 6 节启动；集成验收范围见 [验收清单](acceptance.md)。
 
 ## 1. 创建企业自建应用
 
@@ -15,22 +15,22 @@
 
 在权限管理中按下表的权限标识搜索并开通，选择应用身份权限。
 
-| 权限标识 | 使用范围 | 官方接口 |
-| --- | --- | --- |
-| `wiki:wiki:readonly` | 查询空间、解析入口节点、分页读取空间目录 | [空间列表](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/list)、[节点信息](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node)、[子节点列表](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/list) |
-| `docx:document:readonly` | 读取新版文档标题、版本、纯文本及内容块 | [文档信息](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get)、[纯文本](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/raw_content)、[文档所有块](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/list) |
-| `drive:drive.metadata:readonly` | 读取文件标题、创建时间和最后编辑时间 | [文件元数据](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/batch_query) |
-| `docs:document.media:download` | 下载文档内部图片和附件 | [下载素材](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download) |
-| `drive:file:download` | 下载作为独立文件存储的 PDF、Office 文件等 | [下载文件](https://open.feishu.cn/document/server-docs/docs/drive-v1/download/download) |
+| 权限标识                        | 使用范围                                  | 官方接口                                                                                                                                                                                                                                                                        |
+| ------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wiki:wiki:readonly`            | 查询空间、解析入口节点、分页读取空间目录  | [空间列表](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space/list)、[节点信息](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/get_node)、[子节点列表](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/list)               |
+| `docx:document:readonly`        | 读取新版文档标题、版本、纯文本及内容块    | [文档信息](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/get)、[纯文本](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/raw_content)、[文档所有块](https://open.feishu.cn/document/server-docs/docs/docs/docx-v1/document/list) |
+| `drive:drive.metadata:readonly` | 读取文件标题、创建时间和最后编辑时间      | [文件元数据](https://open.feishu.cn/document/server-docs/docs/drive-v1/file/batch_query)                                                                                                                                                                                        |
+| `docs:document.media:download`  | 下载文档内部图片和附件                    | [下载素材](https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download)                                                                                                                                                                                            |
+| `drive:file:download`           | 下载作为独立文件存储的 PDF、Office 文件等 | [下载文件](https://open.feishu.cn/document/server-docs/docs/drive-v1/download/download)                                                                                                                                                                                         |
 
 接口权限与知识空间、文档的资源权限分别生效。开通这些权限后，继续完成第 4 节的空间授权。读取更新时间通过元数据查询完成，无需申请修改文档或修改元数据的权限。
 
 出现其他原生对象时，按实际读取接口补充权限并重新发布应用：
 
-| 对象 | 按需权限 | 官方接口 |
-| --- | --- | --- |
-| 飞书电子表格 | `sheets:spreadsheet:readonly` | [读取多个范围](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/reading-multiple-ranges) |
-| 飞书多维表格 | `bitable:app:readonly` | [列出数据表](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list)、[查询记录](https://open.feishu.cn/document/docs/bitable-v1/app-table-record/search) |
+| 对象         | 按需权限                      | 官方接口                                                                                                                                                                      |
+| ------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 飞书电子表格 | `sheets:spreadsheet:readonly` | [读取多个范围](https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/reading-multiple-ranges)                                                             |
+| 飞书多维表格 | `bitable:app:readonly`        | [列出数据表](https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list)、[查询记录](https://open.feishu.cn/document/docs/bitable-v1/app-table-record/search) |
 
 画板、幻灯片、旧版文档、音视频和其他嵌入对象按盘点结果适配；未完成适配的对象记录为未支持。新版文档纯文本不包含这些对象的完整内容。多维表格的高级权限与独立嵌入资源须另外验证可见范围。
 
@@ -52,14 +52,14 @@
 2. 选择“可阅读的成员 → 添加成员”。
 3. 在支持搜索应用或智能体的选择框中，搜索 `BoyanKB 知识同步`，核对并选中新发布的应用。
 4. 关闭“发送通知”，确认添加；在“可阅读的成员”列表核对应用及其权限。
-5. 使用应用身份完成第 6 节的目录、正文及附件验证。具有独立权限的页面和嵌入资源分别核对阅读与下载权限。
+5. 使用应用身份完成第 7 节的目录、正文及附件验证。具有独立权限的页面和嵌入资源分别核对阅读与下载权限。
 
 若当前界面不支持直接选择应用，或核对发布状态与可用范围后仍搜索不到应用，使用专用群组授权：
 
 1. 在飞书客户端创建内部专用群，例如 `BoyanKB 同步授权`，仅加入负责维护的内部人员。
 2. 在群设置中添加已发布的 `BoyanKB 知识同步` 应用机器人。
 3. 返回知识空间的“成员设置 → 可阅读的成员 → 添加成员”，搜索该群并添加。
-4. 核对群的阅读权限，并使用应用身份完成第 6 节的读取验证。
+4. 核对群的阅读权限，并使用应用身份完成第 7 节的读取验证。
 
 群中添加的是企业应用机器人；Webhook 自定义机器人不能提供这里的应用身份。群组路径要求应用可用范围包含相关资源所有者，按实际授权对象补充必要人员。空间授权选择可阅读权限，无需授予空间管理员或编辑权限。[群组授权方式](https://open.feishu.cn/document/server-docs/docs/wiki-v2/wiki-qa)
 
@@ -78,30 +78,42 @@ FEISHU_WIKI_URL=
 FEISHU_SPACE_ID=
 ```
 
-| 配置 | 值 |
-| --- | --- |
-| `FEISHU_APP_ID` | 飞书自建应用 App ID |
-| `FEISHU_APP_SECRET` | 飞书自建应用 App Secret |
-| `FEISHU_WIKI_URL` | 公司指定知识空间中的入口链接，仅用于解析源空间 |
-| `FEISHU_SPACE_ID` | 核验后的数字空间 ID，首次解析前留空 |
+| 配置                | 值                                                      |
+| ------------------- | ------------------------------------------------------- |
+| `FEISHU_APP_ID`     | 飞书自建应用 App ID                                     |
+| `FEISHU_APP_SECRET` | 飞书自建应用 App Secret                                 |
+| `FEISHU_WIKI_URL`   | 公司指定知识空间中的入口链接，仅用于解析源空间          |
+| `FEISHU_SPACE_ID`   | 已核验的数字空间 ID，启动同步时必填并与入口解析结果一致 |
 
 该目录由 Git 忽略，使用初始化后的私有目录访问权限。真实入口链接、资源 token、密钥和访问凭证只保存在私有配置或秘密管理器中。无需把密钥粘贴到聊天、提交记录或问题单。
 
-`feishu.env` 为后续 Worker 预留；当前 Compose 不加载该文件，也不向飞书发起同步。访问凭证由后续 Worker 获取，不手工写入环境文件。首期采用服务端轮询，需要本机能够向飞书开放平台发起 HTTPS 请求，无需为同步开放公网回调。
+应用和 Worker 从 `feishu.env` 读取私有配置。访问凭证由 Worker 获取和续期，不手工写入环境文件。同步采用服务端轮询，需要本机能够向飞书开放平台发起 HTTPS 请求，无需为同步开放公网回调。凭据不会通过公开启动配置或伙伴 API 返回。
 
-## 6. 接入验收
+## 6. 启动同步
 
-Worker 接入时，使用上述应用身份完成以下读取验证。测试记录仅保存脱敏结果。
+完成本地构建、管理员知识 Agent 绑定以及以上配置后运行：
 
-| 验证 | 通过条件 |
-| --- | --- |
-| 应用身份 | 获取 `tenant_access_token` 成功，服务端按返回的 `expire` 管理有效期 |
-| 入口解析 | 通过节点信息取得 `space_id`、`obj_type`、`obj_token`，数字空间 ID 与目标空间一致 |
+```powershell
+pwsh -NoProfile -File scripts/boyankb/start-sync.ps1 -NoBuild
+```
+
+首次启动下载并校验本地中文向量模型，随后启动同步与索引服务。模型下载源、服务状态与存储配置见 [部署文档](deployment.md#飞书同步与本地索引)。管理员进入 BoyanKB 的“资料库”查看任务，执行完整扫描或重试；仅配置凭据不会证明资料已经可读。
+
+连接失败时检查已发布权限、空间阅读权限和网络。素材失败与未支持块分别记录缺失项，不能以正文读取成功替代全部格式覆盖。真实资料与完整错误采样仅保存在私有运行目录。
+
+## 7. 接入验收
+
+使用上述应用身份完成以下读取验证。测试记录仅保存脱敏结果。
+
+| 验证       | 通过条件                                                                         |
+| ---------- | -------------------------------------------------------------------------------- |
+| 应用身份   | 获取 `tenant_access_token` 成功，服务端按返回的 `expire` 管理有效期              |
+| 入口解析   | 通过节点信息取得 `space_id`、`obj_type`、`obj_token`，数字空间 ID 与目标空间一致 |
 | 整空间目录 | 从空间根开始分页并递归所有子节点，覆盖入口的兄弟节点及其他目录；核对独立权限页面 |
-| 新版文档 | 使用 `obj_token` 读取文档信息、纯文本及所有块，处理全部分页和嵌套关系 |
-| 更新识别 | 能读取元数据中的 `latest_modify_time` 及文档 `revision_id` |
-| 素材与附件 | 文档内素材和独立文件分别通过对应下载接口验证；只看正文不算附件验证通过 |
-| 扩展格式 | 按实际对象类型验证 Sheets、Base 等内容，单列不可见或未支持的对象 |
+| 新版文档   | 使用 `obj_token` 读取文档信息、纯文本及所有块，处理全部分页和嵌套关系            |
+| 更新识别   | 能读取元数据中的 `latest_modify_time` 及文档 `revision_id`                       |
+| 素材与附件 | 文档内素材和独立文件分别通过对应下载接口验证；只看正文不算附件验证通过           |
+| 扩展格式   | 按实际对象类型验证 Sheets、Base 等内容，单列不可见或未支持的对象                 |
 
 节点列表可能返回空 `items` 且 `has_more=true`，此时继续翻页，直到 `has_more=false`。Wiki 链接中的节点 token 不直接作为 Docx 文档 ID；内容接口使用节点返回的 `obj_token`。[目录分页](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/list)、[资源标识](https://open.feishu.cn/document/server-docs/docs/wiki-v2/wiki-qa)
 

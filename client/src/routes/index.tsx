@@ -47,6 +47,11 @@ const loadInsightsView = () =>
     Component: m.default,
   }));
 
+const loadKnowledgeView = () =>
+  import('~/components/Knowledge/KnowledgePage').then((m) => ({
+    Component: m.default,
+  }));
+
 const loadProjectsView = () =>
   import('~/components/Projects').then((m) => ({
     Component: m.ProjectsView,
@@ -164,6 +169,10 @@ export const router = createBrowserRouter(
             {
               path: 'insights',
               lazy: loadInsightsView,
+            },
+            {
+              path: 'knowledge/*',
+              lazy: loadKnowledgeView,
             },
             {
               path: 'skills/new',

@@ -16,12 +16,14 @@ const files = require('./files');
 const images = require('./images');
 const avatar = require('./avatar');
 const speech = require('./speech');
+const knowledgeFiles = require('~/server/middleware/knowledgeFiles');
 
 const initialize = async () => {
   const router = express.Router();
   router.use(requireJwtAuth);
   router.use(configMiddleware);
   router.use(checkBan);
+  router.use(knowledgeFiles.guard);
   router.use(uaParser);
 
   const upload = await createMulterInstance();

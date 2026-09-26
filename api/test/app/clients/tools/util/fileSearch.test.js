@@ -29,8 +29,155 @@ jest.mock('~/server/services/Files/permissions', () => ({
   filterFilesByAgentAccess: jest.fn((options) => Promise.resolve(options.files)),
 }));
 
+jest.mock('~/server/services/Knowledge', () => ({
+  getKnowledgeService: jest.fn(),
+}));
+
 const { createFileSearchTool, primeFiles } = require('~/app/clients/tools/util/fileSearch');
 const { generateShortLivedToken } = require('@librechat/api');
+
+describe('fileSearch.js - active knowledge revisions', () => {
+  const { getKnowledgeService } = require('~/server/services/Knowledge');
+  const { logger } = require('@librechat/data-schemas');
+  const { logAxiosError } = require('@librechat/api');
+  const originalRagUrl = process.env.RAG_API_URL;
+  const appConfig = { config: { knowledge: { enabled: true, sync: { enabled: true } } } };
+  const files = [
+    { file_id: 'current-file', filename: 'Current.txt', fromAgent: true },
+    { file_id: 'old-file', filename: 'Old.txt', fromAgent: true },
+  ];
+  let activeFileIds;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.RAG_API_URL = 'http://rag.internal:8000';
+    generateShortLivedToken.mockReturnValue('synthetic-jwt');
+    activeFileIds = jest.fn().mockResolvedValue(['current-file']);
+    getKnowledgeService.mockResolvedValue({ activeFileIds });
+    axios.post.mockImplementation(async (_url, body) => ({
+      data: [
+        [
+          {
+            page_content: `Synthetic ${body.file_id} text`,
+            metadata: { source: `/${body.file_id}.txt` },
+          },
+          0.2,
+        ],
+      ],
+    }));
+  });
+
+  afterEach(() => {
+    if (originalRagUrl === undefined) {
+      delete process.env.RAG_API_URL;
+    } else {
+      process.env.RAG_API_URL = originalRagUrl;
+    }
+  });
+
+  async function searchTool(config = appConfig) {
+    return createFileSearchTool({
+      userId: 'partner',
+      entity_id: 'agent_knowledge',
+      files,
+      appConfig: config,
+    });
+  }
+
+  it('filters retired file IDs before requesting search and keeps only current citations', async () => {
+    const tool = await searchTool();
+    const [content, artifact] = await tool.func({ query: 'synthetic query' });
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    expect(axios.post.mock.calls[0][1]).toMatchObject({
+      file_id: 'current-file',
+      entity_id: 'agent_knowledge',
+    });
+    expect(content).toContain('Synthetic current-file text');
+    expect(content).not.toContain('old-file');
+    expect(artifact.file_search.sources.map((source) => source.fileId)).toEqual(['current-file']);
+    expect(activeFileIds).toHaveBeenCalledTimes(2);
+  });
+
+  it('never calls RAG when none of the tool files remain active', async () => {
+    activeFileIds.mockResolvedValue([]);
+    const result = await (await searchTool()).func({ query: 'synthetic query' });
+    expect(result[1]).toBeUndefined();
+    expect(axios.post).not.toHaveBeenCalled();
+    expect(generateShortLivedToken).not.toHaveBeenCalled();
+  });
+
+  it('discards the entire result and citations if its source is revoked during retrieval', async () => {
+    activeFileIds.mockResolvedValueOnce(['current-file']).mockResolvedValueOnce([]);
+    const result = await (await searchTool()).func({ query: 'synthetic query' });
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(['KNOWLEDGE_SOURCE_CHANGED', undefined]);
+    expect(JSON.stringify(result)).not.toContain('Synthetic current-file text');
+  });
+
+  it('rechecks publication state for every invocation of an existing tool', async () => {
+    const tool = await searchTool();
+    await tool.func({ query: 'first query' });
+    activeFileIds.mockResolvedValue(['old-file']);
+    await tool.func({ query: 'second query' });
+    expect(axios.post.mock.calls.map(([, body]) => body.file_id)).toEqual([
+      'current-file',
+      'old-file',
+    ]);
+    expect(activeFileIds).toHaveBeenCalledTimes(4);
+  });
+
+  it.each([
+    { config: { knowledge: { enabled: false, sync: { enabled: true } } } },
+    { config: { knowledge: { enabled: true, sync: { enabled: false } } } },
+    {},
+  ])('preserves native file search when synchronization is disabled %p', async (config) => {
+    const result = await (await searchTool(config)).func({ query: 'synthetic query' });
+    expect(getKnowledgeService).not.toHaveBeenCalled();
+    expect(axios.post.mock.calls.map(([, body]) => body.file_id)).toEqual([
+      'current-file',
+      'old-file',
+    ]);
+    expect(result[1].file_search.sources).toHaveLength(2);
+  });
+
+  it('fails closed with a static result if the pre-search source lookup fails', async () => {
+    getKnowledgeService.mockRejectedValueOnce(new Error('synthetic_private_source_token'));
+    const result = await (await searchTool()).func({ query: 'synthetic query' });
+    expect(result).toEqual(['KNOWLEDGE_SOURCE_UNAVAILABLE', undefined]);
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  it('never releases retrieved content when the post-search source check fails', async () => {
+    activeFileIds
+      .mockResolvedValueOnce(['current-file'])
+      .mockRejectedValueOnce(new Error('synthetic_private_source_token'));
+    const result = await (await searchTool()).func({ query: 'synthetic query' });
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(['KNOWLEDGE_SOURCE_UNAVAILABLE', undefined]);
+    expect(JSON.stringify(result)).not.toContain('Synthetic current-file text');
+  });
+
+  it('keeps the knowledge query and source text out of retrieval logs', async () => {
+    await (await searchTool()).func({ query: 'synthetic private knowledge query' });
+    expect(logger.debug.mock.calls).toEqual([['KNOWLEDGE_SEARCH_REQUEST']]);
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logAxiosError).not.toHaveBeenCalled();
+  });
+
+  it('logs a static error without upstream response bodies or credentials', async () => {
+    axios.post.mockRejectedValueOnce({
+      message: 'synthetic private upstream message',
+      response: { data: 'synthetic private source text' },
+      config: { headers: { Authorization: 'Bearer synthetic private credential' } },
+    });
+    const result = await (await searchTool()).func({ query: 'synthetic private knowledge query' });
+    expect(result[1]).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain('synthetic private');
+    expect(logger.error.mock.calls).toEqual([['KNOWLEDGE_SEARCH_FAILED']]);
+    expect(logger.debug.mock.calls).toEqual([['KNOWLEDGE_SEARCH_REQUEST']]);
+    expect(logAxiosError).not.toHaveBeenCalled();
+  });
+});
 
 describe('fileSearch.js - agent file authorization', () => {
   it('uses the permission resource type established by the calling route', async () => {

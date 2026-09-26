@@ -3034,9 +3034,28 @@ export type TOpenIdDiscoveryConfig = z.infer<typeof openIdDiscoverySchema>;
 /** Maximum CAS attempts per ACL document, including the initial attempt. */
 export const permissionWriteAttemptsSchema = z.number().int().min(1).max(100).default(3);
 
+export const knowledgeSyncConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  wikiUrl: z.string().trim().max(2048).default(''),
+  spaceId: z.string().trim().max(128).default(''),
+  pollIntervalMs: z.number().int().min(60000).max(86400000).default(600000),
+  reconcileIntervalMs: z.number().int().min(60000).max(604800000).default(86400000),
+  leaseMs: z.number().int().min(30000).max(600000).default(120000),
+  maxRetries: z.number().int().min(0).max(8).default(3),
+  requestTimeoutMs: z.number().int().min(1000).max(120000).default(30000),
+  maxAssetBytes: z.number().int().min(1024).max(524288000).default(52428800),
+  maxNodes: z.number().int().min(1).max(1000000).default(100000),
+  maxBlocks: z.number().int().min(1).max(1000000).default(100000),
+  snapshotRetentionDays: z.number().int().min(1).max(3650).default(30),
+  runRetentionDays: z.number().int().min(1).max(3650).default(90),
+});
+
+export type TKnowledgeSyncConfig = z.infer<typeof knowledgeSyncConfigSchema>;
+
 export const knowledgeConfigSchema = z.object({
   enabled: z.boolean().default(false),
   agentId: z.string().trim().max(128).optional(),
+  sync: knowledgeSyncConfigSchema.optional(),
 });
 
 export type TKnowledgeConfig = z.infer<typeof knowledgeConfigSchema>;

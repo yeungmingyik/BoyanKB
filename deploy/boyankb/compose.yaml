@@ -15,10 +15,12 @@ services:
     ports:
       - '127.0.0.1:${BOYANKB_HTTP_PORT:-3080}:3080'
     depends_on:
-      mongodb:
-        condition: service_healthy
+      mongodb-init:
+        condition: service_completed_successfully
     env_file:
       - ${BOYANKB_STATE_DIR:?}/app.env
+      - path: ${BOYANKB_STATE_DIR:?}/feishu.env
+        required: false
     volumes:
       - type: bind
         source: ${BOYANKB_STATE_DIR:?}/librechat.yaml
@@ -44,11 +46,18 @@ services:
   mongodb:
     image: mongo:8.0.20@sha256:098862b1339f031900ca66cf8fef799e616d6324fa41b9a263f2ec899552c1ef
     restart: unless-stopped
+    entrypoint: ['bash', '/boyankb-entrypoint.sh']
     env_file:
       - ${BOYANKB_STATE_DIR:?}/mongo.env
     volumes:
       - mongodb-data:/data/db
       - mongodb-config:/data/configdb
+      - type: bind
+        source: ./mongo-entrypoint.sh
+        target: /boyankb-entrypoint.sh
+        read_only: true
+        bind:
+          create_host_path: false
       - type: bind
         source: ./mongo-init.js
         target: /docker-entrypoint-initdb.d/boyankb.js
@@ -69,6 +78,24 @@ services:
     security_opt:
       - no-new-privileges:true
     stop_grace_period: 45s
+  mongodb-init:
+    image: mongo:8.0.20@sha256:098862b1339f031900ca66cf8fef799e616d6324fa41b9a263f2ec899552c1ef
+    restart: 'no'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    env_file:
+      - ${BOYANKB_STATE_DIR:?}/mongo.env
+    entrypoint: ['mongosh', '--quiet', '--host', 'mongodb', '--file', '/boyankb-replica.js']
+    volumes:
+      - type: bind
+        source: ./mongo-replica.js
+        target: /boyankb-replica.js
+        read_only: true
+        bind:
+          create_host_path: false
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   mongodb-data:

@@ -2,6 +2,7 @@ const express = require('express');
 const {
   isEnabled,
   resolveKnowledgeConfig,
+  publicKnowledgeConfig,
   isLangfuseConnectionAvailable,
   isLangfuseFanoutEnabled,
   getBalanceConfig,
@@ -295,7 +296,9 @@ router.get('/', async function (req, res) {
       ...preLoginPayload,
       ...publicSharePayload,
       ...buildPostLoginPayload(),
-      knowledge: resolveKnowledgeConfig((await getAppConfig({ baseOnly: true })).config?.knowledge),
+      knowledge: publicKnowledgeConfig(
+        resolveKnowledgeConfig((await getAppConfig({ baseOnly: true })).config?.knowledge),
+      ),
       sharedLinksSnapshotFilesEnabled: sharedLinksEnabled && isFileSnapshotEnabled(appConfig),
       socialLogins: appConfig?.registration?.socialLogins ?? defaultSocialLogins,
       interface: appConfig?.interfaceConfig,
