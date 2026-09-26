@@ -28,7 +28,7 @@ function Get-BoyanQaRuntime {
 }
 
 $qaRuntime = Get-BoyanQaRuntime
-$qaCodeMounts = @($qaRuntime.mounts | Where-Object { $_.Destination -match '^/app(?:$|/(?:packages|api|client|node_modules)(?:/|$))' } | ForEach-Object { @{ destination = $_.Destination; readOnly = -not $_.RW } })
+$qaCodeMounts = @($qaRuntime.mounts | Where-Object { $_.Destination -match '^/app(?:$|/(?:packages|api|client|node_modules)(?:/|$))' -and $_.Destination -notmatch '^/app/client/public/images(?:/|$)' } | ForEach-Object { @{ destination = $_.Destination; readOnly = -not $_.RW } })
 foreach ($qaFile in @($qaScript, $qaFixture)) {
     Invoke-BoyanCompose -Context $qaContext -DockerArguments @('cp', $qaFile, "app:/app/$([IO.Path]::GetFileName($qaFile))")
 }

@@ -351,6 +351,7 @@ async function startTurn(name, control = false, options = {}) {
   await until(
     () =>
       providerState.errorCode ||
+      turn.original.closed ||
       (providerState.failure ? providerState.started : providerState.chunks >= 2),
     45000,
     'PROVIDER_START_TIMEOUT',
@@ -359,6 +360,7 @@ async function startTurn(name, control = false, options = {}) {
     !providerState.errorCode,
     providerState.errorCode?.replace('KNOWLEDGE_STREAM_TEST_', '') ?? 'PROVIDER_FAILED',
   );
+  ensure(providerState.started, 'PROVIDER_NOT_STARTED');
   ensure(!providerState.closed, 'PROVIDER_EARLY_CLOSE');
   turn.resumed = await attach(turn, true);
   const state = status(
@@ -815,6 +817,19 @@ main()
     report.at = new Date().toISOString();
     report.providerTurns = providerStates.filter((state) => state.started).length;
     report.providerRequests = providerStates.reduce((sum, state) => sum + state.requests, 0);
+    report.streamObservations = attachments.map((stream) => ({
+      frames: stream.frames.length,
+      errorFrames: stream.frames.filter((frame) => frame.error || frame.responseMessage?.error)
+        .length,
+      verifiedFinals: stream.frames.filter(
+        (frame) => frame.responseMessage?.metadata?.knowledge?.verified === true,
+      ).length,
+      closed: stream.closed,
+      transportFailed: stream.failed,
+      codes: stream.frames
+        .map((frame) => frame.error)
+        .filter((code) => typeof code === 'string' && /^KNOWLEDGE_[A-Z0-9_]+$/.test(code)),
+    }));
     if (reportAllowed)
       fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), { mode: 0o600 });
     await mongoose?.disconnect().catch(() => {});

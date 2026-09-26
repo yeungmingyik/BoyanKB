@@ -160,6 +160,19 @@ pwsh -NoProfile -File scripts/boyankb/test-local-access.ps1
 
 验证使用 `boyankb-librechat-test` 实例、端口 `3081` 和 `@boyankb-acceptance.invalid` 合成账号，拒绝含其他邮箱账号的数据库。私有测试账号和结果保存至 `.local/boyankb-librechat-test`。聊天链路通过容器内 OpenAI 协议测试服务验证，不调用真实模型或发送邮件。
 
+知识同步、搜索、真实模型问答与流式权限使用独立的 `boyankb-librechat-sync-test` 实例，端口为 `3082`。该实例必须使用合成飞书配置、合成账号和专用知识 Agent，运行时设置 `NODE_ENV=test` 与 `BOYANKB_TEST_INSTANCE=boyankb-librechat-sync-test`。先完成隔离实例配置，再按顺序运行：
+
+```powershell
+pwsh -NoProfile -File scripts/boyankb/test-knowledge-sync.ps1
+pwsh -NoProfile -File scripts/boyankb/test-knowledge-search.ps1
+pwsh -NoProfile -File scripts/boyankb/test-knowledge-qa.ps1
+pwsh -NoProfile -File scripts/boyankb/test-knowledge-stream.ps1 -IncludeSourceChanges
+```
+
+问答测试读取容器内 `/app/data/model-test.env` 的 `DEEPSEEK_API_KEY` 和 `DEEPSEEK_TEST_MODEL`。文件仅供容器运行用户读取，不写入共享模型环境变量或 Git。默认 34 题调用真实模型；凭据临时保存为合成账号的原生加密个人密钥，完成后清理该账号的测试密钥，保留会话供阅读验证。`-Case answer-school-02` 可执行单题，`-Endpoint Anthropic-Compatible` 可仅执行三题兼容协议组。
+
+同步与搜索测试准备合成资料，流式权限测试会暂时改变测试源状态；各组按顺序执行，不与其他写入测试并行。问答报告保存在 `.local/boyankb-librechat-sync-test`，包含实际镜像、源码覆盖挂载、运行标识、测试脚本和题集 SHA-256。标准图片资产卷不计为源码覆盖。测试通过不替代真实企业题集、伙伴网络或备份恢复验收。
+
 ## 数据与备份
 
 | 命名卷后缀                       | 内容                                       |
@@ -177,8 +190,14 @@ pwsh -NoProfile -File scripts/boyankb/test-local-access.ps1
 
 快照默认保留策略为 30 天，任务与审计为 90 天；自动物理清理未提供。已下线内容保留在卷中时仍受授权与版本限制，不对伙伴提供读取。
 
+2026-09-27 的 alpha.4 升级前备份保存于私有 `.local/backups/20260926-170020-before-alpha4`，包含 MongoDB archive、PostgreSQL custom dump、四个数据卷归档、实例配置和 SHA-256 清单。归档列表与校验检查通过；该记录不等于恢复演练通过。回退镜像标签 `rollback-alpha3-20260926-170020` 保留。自动定时备份、完整恢复和失败回退演练尚未交付或完成。
+
 ## 部署边界
 
-基础部署包含应用与 MongoDB 副本集；启用同步后增加 Worker、模型初始化、RAG 与向量库。alpha.3 预发布功能已交付，合成场景集成通过，首次实际同步发现 18 份资料、发布 12 份。最终镜像的 HTTP、Worker、正式部署阅读与索引核对通过，运行范围见[验收清单](acceptance.md#8-alpha3-验证记录)。其余 6 份的未发布原因见[资料覆盖清单](source-coverage.md)。关键词与语义搜索、企业知识问答、自动备份恢复、自动物理清理和云端迁移尚未交付。
+基础部署包含应用与 MongoDB 副本集；启用同步后增加 Worker、模型初始化、RAG 与向量库。alpha.4 提供关键词与语义检索、企业知识问答、版本引用和生成期间访问控制，最终镜像隔离验收通过，范围见[验收清单](acceptance.md#9-alpha4-验证记录)。
+
+正式应用与 Worker 已升级至 `boyankb:0.1.0-alpha.4-3a7a125781f6`，应用、Worker、MongoDB、PostgreSQL 和 RAG 健康，无源码覆盖挂载。升级前后资料状态、授权代次、已发布版本和索引关联一致：18 份资料、12 份已发布、12 个原生文件、12 个 RAG 文件标识。此次数据核对只读取元信息，未调用正式资料的问答模型。其余 6 份的未发布原因见[资料覆盖清单](source-coverage.md)。
+
+伙伴目标网络、真实企业题集和完整格式覆盖仍须验收；自动备份恢复、自动物理清理和云端迁移未交付。
 
 伙伴远程访问需配置 VPN 或 HTTPS 入口，并重新设置域名、代理与安全 Cookie。localhost 部署仅提供本机访问。云端部署沿用相同源码与配置契约，数据库与秘密材料独立迁移。

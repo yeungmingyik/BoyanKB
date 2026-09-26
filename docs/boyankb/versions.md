@@ -2,7 +2,7 @@
 
 ## 版本来源
 
-BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前为 `0.1.0-alpha.3` 预发布版，版本标签为 `v0.1.0-alpha.3`。读取与服务组件的集成验收通过，实际资料覆盖盘点完成；最终镜像的 HTTP、Worker、正式部署阅读与索引核对通过。实际 18 份资料中 12 份已发布、6 份保持未发布，具体范围见[资料覆盖清单](source-coverage.md)。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
+BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前为 `0.1.0-alpha.4` 预发布版，交付关键词与语义检索、带版本引用的知识问答，以及生成期间的撤权、封禁和源暂停控制。最终镜像的同步、搜索、真实模型合成题集与流式权限验收通过，范围见[验收清单](acceptance.md#9-alpha4-验证记录)。实际 18 份资料中 12 份已发布、6 份保持未发布，具体范围见[资料覆盖清单](source-coverage.md)。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
 
 | 版本类型        | 使用范围                         |
 | --------------- | -------------------------------- |
@@ -20,7 +20,7 @@ BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前为 `0
 | origin       | `https://github.com/yeungmingyik/BoyanKB.git`                                               |
 | upstream     | `https://github.com/danny-avila/LibreChat.git`                                              |
 | 稳定分支     | `main`                                                                                      |
-| 当前开发分支 | `feishu-sync`                                                                               |
+| 当前开发分支 | `knowledge-search`                                                                          |
 | 后续功能分支 | `local-deployment`、`account-access`、`feishu-sync`、`knowledge-reader`、`knowledge-search` |
 | 版本标签     | `v` + VERSION，例如 `v0.1.0-alpha.1`                                                        |
 | 提交规范     | Conventional Commits；无表情或非标准前缀                                                    |
@@ -46,6 +46,8 @@ chore(release): prepare 0.1.0-beta.1
 ## 发布记录
 
 每个版本同步更新 `VERSION`、README 能力状态和 `CHANGELOG.md`。日志采用“新增、变更、修复、移除”中的适用类别；计划留在路线图，验收结果留在验收记录。
+
+`0.1.0-alpha.4` 的应用提交为 `3a7a125781f627c287bc30d1a7a9aea6766c6126`，验证镜像为 `boyankb:0.1.0-alpha.4-3a7a125781f6`，镜像 ID 为 `sha256:8984d119d48e29208cc27c9dbba1ebf9058a2813b3fc4a0f148575f8ffa0cfa2`。最终隔离验收无源码覆盖挂载；报告保留应用镜像、测试脚本和题集摘要。
 
 应用开发后，构建读取 `VERSION` 显示产品版本，构建产物标记源码提交；不要求手动修改所有上游 npm 包版本。交付记录包含镜像 digest、数据迁移、配置兼容性、验证结果和回滚版本。
 

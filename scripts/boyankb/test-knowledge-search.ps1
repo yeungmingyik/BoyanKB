@@ -29,7 +29,7 @@ $searchMounts = (& docker inspect --format '{{json .Mounts}}' boyankb-librechat-
 if ($LASTEXITCODE -ne 0) {
     throw 'Knowledge search mounts unavailable.'
 }
-$searchCodeMounts = @($searchMounts | Where-Object { $_.Destination -match '^/app/(packages|api|client)(/|$)' } | ForEach-Object { @{ destination = $_.Destination; readOnly = -not $_.RW } })
+$searchCodeMounts = @($searchMounts | Where-Object { $_.Destination -match '^/app(?:$|/(?:packages|api|client|node_modules)(?:/|$))' -and $_.Destination -notmatch '^/app/client/public/images(?:/|$)' } | ForEach-Object { @{ destination = $_.Destination; readOnly = -not $_.RW } })
 $searchReportPath = Join-Path $searchContext.State 'knowledge-search-integration-results.json'
 $searchReport = Get-Content -LiteralPath $searchReportPath -Raw | ConvertFrom-Json -AsHashtable
 if (-not $searchReport.passed) {

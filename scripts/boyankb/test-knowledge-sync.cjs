@@ -330,6 +330,17 @@ async function main() {
       };
     },
     async getNode(token) {
+      if (
+        ![
+          'fixture_leaf',
+          'fixture_alias',
+          'fixture_folder',
+          'fixture_sheet',
+          'fixture_partial_node',
+        ].includes(token)
+      ) {
+        throw new FeishuError('not_found');
+      }
       if (!state.visible && ['fixture_leaf', 'fixture_alias'].includes(token)) {
         throw new FeishuError('not_found');
       }
@@ -388,12 +399,30 @@ async function main() {
   await runAsSystem(() => service.ensureSource());
   const source = await service.source();
   ensure(!source.leaseOwner || source.leaseUntil <= new Date(), 'NO_ACTIVE_WORKER');
-  await models.KnowledgeRun.updateMany(
-    { sourceId: service.sourceId, status: { $in: ['queued', 'running'] } },
-    {
-      $set: { status: 'failed', errorCode: 'KNOWLEDGE_SYNC_TEST_RESTART', finishedAt: new Date() },
-    },
-  );
+  await runAsSystem(async () => {
+    const oldRevisions = await models.KnowledgeRevision.find(
+      { sourceId: service.sourceId },
+      { nativeFileIds: 1 },
+    ).lean();
+    await indexer.remove([...new Set(oldRevisions.flatMap((item) => item.nativeFileIds))]);
+    await models.Agent.updateOne(
+      { id: fixtureAgent, author: ownerId },
+      { $set: { 'tool_resources.file_search.file_ids': [] } },
+    );
+    for (const name of [
+      'KnowledgeNode',
+      'KnowledgeDocument',
+      'KnowledgeRevision',
+      'KnowledgeAsset',
+      'KnowledgeRun',
+      'KnowledgeItem',
+      'KnowledgeAudit',
+    ]) {
+      await models[name].deleteMany({ sourceId: service.sourceId });
+    }
+    await models.KnowledgeSource.deleteOne({ id: service.sourceId, agentId: fixtureAgent });
+    await service.ensureSource();
+  });
 
   async function enqueue(label, mode = 'full', retryRunId) {
     const route = retryRunId
