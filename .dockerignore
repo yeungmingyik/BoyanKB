@@ -15,3 +15,8 @@ docs
 
 # Ignore all hidden files
 .*
+
+knowledge-data
+backups
+raw-data
+deploy/boyankb/secrets

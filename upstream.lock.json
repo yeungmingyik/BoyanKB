@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/danny-avila/LibreChat.git",
+  "branch": "main",
+  "commit": "7b2362d7a7c6148b84850924dc7fa5fc43307923",
+  "commitDate": "2026-09-25T14:08:28Z",
+  "verifiedAt": "2026-09-26",
+  "packageVersion": "v0.8.8-rc4",
+  "license": "MIT",
+  "importStrategy": "source-snapshot",
+  "remote": "upstream"
+}

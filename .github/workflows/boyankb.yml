@@ -1,0 +1,21 @@
+name: BoyanKB
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  project:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.16.0'
+      - run: node scripts/boyankb/check-project.mjs
+      - run: git diff --check
