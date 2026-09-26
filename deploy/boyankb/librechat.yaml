@@ -1,0 +1,105 @@
+version: 1.3.17
+cache: true
+knowledge:
+  enabled: true
+  agentId: ${BOYANKB_KNOWLEDGE_AGENT_ID}
+registration:
+  socialLogins: []
+interface:
+  customWelcome: BoyanKB
+  modelSelect: true
+  parameters: false
+  presets: false
+  multiConvo: false
+  bookmarks: false
+  memories: false
+  prompts: false
+  temporaryChat: false
+  autoSubmitFromUrl: false
+  runCode: false
+  webSearch: false
+  buildInfo: false
+  contextUsage: false
+  contextCost: false
+  feedback: false
+  fileSearch: false
+  fileCitations: true
+  agents:
+    use: true
+    create: false
+    share: false
+    public: false
+  peoplePicker:
+    users: true
+    groups: false
+    roles: false
+  marketplace:
+    use: false
+  mcpServers:
+    use: false
+    create: false
+    share: false
+    public: false
+  remoteAgents:
+    use: false
+    create: false
+    share: false
+    public: false
+  skills: false
+  sharedLinks:
+    create: false
+    share: false
+    public: false
+    snapshotFiles: false
+  schedules:
+    use: false
+    create: false
+endpoints:
+  agents:
+    capabilities: []
+  custom:
+    - name: DeepSeek
+      apiKey: user_provided
+      baseURL: https://api.deepseek.com
+      models:
+        default:
+          - deepseek-flash
+          - deepseek-v4-pro
+        fetch: false
+      titleConvo: false
+      modelDisplayLabel: DeepSeek
+    - name: OpenAI-Compatible
+      apiKey: user_provided
+      baseURL: user_provided
+      models:
+        default:
+          - gpt-4.1
+        fetch: true
+      titleConvo: false
+      modelDisplayLabel: OpenAI Compatible
+    - name: Anthropic-Compatible
+      provider: anthropic
+      apiKey: user_provided
+      baseURL: user_provided
+      headers:
+        anthropic-version: '2023-06-01'
+      models:
+        default:
+          - claude-sonnet-4-5
+        fetch: false
+      titleConvo: false
+      modelDisplayLabel: Anthropic Compatible
+fileConfig:
+  endpoints:
+    default:
+      disabled: true
+    agents:
+      disabled: true
+memory:
+  disabled: true
+balance:
+  enabled: false
+transactions:
+  enabled: false
+openapi:
+  enabled: false
