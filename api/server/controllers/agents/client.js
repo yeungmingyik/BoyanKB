@@ -186,6 +186,7 @@ const {
   resolvePersistableCodeEnvironmentDecision,
   finalizeKnowledgeAnswer,
   knowledgeAnswerMetadata,
+  knowledgeCompletionText,
   knowledgeQuestionHistory,
 } = require('@librechat/api');
 const {
@@ -3600,10 +3601,13 @@ class AgentClient extends BaseClient {
     let completion = filterMalformedContentParts(this.contentParts);
     if (knowledgeAnswer) {
       await this.options.req.knowledgeStreamGuard?.checkNow();
-      const text = completion
-        .filter((part) => part.type === ContentTypes.TEXT)
-        .map((part) => (typeof part.text === 'string' ? part.text : (part.text?.value ?? '')))
-        .join('\n');
+      let text;
+      try {
+        text = knowledgeCompletionText(completion, this.stepLimitReached === true);
+      } catch (error) {
+        this.contentParts.splice(0, this.contentParts.length);
+        throw error;
+      }
       completion = [
         { type: ContentTypes.TEXT, text: finalizeKnowledgeAnswer(text, knowledgeAnswer) },
       ];

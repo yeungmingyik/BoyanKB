@@ -70,6 +70,27 @@ export function finalizeKnowledgeAnswer(text: string, context: KnowledgeAnswerCo
   return citations > 0 ? answer.trim() : context.insufficient;
 }
 
+export function knowledgeCompletionText(
+  parts: Array<{ type: string; text?: unknown }>,
+  interrupted = false,
+): string {
+  if (interrupted || parts.some((part) => part.type === 'error')) {
+    throw new KnowledgeError('KNOWLEDGE_MODEL_UNAVAILABLE');
+  }
+  const text = parts
+    .filter((part) => part.type === 'text')
+    .map((part) => {
+      if (typeof part.text === 'string') return part.text;
+      const value = (part.text as { value?: unknown })?.value;
+      return typeof value === 'string' ? value : '';
+    })
+    .join('\n');
+  if (!text.trim()) {
+    throw new KnowledgeError('KNOWLEDGE_MODEL_UNAVAILABLE');
+  }
+  return text;
+}
+
 export function knowledgeAnswerMetadata(
   text: string,
   context: KnowledgeAnswerContext,

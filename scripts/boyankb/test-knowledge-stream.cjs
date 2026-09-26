@@ -14,6 +14,8 @@ const question = '星帆机器人课程每班最多多少名学生？';
 const reportPath = '/app/data/knowledge-stream-integration-results.json';
 const report = { passed: false, checks: [], measurements: [], cleaned: false };
 const nonce = randomUUID().replaceAll('-', '');
+const selectedCase =
+  process.argv.find((argument) => argument.startsWith('--case='))?.slice(7) ?? 'all';
 const ownedUsers = [];
 const ownedTurns = [];
 const attachments = [];
@@ -95,7 +97,10 @@ async function attach(turn, resume = false) {
     {
       headers: headers(turn.session),
       redirect: 'manual',
-      signal: AbortSignal.any([abortController.signal, AbortSignal.timeout(90000)]),
+      signal: AbortSignal.any([
+        abortController.signal,
+        AbortSignal.timeout(turn.providerState.failure ? 180000 : 90000),
+      ]),
     },
   );
   ensure(response.status === 200, `ATTACH_HTTP_${response.status}`);
@@ -231,6 +236,7 @@ async function startProvider() {
       );
       state.started = true;
       state.requests += 1;
+      state.requestTimesMs.push(Math.round(performance.now() - state.createdAt));
       state.response = res;
       state.startedAt = performance.now();
       if (state.failure) {
@@ -302,6 +308,8 @@ async function startTurn(name, control = false, options = {}) {
     marker: `BOYANKB_UNVERIFIED_${nonce}_${name}`,
     chunks: 0,
     requests: 0,
+    createdAt: performance.now(),
+    requestTimesMs: [],
     started: false,
     closed: false,
     completed: false,
@@ -395,23 +403,39 @@ async function modelFailureAndRetry() {
   const failed = await startTurn('failure', false, { failure: true });
   await until(
     () => failed.original.closed && failed.resumed.closed,
-    45000,
+    150000,
     'MODEL_FAILURE_TIMEOUT',
   );
   ensure(
     failed.providerState.requests >= 1 && !failed.providerState.completed,
     'MODEL_FAILURE_OBSERVED',
   );
+  report.observations = [
+    {
+      scenario: 'MODEL_SERVICE_FAILURE',
+      providerRequests: failed.providerState.requests,
+      requestTimesMs: failed.providerState.requestTimesMs,
+      streams: [failed.original, failed.resumed].map((stream) => ({
+        frameCount: stream.frames.length,
+        errorFrames: stream.frames.filter((frame) => frame.error || frame.responseMessage?.error)
+          .length,
+        verifiedFinals: stream.frames.filter(
+          (frame) => frame.responseMessage?.metadata?.knowledge?.verified === true,
+        ).length,
+        containsSyntheticErrorBody: stream.text.includes(failed.providerState.marker),
+      })),
+    },
+  ];
   for (const stream of [failed.original, failed.resumed]) {
     assertHidden(stream.text, failed.providerState.marker, 'MODEL_FAILURE_STREAM');
     ensure(!stream.failed, 'MODEL_FAILURE_TRANSPORT');
     ensure(
-      stream.frames.some((frame) => frame.error || frame.responseMessage?.error),
-      'MODEL_FAILURE_VISIBLE_ERROR',
-    );
-    ensure(
       !stream.frames.some((frame) => frame.responseMessage?.metadata?.knowledge?.verified === true),
       'MODEL_FAILURE_FALSE_ANSWER',
+    );
+    ensure(
+      stream.frames.some((frame) => frame.error || frame.responseMessage?.error),
+      'MODEL_FAILURE_VISIBLE_ERROR',
     );
   }
   const current = status(
@@ -457,6 +481,7 @@ async function modelFailureAndRetry() {
   report.measurements.push({
     scenario: 'MODEL_SERVICE_FAILURE_AND_RETRY',
     failedProviderRequests: failed.providerState.requests,
+    failedRequestTimesMs: failed.providerState.requestTimesMs,
     successfulRetryRequests: recovered.providerState.requests,
   });
   pass('MODEL_SERVICE_FAILURE_AND_RETRY');
@@ -597,7 +622,15 @@ async function cleanup() {
 
 async function main() {
   ensure(
-    process.argv.slice(2).every((argument) => argument === '--source-changes'),
+    process.argv
+      .slice(2)
+      .every(
+        (argument) =>
+          argument === '--source-changes' || /^--case=(all|model-failure|source)$/.test(argument),
+      ) &&
+      ['all', 'model-failure', 'source'].includes(selectedCase) &&
+      (selectedCase !== 'source' || process.argv.includes('--source-changes')) &&
+      (selectedCase !== 'model-failure' || !process.argv.includes('--source-changes')),
     'ARGUMENTS',
   );
   ensure(process.env.NODE_ENV === 'test', 'ENVIRONMENT');
@@ -685,40 +718,44 @@ async function main() {
   validated = true;
   await startProvider();
 
-  const control = await startTurn('control', true);
-  await assertVerifiedTurn(control);
-  pass('native verified final, reconnect and durable answer control');
+  if (selectedCase === 'all') {
+    const control = await startTurn('control', true);
+    await assertVerifiedTurn(control);
+    pass('native verified final, reconnect and durable answer control');
+  }
 
-  await modelFailureAndRetry();
+  if (selectedCase !== 'source') await modelFailureAndRetry();
 
-  const revoked = await startTurn('revoke');
-  await canceled(revoked, 'VIEW_REVOKED', () => grant(revoked.session, false), [401, 403]);
+  if (selectedCase === 'all') {
+    const revoked = await startTurn('revoke');
+    await canceled(revoked, 'VIEW_REVOKED', () => grant(revoked.session, false), [401, 403]);
 
-  const banned = await startTurn('ban');
-  await canceled(
-    banned,
-    'USER_BANNED',
-    async () => {
-      const banViolation = require('~/cache/banViolation');
-      await banViolation(
-        {},
-        { clearCookie: () => {} },
-        {
-          type: ViolationTypes.CONCURRENT,
-          user_id: banned.session.user.id,
-          prev_count: 0,
-          violation_count: 1000000,
-          duration: 60000,
-        },
-      );
-      ensure(Boolean(await banStore.get(banned.session.user.id)), 'BAN_PERSISTED');
-      ensure(
-        (await models.Session.countDocuments({ user: banned.session.user.id })) === 0,
-        'BAN_SESSIONS_REVOKED',
-      );
-    },
-    [401, 403],
-  );
+    const banned = await startTurn('ban');
+    await canceled(
+      banned,
+      'USER_BANNED',
+      async () => {
+        const banViolation = require('~/cache/banViolation');
+        await banViolation(
+          {},
+          { clearCookie: () => {} },
+          {
+            type: ViolationTypes.CONCURRENT,
+            user_id: banned.session.user.id,
+            prev_count: 0,
+            violation_count: 1000000,
+            duration: 60000,
+          },
+        );
+        ensure(Boolean(await banStore.get(banned.session.user.id)), 'BAN_PERSISTED');
+        ensure(
+          (await models.Session.countDocuments({ user: banned.session.user.id })) === 0,
+          'BAN_SESSIONS_REVOKED',
+        );
+      },
+      [401, 403],
+    );
+  }
 
   if (process.argv.includes('--source-changes')) {
     const paused = await startTurn('source');

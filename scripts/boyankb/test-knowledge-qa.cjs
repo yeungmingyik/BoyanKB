@@ -17,7 +17,8 @@ const secrets = new Set();
 const installedKeys = new Set();
 const report = {
   passed: false,
-  artifact: 'mounted-development-candidate',
+  validationTarget: 'isolated-synthetic',
+  runId: process.env.BOYANKB_QA_RUN_ID ?? randomUUID(),
   cases: [],
   protocols: [],
   keyCleanup: false,

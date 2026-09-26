@@ -1,4 +1,8 @@
-param([switch]$IncludeSourceChanges)
+param(
+    [switch]$IncludeSourceChanges,
+    [ValidateSet('all', 'model-failure', 'source')]
+    [string]$Case = 'all'
+)
 
 . (Join-Path $PSScriptRoot 'local-common.ps1')
 
@@ -21,6 +25,9 @@ foreach ($streamValue in $streamRequired) {
 }
 Invoke-BoyanCompose -Context $streamContext -DockerArguments @('cp', $streamSource, 'app:/app/test-knowledge-stream.cjs')
 $streamArguments = @('exec', '-T', 'app', 'node', '/app/test-knowledge-stream.cjs')
+if ($Case -ne 'all') {
+    $streamArguments += "--case=$Case"
+}
 if ($IncludeSourceChanges) {
     $streamArguments += '--source-changes'
 }
@@ -40,6 +47,7 @@ $streamReport.metadata = @{
     validationTarget = 'isolated-synthetic'
     hasSourceOverrides = @($streamInstance.Mounts | Where-Object { $_.Destination -match '^/app/(api|packages|client)(/|$)' }).Count -gt 0
     sourceChanges = $IncludeSourceChanges.IsPresent
+    case = $Case
     testScriptSha256 = (Get-FileHash -LiteralPath $streamSource -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 Write-BoyanPrivateFile -Path $streamReportPath -Content ($streamReport | ConvertTo-Json -Depth 10)
