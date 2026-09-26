@@ -145,6 +145,9 @@ function emptySelection(value: unknown): boolean {
 function allowedUserRequest(req: Request, agentId: string): boolean {
   const path = requestPath(req);
   const read = req.method === 'GET' || req.method === 'HEAD';
+  if (req.method === 'POST' && path === '/api/knowledge/search') {
+    return true;
+  }
   if (
     read &&
     /^\/api\/knowledge\/(?:tree|documents\/[^/]+(?:\/revisions\/[^/]+)?|assets\/[^/]+)$/.test(path)

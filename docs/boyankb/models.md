@@ -18,6 +18,8 @@ DeepSeek 初始配置：`https://api.deepseek.com`；模型 `deepseek-flash`、`
 
 自定义端点复用原生 `apiKey: user_provided`、`baseURL: user_provided`，保持原生服务端地址校验，不开放私网与本机地址绕过。管理员明确配置的本地模型另行配置允许地址。[LibreChat 端点契约](https://www.librechat.ai/docs/configuration/librechat_yaml/object_structure/custom_endpoint)
 
+使用代理的 PC 须确认供应商域名解析为可路由公网地址。若代理使用 Fake-IP DNS，优先调整 DNS 模式；确需保留时，由管理员在私有配置的 `endpoints.allowedAddresses` 中逐个填写已核实的供应商域名与端口，例如 `api.deepseek.com:443`。不添加整个保留地址段、通配域名或未知内网服务。
+
 个人密钥对话框支持填写模型 ID，每行一个，也可用逗号分隔。模型 ID 与个人密钥一并加密保存，只进入该用户的模型目录；原生菜单和服务端模型校验使用相同目录。不提供模型列表的兼容服务可通过该字段配置。配置中的默认模型仅为默认选项，不代表任意服务商均支持。
 
 ## 授权与密钥

@@ -5,6 +5,8 @@ import type {
   KnowledgeSyncRunsResponse,
   KnowledgeSyncRunResponse,
   KnowledgeSyncRun,
+  KnowledgeSearchRequest,
+  KnowledgeSearchResponse,
 } from 'librechat-data-provider';
 import type { Request, RequestHandler, Response } from 'express';
 import type { KnowledgeAssetContent, KnowledgePage } from './store';
@@ -26,6 +28,7 @@ export interface KnowledgeReadService {
     retryRunId?: string;
   }) => Promise<KnowledgeSyncRun>;
   activeFileIds: () => Promise<string[]>;
+  search: (input: KnowledgeSearchRequest) => Promise<KnowledgeSearchResponse>;
 }
 
 const internalId = /^(?:[a-z]+_[a-f0-9]{64}|[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})$/;
@@ -117,6 +120,30 @@ export function createKnowledgeRouter(deps: {
     handle(async (req, res, service) => {
       const parentId = req.query.parentId === undefined ? undefined : id(req.query.parentId);
       res.json(await service.listTree({ ...page(req), parentId }));
+    }),
+  );
+
+  router.post(
+    '/search',
+    handle(async (req, res, service) => {
+      if (
+        !req.body ||
+        typeof req.body !== 'object' ||
+        Array.isArray(req.body) ||
+        Object.keys(req.body).some(
+          (field) => !['query', 'mode', 'directoryId', 'limit', 'cursor'].includes(field),
+        )
+      ) {
+        throw new KnowledgeError('KNOWLEDGE_SEARCH_QUERY_INVALID', 400);
+      }
+      const result = await service.search(req.body);
+      await deps.authorize(req, res, (error) => {
+        if (error) {
+          fail(res, error);
+          return;
+        }
+        res.json(result);
+      });
     }),
   );
 

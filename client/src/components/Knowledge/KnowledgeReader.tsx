@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { Button } from '@librechat/client';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { KnowledgeDate, KnowledgeError, KnowledgeLoading, KnowledgeStatus } from './Status';
 import { useKnowledgeDocument } from './queries';
+import { knowledgeHashAnchor } from './links';
 import ReadingBlocks from './ReadingBlocks';
 import { useLocalize } from '~/hooks';
 
@@ -14,19 +16,41 @@ export default function KnowledgeReader({
   revisionId?: string;
 }) {
   const localize = useLocalize();
+  const location = useLocation();
+  const articleRef = useRef<HTMLElement>(null);
   const query = useKnowledgeDocument(documentId, revisionId);
   const document = query.data;
   const readable = document && document.status !== 'removed' && document.status !== 'inaccessible';
+  const searchReturn = location.state?.knowledgeSearch;
+  const returnTo =
+    typeof searchReturn === 'string' && /^\/knowledge\/search(?:\?[^#]*)?$/.test(searchReturn)
+      ? searchReturn
+      : '/knowledge';
+
+  useEffect(() => {
+    const anchor = knowledgeHashAnchor(location.hash);
+    const article = articleRef.current;
+    if (!anchor || !article || query.isError || query.isLoading) {
+      return;
+    }
+    const target = article.ownerDocument.getElementById(anchor);
+    if (target && article.contains(target)) {
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'center', behavior: 'auto' });
+    }
+  }, [location.hash, query.data, query.isError, query.isLoading]);
 
   return (
     <div className="mx-auto w-full max-w-4xl p-4 md:p-8">
       <div className="mb-6 flex items-center justify-between gap-3">
         <Link
-          to="/knowledge"
+          to={returnTo}
           className="focus-visible:ring-ring inline-flex items-center gap-2 rounded text-sm text-text-secondary hover:text-text-primary focus-visible:outline-none focus-visible:ring-2"
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          {localize('com_knowledge_directory')}
+          {localize(
+            returnTo === '/knowledge' ? 'com_knowledge_directory' : 'com_knowledge_search_results',
+          )}
         </Link>
         <Button
           variant="ghost"
@@ -47,7 +71,11 @@ export default function KnowledgeReader({
       )}
       {!query.isError && query.isLoading && <KnowledgeLoading />}
       {!query.isError && !query.isLoading && readable && (
-        <article aria-labelledby="knowledge-document-title" className="min-w-0 text-text-primary">
+        <article
+          ref={articleRef}
+          aria-labelledby="knowledge-document-title"
+          className="min-w-0 text-text-primary"
+        >
           <header className="mb-6 border-b border-border-light pb-6">
             <h1
               id="knowledge-document-title"

@@ -124,3 +124,34 @@ export type KnowledgeSyncRunResponse = KnowledgeSyncRun & {
   items: KnowledgeSyncItem[];
   nextCursor?: string;
 };
+
+export type KnowledgeSearchMode = 'keyword' | 'semantic' | 'hybrid';
+
+export type KnowledgeSearchRequest = {
+  query: string;
+  mode?: KnowledgeSearchMode;
+  directoryId?: string;
+  limit?: number;
+  cursor?: string;
+};
+
+export type KnowledgeSearchHit = {
+  documentId: string;
+  revisionId: string;
+  blockId: string;
+  title: string;
+  snippet: string;
+  href: string;
+  score: number;
+  matchedBy: ('keyword' | 'semantic')[];
+  sourceUpdatedAt?: string;
+};
+
+export type KnowledgeSearchResponse = {
+  query: string;
+  mode: KnowledgeSearchMode;
+  sourceStatus: 'ready';
+  snapshotId: string;
+  items: KnowledgeSearchHit[];
+  nextCursor?: string;
+};

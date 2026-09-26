@@ -9,19 +9,28 @@ import { useKnowledgeTree } from './queries';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
+type TreeSelection = {
+  selectedDocumentId?: string;
+  selectedNodeId?: string;
+  onSelectNode?: (node: KnowledgeTreeNode) => void;
+};
+
 function TreeNode({
   node,
   selectedDocumentId,
+  selectedNodeId,
+  onSelectNode,
   ancestors,
 }: {
   node: KnowledgeTreeNode;
-  selectedDocumentId?: string;
   ancestors: string[];
-}) {
+} & TreeSelection) {
   const localize = useLocalize();
   const childrenId = useId();
   const [expanded, setExpanded] = useAtom(useMemo(() => atom(false), []));
-  const selected = node.documentId === selectedDocumentId;
+  const selected = onSelectNode
+    ? node.id === selectedNodeId
+    : node.documentId === selectedDocumentId;
   const expandable = node.hasChildren && !ancestors.includes(node.id);
 
   return (
@@ -34,6 +43,7 @@ function TreeNode({
       >
         {expandable ? (
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="size-8 shrink-0"
@@ -50,17 +60,28 @@ function TreeNode({
           </span>
         )}
         <div className="min-w-0 flex-1 py-1">
-          {node.readable ? (
-            <Link
-              to={`/knowledge/documents/${encodeURIComponent(node.documentId)}`}
-              aria-current={selected ? 'page' : undefined}
-              className="focus-visible:ring-ring block break-words rounded text-sm font-medium text-text-primary focus-visible:outline-none focus-visible:ring-2"
+          {onSelectNode && (
+            <button
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onSelectNode(node)}
+              className="focus-visible:ring-ring block w-full break-words rounded text-left text-sm font-medium text-text-primary focus-visible:outline-none focus-visible:ring-2"
             >
               {node.title}
-            </Link>
-          ) : (
-            <span className="block break-words text-sm text-text-secondary">{node.title}</span>
+            </button>
           )}
+          {!onSelectNode &&
+            (node.readable ? (
+              <Link
+                to={`/knowledge/documents/${encodeURIComponent(node.documentId)}`}
+                aria-current={selected ? 'page' : undefined}
+                className="focus-visible:ring-ring block break-words rounded text-sm font-medium text-text-primary focus-visible:outline-none focus-visible:ring-2"
+              >
+                {node.title}
+              </Link>
+            ) : (
+              <span className="block break-words text-sm text-text-secondary">{node.title}</span>
+            ))}
           {node.status !== 'published' && (
             <div className="mt-1">
               <KnowledgeStatus status={node.status} />
@@ -73,6 +94,8 @@ function TreeNode({
           <TreeBranch
             parentId={node.id}
             selectedDocumentId={selectedDocumentId}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={onSelectNode}
             ancestors={[...ancestors, node.id]}
           />
         </div>
@@ -84,12 +107,13 @@ function TreeNode({
 function TreeBranch({
   parentId,
   selectedDocumentId,
+  selectedNodeId,
+  onSelectNode,
   ancestors = [],
 }: {
   parentId?: string;
-  selectedDocumentId?: string;
   ancestors?: string[];
-}) {
+} & TreeSelection) {
   const localize = useLocalize();
   const query = useKnowledgeTree(parentId);
   const metadata = query.data?.pages[0];
@@ -124,6 +148,7 @@ function TreeBranch({
             </p>
           </div>
           <Button
+            type="button"
             variant="ghost"
             size="icon"
             className="size-8 shrink-0"
@@ -155,6 +180,8 @@ function TreeBranch({
               key={node.id}
               node={node}
               selectedDocumentId={selectedDocumentId}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={onSelectNode}
               ancestors={ancestors}
             />
           ))}
@@ -162,6 +189,7 @@ function TreeBranch({
       )}
       {query.hasNextPage && metadata?.sourceStatus === 'ready' && (
         <Button
+          type="button"
           variant="outline"
           size="sm"
           className="mt-3 w-full"
@@ -175,7 +203,11 @@ function TreeBranch({
   );
 }
 
-export default function KnowledgeTree({ selectedDocumentId }: { selectedDocumentId?: string }) {
+export default function KnowledgeTree({
+  selectedDocumentId,
+  selectedNodeId,
+  onSelectNode,
+}: TreeSelection) {
   const localize = useLocalize();
   return (
     <nav aria-label={localize('com_knowledge_directory')} className="p-4">
@@ -183,7 +215,11 @@ export default function KnowledgeTree({ selectedDocumentId }: { selectedDocument
         <FolderOpen className="size-4" aria-hidden="true" />
         {localize('com_knowledge_directory')}
       </h2>
-      <TreeBranch selectedDocumentId={selectedDocumentId} />
+      <TreeBranch
+        selectedDocumentId={selectedDocumentId}
+        selectedNodeId={selectedNodeId}
+        onSelectNode={onSelectNode}
+      />
     </nav>
   );
 }

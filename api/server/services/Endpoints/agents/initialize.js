@@ -102,6 +102,7 @@ const {
 const { logViolation } = require('~/cache');
 const db = require('~/models');
 const { getAppConfig } = require('~/server/services/Config');
+const { prepareKnowledgeAnswer } = require('~/server/services/KnowledgeChat');
 const { getStrategyFunctions } = require('~/server/services/Files/strategies');
 const { encodeAndFormat } = require('~/server/services/Files/images/encode');
 const { processCodeOutput, runPreviewFinalize } = require('~/server/services/Files/Code/process');
@@ -776,6 +777,12 @@ const initializeClientWithProvider = async ({
    *  custom-endpoint agents reflect configured rates (mirrors the AgentClient
    *  spending path, which reads the same config). */
   usageCost.endpointTokenConfig = primaryConfig.endpointTokenConfig;
+
+  const knowledgeAnswer = await prepareKnowledgeAnswer(req, runtimeRequestBody);
+  if (knowledgeAnswer) {
+    primaryConfig.instructions = knowledgeAnswer.instructions;
+    primaryConfig.additional_instructions = undefined;
+  }
 
   logger.debug(
     `[initializeClient] Storing tool context for ${primaryConfig.id}: ${primaryConfig.toolDefinitions?.length ?? 0} tools, registry size: ${primaryConfig.toolRegistry?.size ?? '0'}`,
@@ -1841,6 +1848,7 @@ const initializeClientWithProvider = async ({
     primeInvokedSkills: handlePrimeInvokedSkills,
     invokedSkillIdentities,
     agent: primaryConfig,
+    knowledgeAnswer,
     spec: endpointOption.spec,
     traceContext: { modelLabel: endpointOption.model_parameters?.modelLabel },
     iconURL: endpointOption.iconURL,

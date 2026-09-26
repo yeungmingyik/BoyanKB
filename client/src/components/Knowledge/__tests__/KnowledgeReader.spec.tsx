@@ -1,5 +1,5 @@
 import { MemoryRouter } from 'react-router-dom';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import KnowledgeReader from '../KnowledgeReader';
 
 const mockQuery = jest.fn();
@@ -15,7 +15,11 @@ jest.mock('@librechat/client', () => ({
 }));
 jest.mock('../ReadingBlocks', () => ({
   __esModule: true,
-  default: () => <p>{'Private document body'}</p>,
+  default: () => (
+    <p id="block-b1" tabIndex={-1}>
+      {'Private document body'}
+    </p>
+  ),
 }));
 
 const data = {
@@ -72,5 +76,79 @@ describe('KnowledgeReader', () => {
       'href',
       '/knowledge/documents/doc-1',
     );
+  });
+
+  it('focuses and scrolls the referenced block only after its snapshot has loaded', async () => {
+    const scroll = jest.fn();
+    const previousScroll = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    try {
+      mockQuery.mockReturnValue({ isLoading: true, refetch: jest.fn() });
+      const view = render(
+        <MemoryRouter initialEntries={['/knowledge/documents/doc-1/revisions/rev-1#block-b1']}>
+          <KnowledgeReader documentId="doc-1" revisionId="rev-1" />
+        </MemoryRouter>,
+      );
+      expect(scroll).not.toHaveBeenCalled();
+      mockQuery.mockReturnValue({ data, isLoading: false, isError: false, refetch: jest.fn() });
+      view.rerender(
+        <MemoryRouter>
+          <KnowledgeReader documentId="doc-1" revisionId="rev-1" />
+        </MemoryRouter>,
+      );
+      await waitFor(() => expect(screen.getByText('Private document body')).toHaveFocus());
+      expect(scroll).toHaveBeenCalledWith({ block: 'center', behavior: 'auto' });
+    } finally {
+      HTMLElement.prototype.scrollIntoView = previousScroll;
+    }
+  });
+
+  it('keeps the search scope when returning from a result', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/knowledge/documents/doc-1/revisions/rev-1',
+            state: { knowledgeSearch: '/knowledge/search?q=robot&directory=node-1' },
+          },
+        ]}
+      >
+        <KnowledgeReader documentId="doc-1" revisionId="rev-1" />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'com_knowledge_search_results' })).toHaveAttribute(
+      'href',
+      '/knowledge/search?q=robot&directory=node-1',
+    );
+  });
+
+  it('does not follow an external return address or focus an outside element', () => {
+    const scroll = jest.fn();
+    const outside = document.createElement('div');
+    outside.id = 'block-outside';
+    outside.scrollIntoView = scroll;
+    document.body.appendChild(outside);
+    try {
+      render(
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: '/knowledge/documents/doc-1',
+              hash: '#block-outside',
+              state: { knowledgeSearch: '//outside.example/knowledge/search' },
+            },
+          ]}
+        >
+          <KnowledgeReader documentId="doc-1" />
+        </MemoryRouter>,
+      );
+      expect(screen.getByRole('link', { name: 'com_knowledge_directory' })).toHaveAttribute(
+        'href',
+        '/knowledge',
+      );
+      expect(scroll).not.toHaveBeenCalled();
+    } finally {
+      outside.remove();
+    }
   });
 });

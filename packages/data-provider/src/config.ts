@@ -3052,10 +3052,28 @@ export const knowledgeSyncConfigSchema = z.object({
 
 export type TKnowledgeSyncConfig = z.infer<typeof knowledgeSyncConfigSchema>;
 
+export const knowledgeSearchConfigSchema = z.object({
+  maxQueryChars: z.number().int().min(1).max(4000).default(1000),
+  maxResults: z.number().int().min(1).max(50).default(20),
+  defaultLimit: z.number().int().min(1).max(50).default(10),
+  maxHits: z.number().int().min(1).max(50).default(8),
+  maxSnippetChars: z.number().int().min(128).max(8000).default(1500),
+  maxContextChars: z.number().int().min(512).max(64000).default(12000),
+  maxDocuments: z.number().int().min(1).max(10000).default(1000),
+  maxNodes: z.number().int().min(1).max(100000).default(10000),
+  maxScanBytes: z.number().int().min(1024).max(104857600).default(20971520),
+  maxSemanticHits: z.number().int().min(1).max(200).default(80),
+  minSemanticScore: z.number().min(0).max(1).default(0.45),
+  requestTimeoutMs: z.number().int().min(1000).max(120000).default(15000),
+});
+
+export type TKnowledgeSearchConfig = z.infer<typeof knowledgeSearchConfigSchema>;
+
 export const knowledgeConfigSchema = z.object({
   enabled: z.boolean().default(false),
   agentId: z.string().trim().max(128).optional(),
   sync: knowledgeSyncConfigSchema.optional(),
+  search: knowledgeSearchConfigSchema.optional(),
 });
 
 export type TKnowledgeConfig = z.infer<typeof knowledgeConfigSchema>;

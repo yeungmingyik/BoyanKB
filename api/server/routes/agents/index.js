@@ -23,6 +23,8 @@ const {
   isConfirmedGenerationRetry,
   generationRetryProbeLimiter,
   generationRetryLimiter,
+  filterKnowledgeStreamEvent,
+  filterKnowledgeStreamStatus,
 } = require('@librechat/api');
 const { createSseStreamTelemetry } = require('@librechat/api/telemetry');
 const { logger } = require('@librechat/data-schemas');
@@ -50,6 +52,10 @@ const {
   negotiateExistingGenerationProtocol,
 } = require('~/server/controllers/agents/protocol');
 const { getFiles, saveMessage } = require('~/models');
+const {
+  attachKnowledgeStream,
+  assertKnowledgeJobAccess,
+} = require('~/server/services/KnowledgeStream');
 const {
   recordScheduleOutcome,
   beginScheduledStop,
@@ -161,7 +167,7 @@ router.use(uaParser);
  * @description Sends sync event with resume state, replays missed chunks, then streams live
  * @query resume=true - Indicates this is a reconnection (sends sync event)
  */
-router.get('/chat/stream/:streamId', async (req, res) => {
+router.get('/chat/stream/:streamId', configMiddleware, async (req, res) => {
   const { streamId } = req.params;
   const isResume = req.query.resume === 'true';
   const requestProtocolVersion = negotiateRequestGenerationProtocol(req);
@@ -183,11 +189,13 @@ router.get('/chat/stream/:streamId', async (req, res) => {
     expectedGenerationCreatedAt = Number(rawGenerationCreatedAt);
   }
   let result;
+  let knowledgeStream;
   const attachmentAbortController = new AbortController();
   req.on('close', () => {
     logger.debug(`[AgentStream] Client disconnected from ${streamId}`);
     attachmentAbortController.abort();
     result?.unsubscribe();
+    knowledgeStream?.dispose();
   });
 
   const job = await GenerationJobManager.getJob(streamId);
@@ -245,6 +253,34 @@ router.get('/chat/stream/:streamId', async (req, res) => {
     logger.warn(`[AgentStream] Refusing stream with invalid generation identity: ${streamId}`);
     return sendGenerationJson(res, 403, { error: 'Unauthorized' }, requestProtocolVersion);
   }
+  try {
+    knowledgeStream = await attachKnowledgeStream({
+      req,
+      job,
+      streamId,
+      onStop: (error) => {
+        attachmentAbortController.abort();
+        result?.unsubscribe();
+        if (res.headersSent && !res.writableEnded) {
+          res.write(`event: error\ndata: ${JSON.stringify({ error: error.code })}\n\n`);
+          res.end();
+        }
+      },
+    });
+  } catch (error) {
+    return sendGenerationJson(
+      res,
+      error?.name === 'KnowledgeStreamError' ? error.status : 503,
+      {
+        error: error?.name === 'KnowledgeStreamError' ? error.code : 'KNOWLEDGE_STREAM_UNAVAILABLE',
+      },
+      generationProtocolVersion,
+    );
+  }
+  if (attachmentAbortController.signal.aborted) {
+    knowledgeStream?.dispose();
+    return;
+  }
   const streamTelemetry = createSseStreamTelemetry({
     req,
     res,
@@ -264,6 +300,15 @@ router.get('/chat/stream/:streamId', async (req, res) => {
   logger.debug(`[AgentStream] Client subscribed to ${streamId}, resume: ${isResume}`);
 
   const writeEvent = (event, options = {}) => {
+    if (knowledgeStream) {
+      if (!knowledgeStream.allowWrite()) {
+        return false;
+      }
+      event = filterKnowledgeStreamEvent(event, options.final);
+      if (event === undefined) {
+        return true;
+      }
+    }
     if (generationProtocolVersion < GENERATION_PROTOCOL_V2 && event?.event === 'on_steer_updated') {
       return true;
     }
@@ -281,7 +326,7 @@ router.get('/chat/stream/:streamId', async (req, res) => {
     return false;
   };
 
-  const onDone = (event) => {
+  const finishStream = (event) => {
     streamTelemetry.recordFinalEventEmitted();
     if (event?.reconcile === true && generationProtocolVersion < GENERATION_PROTOCOL_V2) {
       /** Legacy clients treat an ordinary `final: true` as the completion of
@@ -305,6 +350,16 @@ router.get('/chat/stream/:streamId', async (req, res) => {
       { final: true },
     );
     res.end();
+  };
+  const onDone = (event) => {
+    if (knowledgeStream) {
+      void knowledgeStream
+        .checkNow()
+        .then(() => finishStream(event))
+        .catch(() => {});
+      return;
+    }
+    finishStream(event);
   };
 
   const onError = (error) => {
@@ -441,7 +496,7 @@ router.get('/chat/active', async (req, res) => {
  * @access Private
  * @returns { active, streamId, status, aggregatedContent, createdAt, resumeState }
  */
-router.get('/chat/status/:conversationId', async (req, res) => {
+router.get('/chat/status/:conversationId', configMiddleware, async (req, res) => {
   const { conversationId } = req.params;
   const requestProtocolVersion = negotiateRequestGenerationProtocol(req);
 
@@ -540,7 +595,19 @@ router.get('/chat/status/:conversationId', async (req, res) => {
     }
   }
 
-  res.json({
+  try {
+    await assertKnowledgeJobAccess(req, job, conversationId);
+  } catch (error) {
+    return sendGenerationJson(
+      res,
+      error?.name === 'KnowledgeStreamError' ? error.status : 503,
+      {
+        error: error?.name === 'KnowledgeStreamError' ? error.code : 'KNOWLEDGE_STREAM_UNAVAILABLE',
+      },
+      generationProtocolVersion,
+    );
+  }
+  const status = {
     active: isActive,
     generationProtocolVersion,
     ...(unrecoveredSteers && { unrecoveredSteers }),
@@ -558,7 +625,8 @@ router.get('/chat/status/:conversationId', async (req, res) => {
       job.status === 'requires_action' && pendingLive
         ? toClientPendingAction(pendingAction)
         : undefined,
-  });
+  };
+  res.json(req.config?.config?.knowledge?.enabled ? filterKnowledgeStreamStatus(status) : status);
 });
 
 /**
@@ -730,6 +798,9 @@ router.post('/chat/abort', configMiddleware, async (req, res, next) => {
       const abortResult = await GenerationJobManager.abortJob(jobStreamId, {
         expectedCreatedAt: job.createdAt,
         transformAbortContent: (content, abortJobData) => {
+          if (req.config?.config?.knowledge?.enabled === true) {
+            return [];
+          }
           if (!Array.isArray(content)) {
             return content;
           }

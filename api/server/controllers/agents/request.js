@@ -55,6 +55,11 @@ const {
 } = require('@librechat/api');
 const { disposeClient } = require('~/server/cleanup');
 const {
+  startKnowledgeGeneration,
+  captureKnowledgeContext,
+  finishKnowledgeGeneration,
+} = require('~/server/services/KnowledgeStream');
+const {
   getMCPRequestContext,
   cleanupMCPRequestContextForReq,
 } = require('~/server/services/MCPRequestContext');
@@ -107,6 +112,9 @@ function sendGenerationJson(res, status, body, generationProtocolVersion) {
 }
 
 function getInitializationFailure(error) {
+  if (error?.name === 'KnowledgeStreamError') {
+    return { status: error.status, code: error.code, error: error.code };
+  }
   if (error?.code === ErrorTypes.RESOURCE_RECOVERY_REQUIRED) {
     return {
       status: 409,
@@ -492,11 +500,13 @@ async function saveErrorTurn(
         ...(model != null && { model }),
         ...(iconURL != null && { iconURL }),
         user: userId,
-        text: errorText,
+        text: req.config?.config?.knowledge?.enabled ? '' : errorText,
         error: true,
         unfinished: false,
         isCreatedByUser: false,
-        ...resolveFailedTurnContent(req.body, errorText),
+        ...(req.config?.config?.knowledge?.enabled
+          ? { content: [], metadata: { knowledge: { verified: false, citations: [] } } }
+          : resolveFailedTurnContent(req.body, errorText)),
       },
       { context },
     );
@@ -1526,6 +1536,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
 
   let client = null;
   let verifiedInitialAgentId = null;
+  let knowledgeGeneration;
   let jobCreatedAt;
   let providerExecutionId;
   let releaseEventChildLease;
@@ -1684,6 +1695,8 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
     jobCreatedAt = job.createdAt; // Capture creation time to detect job replacement
     req.turnStartedAt = jobCreatedAt;
     providerExecutionId = job.metadata?.providerExecutionId;
+    knowledgeGeneration = await startKnowledgeGeneration({ req, job, streamId });
+    req.knowledgeStreamGuard = knowledgeGeneration?.guard;
 
     /** Authentication can precede a slow admission path. Recheck the durable
      * account-deletion fence after the job is committed but before execution
@@ -1849,7 +1862,12 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
      * overwrite this with the complete response using the same messageId pattern.
      */
     job.emitter.on('allSubscribersLeft', async (aggregatedContent) => {
-      if (partialResponseSaved || !aggregatedContent || aggregatedContent.length === 0) {
+      if (
+        knowledgeGeneration ||
+        partialResponseSaved ||
+        !aggregatedContent ||
+        aggregatedContent.length === 0
+      ) {
         return;
       }
 
@@ -1948,6 +1966,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
     });
     startupTelemetry?.mark('client_initialized');
     client = result.client;
+    await captureKnowledgeContext(req, knowledgeGeneration, streamId, jobCreatedAt);
     const normalizedMCPRequestBody = createMCPRuntimeRequestBody({
       messageId: mcpRequestBody.messageId,
       conversationId: mcpRequestBody.conversationId,
@@ -1982,6 +2001,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
     }
 
     if (job.abortController.signal.aborted) {
+      finishKnowledgeGeneration(knowledgeGeneration);
       await GenerationJobManager.completeJob(
         streamId,
         'Request aborted during initialization',
@@ -2146,6 +2166,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
      * stale `unfinished:false` write entirely. The fallback invocation below
      * supports test/custom clients that do not derive from BaseClient. */
     const claimBeforeResponsePersistence = async () => {
+      await knowledgeGeneration?.guard.checkNow();
       if (terminalPersistenceChecked) {
         return terminalClaim != null;
       }
@@ -3271,8 +3292,13 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
           startupTelemetry?.end('aborted');
           // abortJob already handled emitDone and completeJob
         } else {
-          logger.error(`[ResumableAgentController] Generation error for ${streamId}:`, error);
-          const generationError = error.message || 'Generation failed';
+          const generationError = knowledgeGeneration
+            ? 'KNOWLEDGE_GENERATION_FAILED'
+            : error.message || 'Generation failed';
+          logger.error(
+            `[ResumableAgentController] Generation error for ${streamId}:`,
+            knowledgeGeneration ? generationError : error,
+          );
           try {
             // completeJob first wins running -> error and atomically parks
             // steers, then publishes. A competing abort/pause emits nothing.
@@ -3373,6 +3399,7 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         }
       })
       .finally(async () => {
+        finishKnowledgeGeneration(knowledgeGeneration);
         await Promise.allSettled([immediateTitlePromise, trailingWritePromise].filter(Boolean));
         if (providerExecutionId) {
           await GenerationJobManager.markProviderExecutionDrained?.(
@@ -3390,7 +3417,10 @@ const ResumableAgentController = async (req, res, next, initializeClient, addTit
         );
       });
   } catch (error) {
-    logger.error(`[ResumableAgentController] Initialization error: ${getSafeErrorText(error)}`);
+    finishKnowledgeGeneration(knowledgeGeneration);
+    logger.error(
+      `[ResumableAgentController] Initialization error: ${req.config?.config?.knowledge?.enabled ? 'KNOWLEDGE_GENERATION_FAILED' : getSafeErrorText(error)}`,
+    );
     const initializationFailure = getInitializationFailure(error);
     const streamStarted = res.headersSent;
     try {

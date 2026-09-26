@@ -21,6 +21,7 @@ const mockIsAgentTriggerPrincipalActive = jest.fn();
 const mockFilterPersistableAbortContent = jest.fn((content) => content);
 const mockCheckAndIncrementPendingRequest = jest.fn();
 const mockDecrementPendingRequest = jest.fn();
+const mockFinishKnowledge = jest.fn();
 const mockGenerationJobManager = {
   createJob: jest.fn(),
   emitError: jest.fn(),
@@ -120,6 +121,13 @@ jest.mock('~/cache', () => ({
   logViolation: jest.fn(),
 }));
 
+jest.mock('~/server/services/KnowledgeStream', () => ({
+  startKnowledgeGeneration: async ({ req }) =>
+    req.config?.config?.knowledge?.enabled ? { guard: { checkNow: jest.fn() } } : null,
+  captureKnowledgeContext: jest.fn(),
+  finishKnowledgeGeneration: (...args) => mockFinishKnowledge(...args),
+}));
+
 jest.mock('~/models', () => ({
   saveMessage: (...args) => mockSaveMessage(...args),
   getMessages: (...args) => mockGetMessages(...args),
@@ -163,6 +171,7 @@ describe('ResumableAgentController tenant context', () => {
   const firePartialDisconnect = async (
     user,
     jobRecord = { createdAt: 1000, contextMeta: partialContextMeta },
+    knowledgeEnabled = false,
   ) => {
     let allSubscribersLeftHandler;
     mockGenerationJobManager.getJobStore.mockReturnValue({
@@ -211,7 +220,7 @@ describe('ResumableAgentController tenant context', () => {
           modelOptions: { model: 'gpt-4.1' },
         },
       },
-      config: {},
+      config: { config: { knowledge: { enabled: knowledgeEnabled } } },
     };
     const res = {
       headersSent: true,
@@ -238,6 +247,13 @@ describe('ResumableAgentController tenant context', () => {
       }),
       expect.any(Object),
     );
+  });
+
+  it('does not persist unverified knowledge content when all subscribers leave', async () => {
+    await firePartialDisconnect({ id: 'synthetic-user' }, undefined, true);
+    expect(mockSaveMessage).not.toHaveBeenCalled();
+    expect(mockGenerationJobManager.getResumeState).not.toHaveBeenCalled();
+    expect(mockFinishKnowledge).toHaveBeenCalledWith({ guard: { checkNow: expect.any(Function) } });
   });
 
   it('leaves context meta off the partial response when the job record belongs to another epoch', async () => {

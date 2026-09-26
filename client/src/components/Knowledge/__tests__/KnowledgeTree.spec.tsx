@@ -124,4 +124,27 @@ describe('KnowledgeTree', () => {
     expect(screen.queryByRole('link', { name: 'Robotics' })).not.toBeInTheDocument();
     expect(screen.getByText('com_knowledge_source_unavailable')).toBeInTheDocument();
   });
+
+  it('selects directory scope without opening a document or submitting a parent form', () => {
+    const select = jest.fn();
+    const submit = jest.fn();
+    render(
+      <MemoryRouter>
+        <form onSubmit={submit}>
+          <KnowledgeTree onSelectNode={select} selectedNodeId="node-1" />
+        </form>
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Robotics' }));
+    expect(select).toHaveBeenCalledWith(node);
+    expect(screen.getByRole('button', { name: 'Robotics' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'com_knowledge_expand Robotics' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Drone activity' }));
+    expect(select).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'node-2' }));
+    expect(submit).not.toHaveBeenCalled();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
 });

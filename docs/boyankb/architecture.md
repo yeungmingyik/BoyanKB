@@ -63,7 +63,9 @@ flowchart LR
 | API 接线 | `api/server/routes/knowledge.js` | 路由挂载与原生中间件连接 |
 | Worker 接线 | `api/server/knowledge-worker.js` | 独立进程启动，调用 TypeScript 模块 |
 | 资料与同步页面 | `client/src/components/Knowledge/` | 目录、阅读、引用、ADMIN 同步状态 |
-| 检索接入 | 原生文件服务与 `packages/api/src/files/rag/` | 有效文件列表、检索、引用映射 |
+| 知识检索 | `packages/api/src/knowledge/search.ts`、`searchNative.ts` | 生效版本清单、关键词与语义检索、目录范围、原生 RAG 接入 |
+| 问答上下文 | `packages/api/src/knowledge/answer.ts` | 受限资料片段、资料不足、冲突处理与系统内引用映射 |
+| 生成授权 | `packages/api/src/knowledge/stream.ts`、`streamAccess.ts`、`streamOutput.ts` | 生成期间权限复检、取消模型调用、正文发布与重连过滤 |
 
 接口、存储和飞书客户端通过参数注入。运行参数进入 LibreChat 配置 schema；秘密仅从环境或秘密文件读取。业务参数不散落于常量和 UI。
 
@@ -95,7 +97,7 @@ MongoDB 必须使用副本集；本地 PC 使用单节点副本集。同步写�
 | `GET /api/knowledge/documents/:id` | Agent VIEW | 生效版本与阅读内容 |
 | `GET /api/knowledge/documents/:id/revisions/:revisionId` | Agent VIEW | 授权且未下线资料的被引用快照 |
 | `GET /api/knowledge/assets/:id` | Agent VIEW | 鉴权后的素材流，支持 Range |
-| `POST /api/knowledge/search` | Agent VIEW | 关键词或语义结果、片段、内部引用 |
+| `POST /api/knowledge/search` | Agent VIEW | 关键词、语义或综合结果；目录及子目录筛选、版本片段引用、游标分页 |
 | `GET /api/knowledge/sync-runs` | ADMIN | 分页任务与覆盖率 |
 | `GET /api/knowledge/sync-runs/:id` | ADMIN | 任务详情、分页文档状态与缺失项 |
 | `POST /api/knowledge/sync-runs` | ADMIN | 202 和任务对象；mode 为 full 或 incremental，使用 Idempotency-Key |
@@ -110,6 +112,14 @@ MongoDB 必须使用副本集；本地 PC 使用单节点副本集。同步写�
 所有模型入口由共同的知识请求处理器计算检索上下文，再调用原生供应商适配器。禁止用户覆盖系统注入的资料范围；普通提示文本和模型选择不携带授权依据。模型密钥仍属于当前用户。公司模型服务通过伙伴专属网关密钥接入同一原生凭据路径，实施细节见 [models.md](models.md)。
 
 RAG API 的 owner/file 过滤不替代用户授权。调用方必须验证 Agent VIEW，并从服务端生效版本清单计算 `file_ids`；不得采信浏览器提交的 Agent、owner 或文件范围。RAG API 与向量库仅容器内部可达。
+
+搜索请求接受 `query`、`mode`、`directoryId`、`limit`、`cursor`。`mode` 为 `keyword`、`semantic` 或 `hybrid`；其他字段拒绝。目录范围包含所选节点及其后代。结果包含资料、版本和正文块标识，链接为 `/knowledge/documents/:documentId/revisions/:revisionId#block-:blockId`。游标绑定查询、目录和发布清单；清单变化返回 409，重新搜索后继续分页。
+
+`knowledge.search` 配置统一限制查询、结果、上下文与扫描规模。默认查询 1000 字符、每页 10 个结果、最多 20 个结果、问答最多 8 个片段与 12000 字符；最多扫描 1000 份资料、10000 个目录节点和 20 MiB 快照。语义分数采用余弦相似度，默认阈值 0.45；超出限制返回明确错误，不截取部分知识范围后假装完成检索。
+
+问答在原生供应商初始化后注入本轮检索片段；源内容作为数据，不能更改权限、调用工具或成为系统指令。历史助手文本不作为当前资料依据。无命中或模型未给出有效引用时返回资料不足。引用由服务端将本轮编号映射到已验证的资料版本与正文块，不采用模型生成的外部链接。
+
+模型正文在引用映射完成前不发送给浏览器，也不通过断线重连、状态接口或中断保存返回。生成期间每秒复检本地账号、原生封禁、逐用户 VIEW 和资料发布清单；失权或资料变化时取消模型调用并停止已建立的连接。答案完成前再次验证，只有通过后的最终正文附带引用元数据进入个人会话。
 
 新版本先写快照与独立检索文件。发布前必须验证快照与素材可读、原生文件属于配置的 Agent、向量记录存在且文件与实体范围匹配；仅收到入库成功响应不足以发布。验证通过后，在 MongoDB 事务内切换 `activeRevisionId` 并更新 Agent 文件范围。检索前从该清单提取生效文件 ID；切换前的未发布文件和切换后的旧文件均不能进入新回答。旧索引清理允许异步失败，但不改变有效文件过滤。跨 MongoDB 与 pgvector 不宣称具有分布式事务。
 

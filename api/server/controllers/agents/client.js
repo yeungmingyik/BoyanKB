@@ -184,6 +184,9 @@ const {
   isAgentRunCancellation,
   markCompactionOutcome,
   resolvePersistableCodeEnvironmentDecision,
+  finalizeKnowledgeAnswer,
+  knowledgeAnswerMetadata,
+  knowledgeQuestionHistory,
 } = require('@librechat/api');
 const {
   Run,
@@ -2292,13 +2295,16 @@ class AgentClient extends BaseClient {
       this.compactionSemanticIndexSnapshot = undefined;
     }
     /** Always pass mapMethod; getMessagesForConversation applies it only to messages with addedConvo flag */
-    const orderedMessages = this.constructor.getMessagesForConversation({
+    let orderedMessages = this.constructor.getMessagesForConversation({
       messages,
       parentMessageId,
       summary: this.shouldSummarize,
       mapMethod: createMultiAgentMapper(this.options.agent, this.agentConfigs),
       mapCondition: (message) => message.addedConvo === true,
     });
+    if (this.options.knowledgeAnswer) {
+      orderedMessages = knowledgeQuestionHistory(orderedMessages);
+    }
     /**
      * Answers the user gave to earlier `ask_user_question` calls. Read from the
      * rows before `messages` is narrowed to `orderedMessages`; when those rows
@@ -3570,6 +3576,20 @@ class AgentClient extends BaseClient {
 
   /** @type {sendCompletion} */
   async sendCompletion(payload, opts = {}) {
+    const knowledgeAnswer = this.options.knowledgeAnswer;
+    if (knowledgeAnswer && knowledgeAnswer.items.length === 0) {
+      await this.options.req.knowledgeStreamGuard?.checkNow();
+      this.contentParts.splice(0, this.contentParts.length, {
+        type: ContentTypes.TEXT,
+        text: knowledgeAnswer.insufficient,
+      });
+      return {
+        completion: this.contentParts,
+        metadata: {
+          knowledge: knowledgeAnswerMetadata(knowledgeAnswer.insufficient, knowledgeAnswer),
+        },
+      };
+    }
     await this.chatCompletion({
       payload,
       onProgress: opts.onProgress,
@@ -3577,13 +3597,33 @@ class AgentClient extends BaseClient {
       abortController: opts.abortController,
     });
 
-    const completion = filterMalformedContentParts(this.contentParts);
+    let completion = filterMalformedContentParts(this.contentParts);
+    if (knowledgeAnswer) {
+      await this.options.req.knowledgeStreamGuard?.checkNow();
+      const text = completion
+        .filter((part) => part.type === ContentTypes.TEXT)
+        .map((part) => (typeof part.text === 'string' ? part.text : (part.text?.value ?? '')))
+        .join('\n');
+      completion = [
+        { type: ContentTypes.TEXT, text: finalizeKnowledgeAnswer(text, knowledgeAnswer) },
+      ];
+      this.contentParts.splice(0, this.contentParts.length, ...completion);
+    }
     if (this.isCompactionTurn()) {
       markCompactionOutcome(completion, {
         aborted: this.abortController?.signal?.aborted === true,
       });
     }
     const metadata = this.buildResponseMetadata();
+    if (knowledgeAnswer) {
+      return {
+        completion,
+        metadata: {
+          ...metadata,
+          knowledge: knowledgeAnswerMetadata(completion[0].text, knowledgeAnswer),
+        },
+      };
+    }
     return metadata ? { completion, metadata } : { completion };
   }
 

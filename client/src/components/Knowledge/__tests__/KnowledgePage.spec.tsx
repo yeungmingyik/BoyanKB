@@ -22,6 +22,10 @@ jest.mock('../KnowledgeTree', () => ({
   __esModule: true,
   default: () => <div>{'Directory'}</div>,
 }));
+jest.mock('../KnowledgeSearch', () => ({
+  __esModule: true,
+  default: () => <div data-testid="knowledge-search" />,
+}));
 jest.mock('../KnowledgeReader', () => ({
   __esModule: true,
   default: ({ documentId, revisionId }: { documentId: string; revisionId?: string }) => (
@@ -65,5 +69,20 @@ describe('KnowledgePage', () => {
     );
     expect(screen.getByTestId('reader')).toHaveTextContent('doc-1:rev-2');
     expect(screen.queryByTestId('sync-management')).not.toBeInTheDocument();
+  });
+
+  it('opens search within the knowledge library without administrator tools', () => {
+    render(
+      <MemoryRouter initialEntries={['/knowledge/search?q=robot']}>
+        <KnowledgePage />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('knowledge-search')).toBeInTheDocument();
+    expect(screen.queryByTestId('reader')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sync-management')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'com_knowledge_directory' })).toHaveAttribute(
+      'href',
+      '/knowledge',
+    );
   });
 });

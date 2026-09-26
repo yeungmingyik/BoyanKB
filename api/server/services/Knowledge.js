@@ -7,6 +7,8 @@ const {
   LocalKnowledgeBlobStore,
   FeishuClient,
   createNativeKnowledgeIndexer,
+  createNativeKnowledgeSearch,
+  createKnowledgeSearchService,
   KnowledgeError,
 } = require('@librechat/api');
 const { getAppConfig } = require('./Config');
@@ -55,6 +57,20 @@ async function initializeKnowledgeService(rawConfig) {
     indexer,
   });
   await service.ensureSource();
+  const search = createKnowledgeSearchService({
+    store: service,
+    ownerId: owner._id.toString(),
+    config: config.search,
+    semantic: createNativeKnowledgeSearch({
+      agentId: config.agentId,
+      ownerId: owner._id.toString(),
+      baseUrl: process.env.RAG_API_URL || 'http://rag:8000',
+      getFile: findFileById,
+      timeoutMs: config.search?.requestTimeoutMs,
+    }),
+  });
+  service.search = search.search.bind(search);
+  service.validateHits = search.validateHits.bind(search);
   return service;
 }
 

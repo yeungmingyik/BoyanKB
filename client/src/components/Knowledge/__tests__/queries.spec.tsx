@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   useKnowledgeDocument,
+  useKnowledgeSearch,
   useKnowledgeSyncAction,
   useKnowledgeSyncRuns,
   useKnowledgeTree,
@@ -114,5 +115,86 @@ describe('knowledge requests', () => {
       {},
       { headers: { 'Idempotency-Key': 'retry-request-123' } },
     );
+  });
+
+  it.each([undefined, { query: '   ' }, { query: 'a'.repeat(1001) }])(
+    'does not issue an empty or oversized search',
+    (input) => {
+      const post = jest.spyOn(axios, 'post');
+      const { wrapper } = setup();
+      const { result } = renderHook(() => useKnowledgeSearch(input), { wrapper });
+      expect(result.current.fetchStatus).toBe('idle');
+      expect(post).not.toHaveBeenCalled();
+    },
+  );
+
+  it('posts only the search criteria and returned cursor with an abort signal', async () => {
+    const post = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValueOnce({
+        data: { items: [], nextCursor: 'next-2', snapshotId: 'snapshot-1' },
+      })
+      .mockResolvedValueOnce({ data: { items: [], snapshotId: 'snapshot-1' } });
+    const { wrapper } = setup();
+    const input = { query: 'robot', mode: 'hybrid' as const, directoryId: 'node-1', limit: 10 };
+    const { result } = renderHook(() => useKnowledgeSearch(input), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+    expect(post).toHaveBeenLastCalledWith(
+      '/api/knowledge/search',
+      { ...input, cursor: 'next-2' },
+      { signal: expect.any(AbortSignal) },
+    );
+  });
+
+  it('restarts from the first page after a stale snapshot failure without mixing results', async () => {
+    const post = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValueOnce({
+        data: { items: [{ title: 'Old result' }], nextCursor: 'old-page', snapshotId: 'old' },
+      })
+      .mockRejectedValueOnce({
+        isAxiosError: true,
+        response: { status: 409, data: { code: 'KNOWLEDGE_SEARCH_SNAPSHOT_CHANGED' } },
+      })
+      .mockResolvedValueOnce({ data: { items: [{ title: 'Current result' }], snapshotId: 'new' } });
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useKnowledgeSearch({ query: 'robot' }), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await act(async () => {
+      await result.current.fetchNextPage();
+    });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    await act(async () => {
+      await result.current.restart();
+    });
+    await waitFor(() => expect(result.current.data?.pages[0].snapshotId).toBe('new'));
+    expect(result.current.data?.pages).toHaveLength(1);
+    expect(post).toHaveBeenLastCalledWith(
+      '/api/knowledge/search',
+      { query: 'robot', cursor: undefined },
+      expect.any(Object),
+    );
+  });
+
+  it('separates search results by signed-in user and rechecks access after denial', async () => {
+    const post = jest
+      .spyOn(axios, 'post')
+      .mockResolvedValueOnce({ data: { items: [{ title: 'User one result' }] } });
+    const { client, wrapper } = setup();
+    const invalidate = jest.spyOn(client, 'invalidateQueries');
+    const { result, rerender } = renderHook(() => useKnowledgeSearch({ query: 'robot' }), {
+      wrapper,
+    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    post.mockRejectedValue({ isAxiosError: true, response: { status: 403 } });
+    mockUser = { id: 'user-2', role: 'USER' };
+    rerender();
+    expect(result.current.data).toBeUndefined();
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(invalidate).toHaveBeenCalledWith(['knowledgeAccess']);
+    expect(post).toHaveBeenCalledTimes(2);
   });
 });

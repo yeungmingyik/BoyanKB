@@ -3,6 +3,8 @@ import { apiBaseUrl, QueryKeys, request, SystemRoles } from 'librechat-data-prov
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   KnowledgeDocumentResponse,
+  KnowledgeSearchRequest,
+  KnowledgeSearchResponse,
   KnowledgeSyncRun,
   KnowledgeSyncRunResponse,
   KnowledgeSyncRunsResponse,
@@ -12,6 +14,8 @@ import { useGetStartupConfig } from '~/data-provider';
 import { useAuthContext } from '~/hooks/AuthContext';
 
 const knowledgeURL = (path: string) => `${apiBaseUrl()}/api/knowledge${path}`;
+
+export const knowledgeSearchQueryLimit = 1000;
 
 function useKnowledgeSession() {
   const { user, isAuthenticated } = useAuthContext();
@@ -68,6 +72,36 @@ export function useKnowledgeDocument(documentId?: string, revisionId?: string) {
     staleTime: 0,
     onError: session.onError,
   });
+}
+
+export function useKnowledgeSearch(input?: Omit<KnowledgeSearchRequest, 'cursor'>) {
+  const session = useKnowledgeSession();
+  const queryClient = useQueryClient();
+  const queryKey = ['knowledge', session.userId, 'search', input];
+  const query = useInfiniteQuery<KnowledgeSearchResponse>({
+    queryKey,
+    queryFn: async ({ pageParam, signal }) => {
+      const response = await axios.post<KnowledgeSearchResponse>(
+        knowledgeURL('/search'),
+        { ...input, cursor: pageParam },
+        { signal },
+      );
+      return response.data;
+    },
+    getNextPageParam: (page) => page.nextCursor,
+    enabled:
+      session.enabled &&
+      !!input?.query.trim() &&
+      input.query.trim().length <= knowledgeSearchQueryLimit,
+    retry: false,
+    cacheTime: 0,
+    staleTime: 0,
+    onError: session.onError,
+  });
+  return {
+    ...query,
+    restart: () => queryClient.resetQueries({ queryKey, exact: true }),
+  };
 }
 
 export function useKnowledgeSyncRuns() {

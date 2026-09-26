@@ -53,6 +53,13 @@ function fixture() {
       .fn()
       .mockResolvedValue({ id: runId, mode: 'full', status: 'queued', phase: 'queued', counts }),
     activeFileIds: jest.fn().mockResolvedValue([]),
+    search: jest.fn().mockResolvedValue({
+      query: '课程',
+      mode: 'hybrid',
+      sourceStatus: 'ready',
+      snapshotId: `search_${'a'.repeat(64)}`,
+      items: [],
+    }),
   };
   const getService = jest.fn(async () => service);
   const access = createKnowledgeAccess({
@@ -85,6 +92,63 @@ function fixture() {
 }
 
 describe('knowledge routes', () => {
+  it('requires live authorization for search and rechecks it before returning hits', async () => {
+    const { app, service, viewers } = fixture();
+    expect((await request(app).post('/api/knowledge/search').send({ query: '课程' })).status).toBe(
+      401,
+    );
+    expect(
+      (
+        await request(app)
+          .post('/api/knowledge/search')
+          .set('Authorization', 'denied')
+          .send({ query: '课程' })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request(app)
+          .post('/api/knowledge/search')
+          .set('Authorization', 'partner')
+          .send({ query: '课程', mode: 'keyword' })
+      ).status,
+    ).toBe(200);
+    service.search.mockImplementationOnce(async () => {
+      viewers.delete('partner');
+      return {
+        query: '课程',
+        mode: 'hybrid',
+        sourceStatus: 'ready',
+        snapshotId: `search_${'a'.repeat(64)}`,
+        items: [],
+      };
+    });
+    expect(
+      (
+        await request(app)
+          .post('/api/knowledge/search')
+          .set('Authorization', 'partner')
+          .send({ query: '课程' })
+      ).status,
+    ).toBe(403);
+  });
+
+  it.each(['file_ids', 'owner', 'agentId'])(
+    'rejects browser search scope field %s',
+    async (field) => {
+      const { app, service } = fixture();
+      expect(
+        (
+          await request(app)
+            .post('/api/knowledge/search')
+            .set('Authorization', 'partner')
+            .send({ query: '课程', [field]: 'private' })
+        ).status,
+      ).toBe(400);
+      expect(service.search).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([
     '/tree',
     `/documents/${documentId}`,

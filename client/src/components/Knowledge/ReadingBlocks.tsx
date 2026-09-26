@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import type { KnowledgeAsset as Asset, KnowledgeReadingBlock } from 'librechat-data-provider';
 import type { ReactNode } from 'react';
+import { knowledgeBlockAnchor } from './links';
 import KnowledgeAsset from './KnowledgeAsset';
 import { useLocalize } from '~/hooks';
 
@@ -14,6 +15,9 @@ function ReadingBlock({
   depth: number;
 }) {
   const localize = useLocalize();
+  const anchorProps = { id: knowledgeBlockAnchor(block.id), tabIndex: -1 };
+  const anchorClass =
+    'scroll-mt-6 rounded-sm target:bg-surface-secondary target:ring-2 target:ring-border-heavy focus:outline-none';
   if (depth > 40) {
     return <p>{localize('com_knowledge_content_unavailable')}</p>;
   }
@@ -27,7 +31,7 @@ function ReadingBlock({
   switch (block.type) {
     case 'section':
       return (
-        <section>
+        <section {...anchorProps} className={anchorClass}>
           {text}
           {nested}
         </section>
@@ -37,7 +41,10 @@ function ReadingBlock({
         <>
           {createElement(
             `h${Math.max(2, Math.min(6, (block.level ?? 1) + 1))}`,
-            { className: 'mb-3 mt-6 font-semibold text-text-primary' },
+            {
+              ...anchorProps,
+              className: `${anchorClass} mb-3 mt-6 font-semibold text-text-primary`,
+            },
             text,
           )}
           {nested}
@@ -46,7 +53,10 @@ function ReadingBlock({
     case 'quote':
     case 'callout':
       return (
-        <blockquote className="my-4 border-l-4 border-border-heavy bg-surface-secondary p-4">
+        <blockquote
+          {...anchorProps}
+          className={`${anchorClass} my-4 border-l-4 border-border-heavy bg-surface-secondary p-4`}
+        >
           {text}
           {nested}
         </blockquote>
@@ -54,24 +64,31 @@ function ReadingBlock({
     case 'bullet':
     case 'ordered':
       return (
-        <li>
+        <li {...anchorProps} className={anchorClass}>
           {text}
           {nested}
         </li>
       );
     case 'table':
       return (
-        <div className="my-4 max-w-full overflow-x-auto">
+        <div {...anchorProps} className={`${anchorClass} my-4 max-w-full overflow-x-auto`}>
           <table className="w-full border-collapse text-left text-sm">
             <tbody>{nested}</tbody>
           </table>
         </div>
       );
     case 'row':
-      return <tr>{nested}</tr>;
+      return (
+        <tr {...anchorProps} className={anchorClass}>
+          {nested}
+        </tr>
+      );
     case 'cell':
       return (
-        <td className="min-w-28 border border-border-medium p-3 align-top">
+        <td
+          {...anchorProps}
+          className={`${anchorClass} min-w-28 border border-border-medium p-3 align-top`}
+        >
           {text}
           {nested}
         </td>
@@ -79,19 +96,27 @@ function ReadingBlock({
     case 'image':
     case 'file': {
       const asset = assets.find((item) => item.mediaId === block.mediaId);
-      return asset ? (
-        <KnowledgeAsset asset={asset} caption={block.text} />
-      ) : (
-        <p className="my-3 text-text-secondary">{localize('com_knowledge_content_unavailable')}</p>
+      return (
+        <div {...anchorProps} className={anchorClass}>
+          {asset ? (
+            <KnowledgeAsset asset={asset} caption={block.text} />
+          ) : (
+            <p className="my-3 text-text-secondary">
+              {localize('com_knowledge_content_unavailable')}
+            </p>
+          )}
+        </div>
       );
     }
     case 'unsupported':
       return (
-        <p className="my-3 text-text-secondary">{localize('com_knowledge_content_unavailable')}</p>
+        <p {...anchorProps} className={`${anchorClass} my-3 text-text-secondary`}>
+          {localize('com_knowledge_content_unavailable')}
+        </p>
       );
     default:
       return (
-        <div className="my-3 leading-7">
+        <div {...anchorProps} className={`${anchorClass} my-3 leading-7`}>
           {text}
           {nested}
         </div>

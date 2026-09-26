@@ -70,11 +70,13 @@ export function KnowledgeError({
   retry,
   retrying,
   sync,
+  search,
 }: {
   error: unknown;
   retry?: () => void;
   retrying?: boolean;
   sync?: boolean;
+  search?: boolean;
 }) {
   const localize = useLocalize();
   const status = getResponseStatus(error);
@@ -92,6 +94,17 @@ export function KnowledgeError({
     (code === 'KNOWLEDGE_SYNC_NOT_CONFIGURED' || code === 'KNOWLEDGE_SOURCE_UNCONFIGURED')
   ) {
     message = 'com_knowledge_sync_not_configured';
+  }
+  if (search) {
+    const searchMessages: Record<string, TranslationKeys> = {
+      KNOWLEDGE_SEARCH_QUERY_INVALID: 'com_knowledge_search_invalid',
+      KNOWLEDGE_DIRECTORY_UNAVAILABLE: 'com_knowledge_search_directory_unavailable',
+      KNOWLEDGE_SEARCH_SNAPSHOT_CHANGED: 'com_knowledge_search_changed',
+      KNOWLEDGE_SEARCH_UNAVAILABLE: 'com_knowledge_search_unavailable',
+      KNOWLEDGE_SEARCH_SCOPE_INVALID: 'com_knowledge_search_unavailable',
+      KNOWLEDGE_SEARCH_BUDGET_EXCEEDED: 'com_knowledge_search_unavailable',
+    };
+    message = searchMessages[code ?? ''] ?? message;
   }
   return (
     <div

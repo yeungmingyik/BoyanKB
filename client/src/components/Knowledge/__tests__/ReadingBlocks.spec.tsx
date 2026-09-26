@@ -64,6 +64,9 @@ describe('ReadingBlocks', () => {
     render(<ReadingBlocks blocks={blocks} assets={[]} />);
     const cells = within(screen.getByRole('table')).getAllByRole('cell');
     expect(cells.map((cell) => cell.textContent)).toEqual(['Course', 'Robotics']);
+    expect(screen.getByText('Robotics').closest('[id]')).toHaveAttribute('id', 'block-b5');
+    expect(cells[0]).toHaveAttribute('id', 'block-b3');
+    expect(screen.getByRole('table').querySelector('tbody > tr')).toHaveAttribute('id', 'block-b2');
   });
 
   it('resolves media through the public asset mapping', () => {
@@ -95,5 +98,16 @@ describe('ReadingBlocks', () => {
     expect(screen.getByText('com_knowledge_content_unavailable')).toBeInTheDocument();
     expect(view.container.querySelector('img, a')).toBeNull();
     expect(screen.queryByText('https://outside.example/image')).not.toBeInTheDocument();
+  });
+
+  it('does not create an anchor from an unsafe block id', () => {
+    const view = render(
+      <ReadingBlocks
+        blocks={[{ id: '" onfocus="alert(1)', type: 'paragraph', text: 'Safe text' }]}
+        assets={[]}
+      />,
+    );
+    expect(view.container.querySelector('[id]')).toBeNull();
+    expect(screen.getByText('Safe text')).toBeInTheDocument();
   });
 });
