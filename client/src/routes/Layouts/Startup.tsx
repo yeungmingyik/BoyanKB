@@ -5,6 +5,7 @@ import { TranslationKeys, useLocalize } from '~/hooks';
 import { useGetStartupConfig } from '~/data-provider';
 import AuthLayout from '~/components/Auth/AuthLayout';
 import { REDIRECT_PARAM, SESSION_KEY } from '~/utils';
+import { PRODUCT_NAME } from '~/common/product';
 
 const headerMap: Record<string, TranslationKeys> = {
   '/login': 'com_auth_welcome_back',
@@ -44,7 +45,7 @@ export default function StartupLayout({ isAuthenticated }: { isAuthenticated?: b
   }, [isAuthenticated, navigate, data]);
 
   useEffect(() => {
-    document.title = startupConfig?.appTitle || 'LibreChat';
+    document.title = startupConfig?.appTitle || PRODUCT_NAME;
   }, [startupConfig?.appTitle]);
 
   useEffect(() => {

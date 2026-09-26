@@ -17,6 +17,7 @@ import {
   useSubmitMessage,
   useFocusChatEffect,
   useCodeWorkspace,
+  useAuthContext,
 } from '~/hooks';
 import {
   cn,
@@ -41,6 +42,7 @@ import PendingManualSkillsChips from './PendingManualSkillsChips';
 import usePastedTextEdit from '~/hooks/Files/usePastedTextEdit';
 import useAskAnswerMode from '~/hooks/Input/useAskAnswerMode';
 import AskUserQuestionPopover from './AskUserQuestionPopover';
+import { isKnowledgeRestricted } from '~/common/knowledge';
 import InterruptSteerButton from './InterruptSteerButton';
 import PastedTextDialog from './Files/PastedTextDialog';
 import DuringRunSendButton from './DuringRunSendButton';
@@ -186,6 +188,8 @@ const ChatForm = memo(function ChatForm({
   } = useAddedChatContext();
   const assistantMap = useAssistantsMapContext();
   const { data: startupConfig } = useGetStartupConfig();
+  const { user } = useAuthContext();
+  const knowledgeRestricted = isKnowledgeRestricted(startupConfig, user);
 
   const endpoint = useMemo(
     () => conversation?.endpointType ?? conversation?.endpoint,
@@ -851,21 +855,23 @@ const ChatForm = memo(function ChatForm({
                     setFilesLoading={setFilesLoading}
                   />
                 </div>
-                <BadgeRow
-                  showEphemeralBadges={
-                    !!endpoint &&
-                    !hideBadgeRow &&
-                    !isAgentsEndpoint(endpoint) &&
-                    !isAssistantsEndpoint(endpoint)
-                  }
-                  isSubmitting={isSubmitting}
-                  conversationId={conversationId}
-                  specName={conversation?.spec}
-                  onChange={setBadges}
-                  isInChat={
-                    Array.isArray(conversation?.messages) && conversation.messages.length >= 1
-                  }
-                />
+                {!knowledgeRestricted && (
+                  <BadgeRow
+                    showEphemeralBadges={
+                      !!endpoint &&
+                      !hideBadgeRow &&
+                      !isAgentsEndpoint(endpoint) &&
+                      !isAssistantsEndpoint(endpoint)
+                    }
+                    isSubmitting={isSubmitting}
+                    conversationId={conversationId}
+                    specName={conversation?.spec}
+                    onChange={setBadges}
+                    isInChat={
+                      Array.isArray(conversation?.messages) && conversation.messages.length >= 1
+                    }
+                  />
+                )}
                 <CodeApprovalMenu
                   conversation={conversation}
                   addedConversation={addedConvo}
@@ -877,7 +883,7 @@ const ChatForm = memo(function ChatForm({
                 )}
                 <div className="grow" />
                 <TokenUsage index={index} conversation={conversation} isSubmitting={isSubmitting} />
-                {SpeechToText && (
+                {SpeechToText && !knowledgeRestricted && (
                   <AudioRecorder
                     methods={methods}
                     ask={submitComposerText}
@@ -919,7 +925,9 @@ const ChatForm = memo(function ChatForm({
                       )}
                 </div>
               </div>
-              {TextToSpeech && automaticPlayback && <AutoPlayAudio index={index} />}
+              {TextToSpeech && automaticPlayback && !knowledgeRestricted && (
+                <AutoPlayAudio index={index} />
+              )}
             </div>
           </div>
         </div>

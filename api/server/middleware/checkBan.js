@@ -125,38 +125,34 @@ const checkBan = async (req, res, next = () => {}) => {
       userId ? banLogs.get(userId) : undefined,
     ]);
 
-    const banData = ipBan || userBan;
-
-    if (!banData) {
-      return next();
-    }
-
-    const expiresAt = Number(banData.expiresAt);
-    if (!banData.expiresAt || isNaN(expiresAt)) {
-      req.banned = true;
-      return await banResponse(req, res);
-    }
-
-    const timeLeft = expiresAt - Date.now();
-
-    if (timeLeft <= 0) {
-      const cleanups = [];
-      if (ipBan) {
-        cleanups.push(banLogs.delete(req.ip));
-      }
-      if (userBan) {
-        cleanups.push(banLogs.delete(userId));
-      }
-      await Promise.all(cleanups);
-      return next();
-    }
-
     const cacheWrites = [];
-    if (ipKey) {
-      cacheWrites.push(banCache.set(ipKey, banData, timeLeft));
+    const cleanups = [];
+    let activeBan = false;
+    for (const [banData, cacheKey, logKey] of [
+      [ipBan, ipKey, req.ip],
+      [userBan, userKey, userId],
+    ]) {
+      if (!banData) {
+        continue;
+      }
+      const expiresAt = Number(banData.expiresAt);
+      if (!banData.expiresAt || isNaN(expiresAt)) {
+        activeBan = true;
+        continue;
+      }
+      const timeLeft = expiresAt - Date.now();
+      if (timeLeft <= 0) {
+        cleanups.push(banLogs.delete(logKey));
+        continue;
+      }
+      activeBan = true;
+      if (cacheKey) {
+        cacheWrites.push(banCache.set(cacheKey, banData, timeLeft));
+      }
     }
-    if (userKey) {
-      cacheWrites.push(banCache.set(userKey, banData, timeLeft));
+    await Promise.all(cleanups);
+    if (!activeBan) {
+      return next();
     }
     await Promise.all(cacheWrites).catch((err) =>
       logger.warn('[checkBan] Failed to write ban cache:', err),

@@ -7,6 +7,7 @@ import {
   getConfigDefaults,
 } from 'librechat-data-provider';
 import type { IRole, AppConfig } from '@librechat/data-schemas';
+import { getKnowledgeRolePermissions } from '~/knowledge/access';
 import { isMemoryEnabled } from '~/memory/config';
 
 /**
@@ -764,6 +765,14 @@ export async function updateInterfacePermissions({
             [Permissions.CONFIGURE_OBO]: backfillValue,
           };
         }
+      }
+    }
+
+    if (appConfig.config?.knowledge?.enabled) {
+      const knowledgePermissions = getKnowledgeRolePermissions(roleName);
+      for (const [permissionType, permissions] of Object.entries(knowledgePermissions)) {
+        const key = permissionType as PermissionTypes;
+        permissionsToUpdate[key] = { ...permissionsToUpdate[key], ...permissions };
       }
     }
 

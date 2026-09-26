@@ -11,11 +11,23 @@ permissions:
 jobs:
   project:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
+    env:
+      HUSKY: '0'
+      SCARF_ANALYTICS: 'false'
+      DO_NOT_TRACK: '1'
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: '24.16.0'
+          cache: npm
       - run: node scripts/boyankb/check-project.mjs
       - run: git diff --check
+      - run: npm install --global npm@11.13.0
+      - run: npm ci --no-audit --no-fund
+      - run: npm run frontend
+      - run: npm run test:ci --workspace=@librechat/api -- --runInBand --coverage=false --testPathPatterns='knowledge/access|app/permissions|images/authorization|endpoints/config/models|endpoints/custom/config'
+      - run: npm run test:ci --workspace=@librechat/backend -- --runInBand --testPathPatterns='checkBan|convoAccess|loadConfigModels'
+      - run: npx jest --config config/jest.config.js --runInBand --runTestsByPath config/__tests__/ban-user.spec.js
+      - run: npm run test:ci --workspace=@librechat/frontend -- --runInBand --coverage=false --testPathPatterns='KnowledgeAccessGate|About.spec|Footer.spec|SetKeyDialog.*models|ConversationsSection.spec|useAppStartup.spec|Settings/__tests__/registry.spec|ConvoOptions.archive.test'

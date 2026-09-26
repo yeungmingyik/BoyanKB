@@ -53,6 +53,7 @@ describe('loadCustomEndpointsConfig – user credential prompts', () => {
       expect.objectContaining({
         userProvide: true,
         userProvideURL: true,
+        userProvideModels: false,
       }),
     );
   });
@@ -66,6 +67,7 @@ describe('loadCustomEndpointsConfig – user credential prompts', () => {
       expect.objectContaining({
         userProvide: true,
         userProvideURL: false,
+        userProvideModels: true,
       }),
     );
   });
@@ -79,6 +81,7 @@ describe('loadCustomEndpointsConfig – user credential prompts', () => {
       expect.objectContaining({
         userProvide: false,
         userProvideURL: false,
+        userProvideModels: false,
       }),
     );
   });

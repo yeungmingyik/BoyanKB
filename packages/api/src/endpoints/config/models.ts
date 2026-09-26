@@ -5,6 +5,7 @@ import {
   EModelEndpoint,
   extractEnvVariable,
   normalizeEndpointName,
+  userProvidedModelsSchema,
 } from 'librechat-data-provider';
 import type { TModelsConfig, TEndpoint } from 'librechat-data-provider';
 import type { AppConfig } from '@librechat/data-schemas';
@@ -48,6 +49,10 @@ interface ResolvedEndpoint {
 export interface LoadConfigModelsDeps {
   getAppConfig: (params: GetAppConfigOptions) => Promise<AppConfig>;
   getUserKeyValues: GetUserKeyValuesFunction;
+  getUserKeyExpiry?: (params: {
+    userId: string;
+    name: string;
+  }) => Promise<{ expiresAt: Date | 'never' | null }>;
   fetchModels?: (params: FetchModelsParams) => Promise<string[]>;
 }
 
@@ -121,8 +126,7 @@ export function createLoadConfigModels(deps: LoadConfigModelsDeps) {
       resolved.push(entry);
 
       if (
-        endpoint.models?.fetch &&
-        (entry.apiKeyIsUserProvided || entry.baseURLIsUserProvided) &&
+        (entry.apiKeyIsUserProvided || (endpoint.models?.fetch && entry.baseURLIsUserProvided)) &&
         req.user?.id
       ) {
         userKeyEndpoints.push(entry);
@@ -133,7 +137,18 @@ export function createLoadConfigModels(deps: LoadConfigModelsDeps) {
     if (userKeyEndpoints.length > 0 && req.user?.id) {
       const userId = req.user.id;
       const results = await Promise.allSettled(
-        userKeyEndpoints.map((e) => getUserKeyValues({ userId, name: e.name })),
+        userKeyEndpoints.map(async (e) => {
+          if (deps.getUserKeyExpiry) {
+            const { expiresAt } = await deps.getUserKeyExpiry({ userId, name: e.name });
+            if (
+              expiresAt !== 'never' &&
+              (!expiresAt || !(new Date(expiresAt).getTime() > Date.now()))
+            ) {
+              throw new Error(ErrorTypes.NO_USER_KEY);
+            }
+          }
+          return getUserKeyValues({ userId, name: e.name });
+        }),
       );
       for (let i = 0; i < userKeyEndpoints.length; i++) {
         const settled = results[i];
@@ -291,6 +306,20 @@ export function createLoadConfigModels(deps: LoadConfigModelsDeps) {
             }
           }
         }
+      }
+    }
+
+    for (const { name, apiKeyIsUserProvided } of resolved) {
+      if (!apiKeyIsUserProvided) {
+        continue;
+      }
+      const values = userKeyMap.get(name);
+      if (typeof values?.apiKey !== 'string' || !values.apiKey.trim()) {
+        continue;
+      }
+      const userModels = userProvidedModelsSchema.safeParse(values.models);
+      if (userModels.success) {
+        modelsConfig[name] = [...new Set([...(modelsConfig[name] ?? []), ...userModels.data])];
       }
     }
 

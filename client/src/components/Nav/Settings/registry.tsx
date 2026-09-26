@@ -241,6 +241,7 @@ export const registry: SettingEntry[] = [
   },
   {
     id: 'clientImageResize',
+    show: (ctx) => !ctx.knowledgeRestricted,
     tab: CHAT,
     section: 'sending',
     labelKey: 'com_nav_client_image_resize',
@@ -249,6 +250,7 @@ export const registry: SettingEntry[] = [
   },
   {
     id: 'pasteLongTextAsFile',
+    show: (ctx) => !ctx.knowledgeRestricted,
     tab: CHAT,
     section: 'sending',
     labelKey: 'com_nav_paste_long_text_as_file',
@@ -492,6 +494,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'speechToText',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'stt',
     labelKey: 'com_nav_speech_to_text',
     Component: SpeechToTextSwitch,
@@ -499,6 +502,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'engineSTT',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'stt',
     labelKey: 'com_ui_settings_label_engine_stt',
     Component: EngineSTTSetting,
@@ -506,6 +510,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'languageSTT',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'stt',
     labelKey: 'com_ui_settings_label_language_stt',
     Component: LanguageSTTDropdown,
@@ -513,6 +518,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'autoTranscribeAudio',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'stt',
     labelKey: 'com_nav_auto_transcribe_audio',
     Component: AutoTranscribeAudioSwitch,
@@ -520,6 +526,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'decibelValue',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'stt',
     labelKey: 'com_ui_settings_label_decibel',
     Component: DecibelSelector,
@@ -527,6 +534,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'autoSendText',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'stt',
     labelKey: 'com_nav_auto_send_text',
     Component: AutoSendTextSelector,
@@ -535,6 +543,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'textToSpeech',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'tts',
     labelKey: 'com_nav_text_to_speech',
     Component: TextToSpeechSwitch,
@@ -542,6 +551,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'engineTTS',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'tts',
     labelKey: 'com_ui_settings_label_engine_tts',
     Component: EngineTTSSetting,
@@ -549,6 +559,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'voice',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'tts',
     labelKey: 'com_ui_settings_label_voice',
     Component: VoiceDropdown,
@@ -556,6 +567,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'conversationMode',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'tts',
     labelKey: 'com_ui_settings_label_conversation_mode',
     Component: ConversationModeSwitch,
@@ -563,6 +575,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'automaticPlayback',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'tts',
     labelKey: 'com_nav_automatic_playback',
     Component: AutomaticPlaybackSwitch,
@@ -572,12 +585,13 @@ export const registry: SettingEntry[] = [
     tab: SPEECH,
     section: 'tts',
     labelKey: 'com_nav_enable_cloud_browser_voice',
-    show: (ctx) => ctx.engineTTS === TTSEndpoints.browser,
+    show: (ctx) => !ctx.knowledgeRestricted && ctx.engineTTS === TTSEndpoints.browser,
     Component: CloudBrowserVoicesSwitch,
   },
   {
     id: 'playbackRate',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'tts',
     labelKey: 'com_ui_settings_label_playback_rate',
     Component: PlaybackRate,
@@ -585,6 +599,7 @@ export const registry: SettingEntry[] = [
   {
     id: 'cacheTTS',
     tab: SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     section: 'tts',
     labelKey: 'com_nav_enable_cache_tts',
     Component: CacheTTSSwitch,
@@ -636,6 +651,7 @@ export const registry: SettingEntry[] = [
   },
   {
     id: 'manageFiles',
+    show: (ctx) => !ctx.knowledgeRestricted,
     tab: DATA,
     section: 'data',
     labelKey: 'com_ui_settings_label_manage_files',

@@ -20,8 +20,10 @@ import {
 } from '@librechat/client';
 import type { TDialogProps } from '~/common';
 import { useUserKey, useLocalize, useClockFormat } from '~/hooks';
+import { useGetEndpointsQuery } from '~/data-provider';
 import { NotificationSeverity } from '~/common';
 import { formatKeyExpiryLabel } from './utils';
+import { parseCustomModelIds } from './models';
 import CustomConfig from './CustomEndpoint';
 import BedrockConfig from './BedrockConfig';
 import GoogleConfig from './GoogleConfig';
@@ -171,6 +173,7 @@ const SetKeyDialog = ({
     defaultValues: {
       apiKey: '',
       baseURL: '',
+      models: '',
       azureOpenAIApiKey: '',
       azureOpenAIApiInstanceName: '',
       azureOpenAIApiDeploymentName: '',
@@ -181,8 +184,6 @@ const SetKeyDialog = ({
       bedrockBearerToken: '',
       // TODO: allow endpoint definitions from user
       // name: '',
-      // TODO: add custom endpoint models defined by user
-      // models: '',
     },
   });
 
@@ -191,9 +192,13 @@ const SetKeyDialog = ({
   const { getExpiry, saveUserKey } = useUserKey(endpoint);
   const { showToast } = useToastContext();
   const localize = useLocalize();
+  const { data: endpointsConfig } = useGetEndpointsQuery();
 
   const expirationOptions = Object.values(EXPIRY);
   const configuredEndpoint = endpointType ?? endpoint;
+  const userProvideModels =
+    configuredEndpoint === EModelEndpoint.custom &&
+    endpointsConfig?.[endpoint]?.userProvideModels === true;
 
   const handleExpirationChange = (label: string) => {
     setExpiresAtLabel(label);
@@ -240,6 +245,9 @@ const SetKeyDialog = ({
         }
 
         const emptyValues = Object.keys(data).filter((key) => {
+          if (key === 'models') {
+            return false;
+          }
           if (!isAzure && key.startsWith('azure')) {
             return false;
           }
@@ -311,13 +319,23 @@ const SetKeyDialog = ({
         const {
           apiKey,
           baseURL,
+          models: modelInput,
           bedrockAccessKeyId,
           bedrockSecretAccessKey,
           bedrockSessionToken,
           bedrockBearerToken,
           ...azureOptions
         } = data;
-        const userProvidedData = { apiKey, baseURL };
+        const models = userProvideModels ? parseCustomModelIds(modelInput) : [];
+        if (models === null) {
+          methods.setError('models', { message: localize('com_endpoint_custom_models_invalid') });
+          return;
+        }
+        const userProvidedData: { apiKey: string; baseURL: string; models?: string[] } = {
+          apiKey,
+          baseURL,
+          ...(userProvideModels && { models }),
+        };
         if (isAzure) {
           userProvidedData.apiKey = JSON.stringify({
             azureOpenAIApiKey: azureOptions.azureOpenAIApiKey,
@@ -398,6 +416,7 @@ const SetKeyDialog = ({
               endpoint={endpoint}
               setUserKey={setUserKey}
               userProvideURL={userProvideURL}
+              userProvideModels={userProvideModels}
               userProvideAccessKeyId={userProvideAccessKeyId}
               userProvideSecretAccessKey={userProvideSecretAccessKey}
               userProvideSessionToken={userProvideSessionToken}

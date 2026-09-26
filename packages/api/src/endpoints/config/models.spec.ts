@@ -17,6 +17,199 @@ jest.mock('~/utils', () => {
 
 import { SCOPED_TOKEN_CONFIG_KEY_PREFIX } from '../keys';
 import { createLoadConfigModels } from './models';
+import { validateAgentModel } from '~/agents/validation';
+import type { ValidateAgentModelParams } from '~/agents/validation';
+
+describe('user-provided model catalogs', () => {
+  const config = (overrides: Record<string, unknown> = {}) => ({
+    endpoints: {
+      custom: [
+        {
+          name: 'Personal Models',
+          baseURL: 'https://models.example.com/v1',
+          apiKey: AuthType.USER_PROVIDED,
+          models: { fetch: false, default: ['default-model'] },
+          ...overrides,
+        },
+      ],
+    },
+  });
+  const userRequest = (id: string) => ({ user: { id } }) as ServerRequest;
+
+  it('merges models only into the current user catalog without mutating defaults', async () => {
+    const appConfig = config();
+    const getUserKeyValues = jest.fn(async ({ userId }: { userId: string }) => ({
+      apiKey: `fixture-${userId}`,
+      models: [userId === 'user-a' ? 'provider/model-a' : 'provider/model-b', 'default-model'],
+    }));
+    const loadModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(appConfig),
+      getUserKeyValues,
+      fetchModels: jest.fn(),
+    });
+    const [a, b] = await Promise.all([
+      loadModels(userRequest('user-a')),
+      loadModels(userRequest('user-b')),
+    ]);
+    expect(a['Personal Models']).toEqual(['default-model', 'provider/model-a']);
+    expect(b['Personal Models']).toEqual(['default-model', 'provider/model-b']);
+    expect(appConfig.endpoints.custom[0].models).toEqual({
+      fetch: false,
+      default: ['default-model'],
+    });
+    expect(getUserKeyValues).toHaveBeenCalledWith({ userId: 'user-a', name: 'Personal Models' });
+    expect(getUserKeyValues).toHaveBeenCalledWith({ userId: 'user-b', name: 'Personal Models' });
+  });
+
+  it('accepts the current user model during chat validation and rejects another user model', async () => {
+    const loadModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(config()),
+      getUserKeyValues: jest.fn(async ({ userId }: { userId: string }) => ({
+        apiKey: 'fixture-key',
+        models: [userId === 'user-a' ? 'model-a' : 'model-b'],
+      })),
+    });
+    const modelsConfig = await loadModels(userRequest('user-a'));
+    const logViolation = jest.fn().mockResolvedValue(undefined);
+    const params = {
+      req: userRequest('user-a'),
+      res: {},
+      agent: { id: 'ephemeral', provider: 'Personal Models', model: 'model-a' },
+      modelsConfig,
+      logViolation,
+    } as unknown as ValidateAgentModelParams;
+    expect((await validateAgentModel(params)).isValid).toBe(true);
+    params.agent.model = 'model-b';
+    expect((await validateAgentModel(params)).isValid).toBe(false);
+    expect(logViolation).toHaveBeenCalledTimes(1);
+  });
+
+  it('merges a per-user list after a cached remote model result without modifying the cached array', async () => {
+    const cached = ['remote-model'];
+    const loadModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(config({ models: { fetch: true, default: [] } })),
+      getUserKeyValues: jest.fn(async ({ userId }: { userId: string }) => ({
+        apiKey: 'fixture-key',
+        models: [userId],
+      })),
+      fetchModels: jest.fn().mockResolvedValue(cached),
+    });
+    expect((await loadModels(userRequest('user-a')))['Personal Models']).toEqual([
+      'remote-model',
+      'user-a',
+    ]);
+    expect((await loadModels(userRequest('user-b')))['Personal Models']).toEqual([
+      'remote-model',
+      'user-b',
+    ]);
+    expect(cached).toEqual(['remote-model']);
+  });
+
+  it('removes stale models after the user clears or deletes their key', async () => {
+    const getUserKeyValues = jest
+      .fn()
+      .mockResolvedValueOnce({ apiKey: 'fixture-key', models: ['personal-model'] })
+      .mockResolvedValueOnce({ apiKey: 'fixture-key', models: [] })
+      .mockRejectedValueOnce(new Error('no_user_key'));
+    const loadModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(config()),
+      getUserKeyValues,
+    });
+    expect((await loadModels(userRequest('user-a')))['Personal Models']).toContain(
+      'personal-model',
+    );
+    expect((await loadModels(userRequest('user-a')))['Personal Models']).toEqual(['default-model']);
+    expect((await loadModels(userRequest('user-a')))['Personal Models']).toEqual(['default-model']);
+  });
+
+  it.each([null, new Date(0)])(
+    'rejects missing or expired credentials before reading encrypted values: %s',
+    async (expiresAt) => {
+      const getUserKeyValues = jest
+        .fn()
+        .mockResolvedValue({ apiKey: 'fixture-key', models: ['expired-model'] });
+      const fetchModels = jest.fn();
+      const loadModels = createLoadConfigModels({
+        getAppConfig: jest
+          .fn()
+          .mockResolvedValue(config({ models: { fetch: true, default: ['default-model'] } })),
+        getUserKeyValues,
+        getUserKeyExpiry: jest.fn().mockResolvedValue({ expiresAt }),
+        fetchModels,
+      });
+      expect((await loadModels(userRequest('user-a')))['Personal Models']).toEqual([
+        'default-model',
+      ]);
+      expect(getUserKeyValues).not.toHaveBeenCalled();
+      expect(fetchModels).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['never', new Date(Date.now() + 60_000)])(
+    'accepts valid credential expiry %s',
+    async (expiresAt) => {
+      const loadModels = createLoadConfigModels({
+        getAppConfig: jest.fn().mockResolvedValue(config()),
+        getUserKeyValues: jest
+          .fn()
+          .mockResolvedValue({ apiKey: 'fixture-key', models: ['personal-model'] }),
+        getUserKeyExpiry: jest.fn().mockResolvedValue({ expiresAt }),
+      });
+      expect((await loadModels(userRequest('user-a')))['Personal Models']).toEqual([
+        'default-model',
+        'personal-model',
+      ]);
+    },
+  );
+
+  it.each([
+    { apiKey: '', models: ['unauthorized-model'] },
+    { models: ['unauthorized-model'] },
+    { apiKey: 'fixture-key', models: 'malformed-model-list' },
+    { apiKey: 'fixture-key', models: ['invalid model'] },
+    { apiKey: 'fixture-key', models: ['x'.repeat(257)] },
+    { apiKey: 'fixture-key', models: Array.from({ length: 51 }, (_, i) => `model-${i}`) },
+  ])('ignores invalid personal model metadata %j', async (values) => {
+    const loadModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(config()),
+      getUserKeyValues: jest.fn().mockResolvedValue(values),
+    });
+    expect((await loadModels(userRequest('user-a')))['Personal Models']).toEqual(['default-model']);
+  });
+
+  it('ignores user models for a system-key endpoint even when its URL is user-provided', async () => {
+    const loadModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(
+        config({
+          apiKey: 'system-key',
+          baseURL: AuthType.USER_PROVIDED,
+          models: { fetch: true, default: ['default-model'] },
+        }),
+      ),
+      getUserKeyValues: jest.fn().mockResolvedValue({
+        apiKey: 'fixture-key',
+        baseURL: 'https://models.example.com/v1',
+        models: ['forbidden-model'],
+      }),
+      fetchModels: jest.fn().mockResolvedValue(['remote-model']),
+    });
+    expect((await loadModels(userRequest('user-a')))['Personal Models']).toEqual(['remote-model']);
+  });
+
+  it('normalizes duplicate personal model IDs and falls back to them when discovery fails', async () => {
+    const loadModels = createLoadConfigModels({
+      getAppConfig: jest.fn().mockResolvedValue(config({ models: { fetch: true, default: [] } })),
+      getUserKeyValues: jest.fn().mockResolvedValue({
+        apiKey: 'fixture-key',
+        models: [' vendor/model:latest ', 'vendor/model:latest'],
+      }),
+      fetchModels: jest.fn().mockRejectedValue(new Error('models endpoint unavailable')),
+    });
+    expect((await loadModels(userRequest('user-a')))['Personal Models']).toEqual([
+      'vendor/model:latest',
+    ]);
+  });
+});
 
 describe('createLoadConfigModels – user-provided baseURL header guard', () => {
   const fetchModels = jest.fn().mockResolvedValue([]);

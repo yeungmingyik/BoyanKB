@@ -16,6 +16,7 @@
 |---|---|
 | 需求与范围 | [PRD.md](PRD.md) |
 | 模块、接口、权限 | [architecture.md](docs/boyankb/architecture.md) |
+| 模型供应商、个人密钥 | [models.md](docs/boyankb/models.md) |
 | 飞书接入与同步 | [sync.md](docs/boyankb/sync.md) |
 | 环境与运维 | [deployment.md](docs/boyankb/deployment.md) |
 | 版本与上游更新 | [versions.md](docs/boyankb/versions.md) |

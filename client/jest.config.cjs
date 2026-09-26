@@ -2,6 +2,11 @@
 const { maxWorkers } = require('../config/jest.workers.cjs');
 
 module.exports = {
+  globals: {
+    __BOYANKB_VERSION__: require('fs')
+      .readFileSync(require('path').join(__dirname, '../VERSION'), 'utf8')
+      .trim(),
+  },
   roots: ['<rootDir>/src'],
   testEnvironment: 'jsdom',
   testEnvironmentOptions: {

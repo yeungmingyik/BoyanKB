@@ -15,7 +15,8 @@ jest.mock('~/cache', () => ({
 jest.mock('~/server/middleware/denyRequest', () => jest.fn(async () => undefined));
 
 const denyRequest = require('~/server/middleware/denyRequest');
-const { Conversation } = require('~/db/models');
+const { Conversation, Message } = require('~/db/models');
+const { logViolation } = require('~/cache');
 const validateConvoAccess = require('./convoAccess');
 
 const OWNER_ID = new mongoose.Types.ObjectId().toString();
@@ -96,6 +97,73 @@ describe('validateConvoAccess', () => {
     expect(next).not.toHaveBeenCalled();
     expect(denyRequest).toHaveBeenCalledTimes(1);
     expect(Object.prototype.hasOwnProperty.call(req, 'resolvedConversation')).toBe(false);
+  });
+
+  it.each([undefined, 'foreign-parent'])(
+    'rejects foreign knowledge conversation with parent %s without writing a denial message',
+    async (parentMessageId) => {
+      const req = createRequest(OTHER_ID, CONVERSATION_ID);
+      req.config = { config: { knowledge: { enabled: true } } };
+      req.body.parentMessageId = parentMessageId;
+      req.body.isContinued = parentMessageId != null;
+      const messageCount = await Message.countDocuments({ conversationId: CONVERSATION_ID });
+
+      await validateConvoAccess(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ code: 'KNOWLEDGE_CONVERSATION_ACCESS_DENIED' });
+      expect(next).not.toHaveBeenCalled();
+      expect(denyRequest).not.toHaveBeenCalled();
+      expect(logViolation).not.toHaveBeenCalled();
+      expect(mockCache.set).not.toHaveBeenCalled();
+      expect(req).not.toHaveProperty('resolvedConversation');
+      expect(await Message.countDocuments({ conversationId: CONVERSATION_ID })).toBe(messageCount);
+    },
+  );
+
+  it('allows the knowledge conversation owner to continue', async () => {
+    const req = createRequest(OWNER_ID, CONVERSATION_ID);
+    req.config = { config: { knowledge: { enabled: true } } };
+    req.body.parentMessageId = 'own-parent';
+    req.body.isContinued = true;
+
+    await validateConvoAccess(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(denyRequest).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+    expect(req.resolvedConversation.user).toBe(OWNER_ID);
+  });
+
+  it.each([
+    { conversationId: CONVERSATION_ID, parentMessageId: 'foreign-parent', isContinued: true },
+    { arg: { conversationId: CONVERSATION_ID, title: 'forged title' } },
+  ])('rejects a marked knowledge request before config loading: %j', async (body) => {
+    const req = { user: { id: OTHER_ID }, body };
+    res.locals = { knowledgeEnabled: true };
+    const messageCount = await Message.countDocuments({ conversationId: CONVERSATION_ID });
+
+    await validateConvoAccess(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ code: 'KNOWLEDGE_CONVERSATION_ACCESS_DENIED' });
+    expect(next).not.toHaveBeenCalled();
+    expect(denyRequest).not.toHaveBeenCalled();
+    expect(logViolation).not.toHaveBeenCalled();
+    expect(mockCache.set).not.toHaveBeenCalled();
+    expect(req).not.toHaveProperty('resolvedConversation');
+    expect(await Message.countDocuments({ conversationId: CONVERSATION_ID })).toBe(messageCount);
+  });
+
+  it('keeps the native denial when knowledge mode is disabled', async () => {
+    const req = createRequest(OTHER_ID, CONVERSATION_ID);
+    req.config = { config: { knowledge: { enabled: false } } };
+
+    await validateConvoAccess(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(denyRequest).toHaveBeenCalledTimes(1);
+    expect(res.status).not.toHaveBeenCalled();
   });
 
   it('does not wait for the access marker to be written before continuing', async () => {

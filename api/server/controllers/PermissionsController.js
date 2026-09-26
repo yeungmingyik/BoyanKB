@@ -30,6 +30,7 @@ const {
   searchEntraIdPrincipals,
 } = require('~/server/services/GraphApiService');
 const db = require('~/models');
+const knowledgeAccess = require('~/server/middleware/knowledgeAccess');
 const { invalidateCodeEnvironmentConfigCache } = require('~/server/services/Config');
 
 const matchesCurrentTenant = (principal, tenantId) => {
@@ -77,6 +78,15 @@ const updateResourcePermissions = async (req, res) => {
     const { id: userId } = req.user;
     const updatedList = Array.isArray(updated) ? updated : [];
     const removedList = Array.isArray(removed) ? removed : [];
+    const knowledgeError = await knowledgeAccess.validatePermissionUpdate({
+      resourceType,
+      resourceId,
+      updated: updatedList,
+      public: isPublic,
+    });
+    if (knowledgeError) {
+      return res.status(400).json({ code: knowledgeError });
+    }
     const insightsValidation = validateInsightsPermissionUpdates({
       resourceType,
       userRole: req.user.role,
@@ -178,6 +188,8 @@ const updateResourcePermissions = async (req, res) => {
       revokedPrincipals,
       grantedBy: userId,
     });
+
+    await knowledgeAccess.revokeSessions({ resourceType, resourceId, revoked: results.revoked });
 
     await auditInsightsPermissionChanges({
       req,

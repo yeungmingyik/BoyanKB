@@ -4,6 +4,7 @@ import { ErrorMessage } from '~/components/Auth/ErrorMessage';
 import { TranslationKeys, useLocalize } from '~/hooks';
 import SocialLoginRender from './SocialLoginRender';
 import { BlinkAnimation } from './BlinkAnimation';
+import { PRODUCT_NAME } from '~/common/product';
 import { Banner } from '../Banners';
 import Footer from './Footer';
 
@@ -64,11 +65,9 @@ function AuthLayout({
       <Banner />
       <BlinkAnimation active={isFetching}>
         <div className="mt-6 h-10 w-full bg-cover">
-          <img
-            src="assets/logo.svg"
-            className="h-full w-full object-contain"
-            alt={localize('com_ui_logo', { 0: startupConfig?.appTitle ?? 'LibreChat' })}
-          />
+          <div className="text-center text-2xl font-semibold text-text-primary">
+            {startupConfig?.appTitle || PRODUCT_NAME}
+          </div>
         </div>
       </BlinkAnimation>
       <DisplayError />

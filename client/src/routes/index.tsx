@@ -9,6 +9,7 @@ import {
   RequestPasswordReset,
 } from '~/components/Auth';
 import { MarketplaceProvider } from '~/components/Agents/MarketplaceContext';
+import KnowledgeAccessGate from '~/components/Auth/KnowledgeAccessGate';
 import AgentMarketplace from '~/components/Agents/Marketplace';
 import { OAuthSuccess, OAuthError } from '~/components/OAuth';
 import { AuthContextProvider } from '~/hooks/AuthContext';
@@ -125,7 +126,11 @@ export const router = createBrowserRouter(
         dashboardRoutes,
         {
           path: '/',
-          element: <Root />,
+          element: (
+            <KnowledgeAccessGate>
+              <Root />
+            </KnowledgeAccessGate>
+          ),
           children: [
             {
               index: true,

@@ -17,9 +17,11 @@ flowchart LR
     U[员工与授权伙伴浏览器] --> A[LibreChat API 与原生授权]
     A --> M
     A --> S
-    A --> C[企业知识 Agent]
+    A --> C[企业知识 Agent 授权与资料]
     C --> R
-    C --> L[已配置模型]
+    A --> K[统一知识检索上下文]
+    K --> R
+    K --> L[用户选定供应商与个人密钥]
 ```
 
 ## 账号与授权
@@ -38,7 +40,7 @@ flowchart LR
 
 不向 USER 角色整体授予知识 Agent VIEW，避免逐用户撤权后仍通过角色继承权限。管理员账号不用于伙伴登录。创建用户、授予 VIEW、撤销 VIEW 是明确的授权动作；邮箱域名本身不构成合作伙伴授权。
 
-系统入口开放前先建立并验证 ADMIN。禁止访客访问、公开注册、公开会话分享、USER 自建或再分享 Agent、用户上传入库、联网搜索及代码执行。只开放已配置的企业知识 Agent，直接模型入口和非知识工具不得形成旁路；同时校验服务端路由与界面入口。
+系统入口开放前先建立并验证 ADMIN。禁止访客访问、公开注册、公开会话分享、USER 自建或再分享持久化 Agent、用户上传入库、联网搜索及代码执行。原生各供应商模型选择、个人供应商密钥和临时会话保留，全部经过知识 VIEW 门禁；不得通过平台 API Key、其他 Agent 或工具绕开知识访问校验。
 
 目录、正文、附件、关键词搜索、语义检索、引用、会话读取、导出及下一轮问答必须经过：有效登录 → 原生封禁检查 → 企业 Agent VIEW → 资源归属和有效版本检查。管理同步额外要求 ADMIN。引用 ID 和文件 ID 不是授权凭证。
 
@@ -50,10 +52,11 @@ flowchart LR
 
 ## 模块落点
 
-以下为待实现目录，保留上游 workspace 结构。
+保留上游 workspace 结构。账号授权已落地，资料同步与检索模块按后续版本交付。
 
 | 模块 | 路径 | 职责 |
 |---|---|---|
+| 知识授权 | `packages/api/src/knowledge/access.ts` | 逐用户 VIEW、封禁接线、操作范围与撤权会话清理 |
 | 同步与发布 | `packages/api/src/knowledge/` | FeishuClient、同步任务、解析、快照、有效版本清单 |
 | MongoDB 模型 | `packages/data-schemas/src/` | 源、节点、版本、任务、审计；沿用现有模型工厂 |
 | 请求与响应契约 | `packages/data-provider/src/` | 知识 API 类型、客户端请求、配置 schema |
@@ -84,6 +87,7 @@ flowchart LR
 
 | 路由 | 权限 | 结果 |
 |---|---|---|
+| `GET /api/knowledge/access` | 登录并通过封禁检查 | 当前用户授权状态、知识 Agent 配置状态 |
 | `GET /api/knowledge/tree` | Agent VIEW | 目录、类型、可读状态；游标分页 |
 | `GET /api/knowledge/documents/:id` | Agent VIEW | 生效版本与阅读内容 |
 | `GET /api/knowledge/documents/:id/revisions/:revisionId` | Agent VIEW | 授权且未下线资料的被引用快照 |
@@ -93,11 +97,13 @@ flowchart LR
 | `POST /api/knowledge/sync-runs` | ADMIN | 202 和任务 ID；支持幂等键 |
 | `POST /api/knowledge/sync-runs/:id/retry` | ADMIN | 失败项重试任务 |
 
-知识问答继续使用原生 Agent 会话 API。错误使用稳定机器码；401 表示未登录，403 表示无 Agent 或管理权限，404 避免泄露无权资源是否存在，409 表示同步冲突，429 表示限流，503 表示依赖暂不可用。响应不返回飞书令牌、源地址中的 token 或存储内部地址给伙伴。
+知识问答复用原生各供应商会话与临时 Agent 调用链。已保存的知识 Agent 维护 ACL 与资料映射，不给伙伴 EDIT 以修改供应商。alpha.4 在原生模型执行前接入统一服务端检索，向用户选择的模型传递受控上下文；不依赖模型自行触发检索工具。错误使用稳定机器码；401 表示未登录，403 表示无 Agent 或管理权限，404 避免泄露无权资源是否存在，409 表示同步冲突，429 表示限流，503 表示依赖暂不可用。响应不返回飞书令牌、源地址中的 token 或存储内部地址给伙伴。
 
 ## 检索与回答
 
 同步产物映射到原生 `file_id`，作为企业知识 Agent 的 `file_search` 资源。复用原生文件服务、RAG API 与 pgvector，先用真实样本验证跨用户 Agent 文件检索和引用，再扩大覆盖。
+
+所有模型入口由共同的知识请求处理器计算检索上下文，再调用原生供应商适配器。禁止用户覆盖系统注入的资料范围；普通提示文本和模型选择不携带授权依据。模型密钥仍属于当前用户。公司模型服务通过伙伴专属网关密钥接入同一原生凭据路径，实施细节见 [models.md](models.md)。
 
 RAG API 的 owner/file 过滤不替代用户授权。调用方必须验证 Agent VIEW，并从服务端生效版本清单计算 `file_ids`；不得采信浏览器提交的 Agent、owner 或文件范围。RAG API 与向量库仅容器内部可达。
 

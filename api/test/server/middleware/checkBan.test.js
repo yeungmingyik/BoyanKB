@@ -304,30 +304,37 @@ describe('checkBan middleware', () => {
   });
 
   describe('active ban (positive timeLeft)', () => {
-    it('caches ban with correct TTL and returns 403', async () => {
-      const expiresAt = Date.now() + 3600000;
-      const banRecord = { expiresAt, type: 'ban', violation_count: 3 };
-      mockBanLogsGet.mockResolvedValueOnce(banRecord);
-      const next = jest.fn();
-      const req = createReq();
-      const res = createRes();
+    it.each(['ip', 'user'])(
+      'caches only the %s ban with correct TTL and returns 403',
+      async (type) => {
+        const expiresAt = Date.now() + 3600000;
+        const banRecord = { expiresAt, type: 'ban', violation_count: 3 };
+        mockBanLogsGet
+          .mockResolvedValueOnce(type === 'ip' ? banRecord : undefined)
+          .mockResolvedValueOnce(type === 'user' ? banRecord : undefined);
+        const next = jest.fn();
+        const req = createReq();
+        const res = createRes();
 
-      await checkBan(req, res, next);
+        await checkBan(req, res, next);
 
-      expect(next).not.toHaveBeenCalled();
-      expect(req.banned).toBe(true);
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(mockBanCacheSet).toHaveBeenCalledTimes(2);
+        expect(next).not.toHaveBeenCalled();
+        expect(req.banned).toBe(true);
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(mockBanCacheSet).toHaveBeenCalledTimes(1);
 
-      const [ipCacheCall, userCacheCall] = mockBanCacheSet.mock.calls;
-      expect(ipCacheCall[0]).toBe('192.168.1.1');
-      expect(ipCacheCall[1]).toBe(banRecord);
-      expect(ipCacheCall[2]).toBeGreaterThan(0);
-      expect(ipCacheCall[2]).toBeLessThanOrEqual(3600000);
-
-      expect(userCacheCall[0]).toBe('user123');
-      expect(userCacheCall[1]).toBe(banRecord);
-    });
+        const [[cacheKey, cachedBan, ttl]] = mockBanCacheSet.mock.calls;
+        expect(cacheKey).toBe(type === 'ip' ? '192.168.1.1' : 'user123');
+        expect(cachedBan).toBe(banRecord);
+        expect(ttl).toBeGreaterThan(0);
+        expect(ttl).toBeLessThanOrEqual(3600000);
+        expect(mockBanCacheSet).not.toHaveBeenCalledWith(
+          type === 'ip' ? 'user123' : '192.168.1.1',
+          expect.anything(),
+          expect.anything(),
+        );
+      },
+    );
 
     it('caches only IP when no userId is present', async () => {
       const expiresAt = Date.now() + 3600000;
@@ -477,23 +484,30 @@ describe('checkBan middleware', () => {
       }
     });
 
-    it('uses cache-prefixed keys for banCache.set on active ban', async () => {
-      const expiresAt = Date.now() + 3600000;
-      mockBanLogsGet.mockResolvedValueOnce({ expiresAt, type: 'ban' });
+    it.each(['ip', 'user'])(
+      'uses only the matching Redis cache key for an active %s ban',
+      async (type) => {
+        const expiresAt = Date.now() + 3600000;
+        const banRecord = { expiresAt, type: 'ban' };
+        mockBanLogsGet
+          .mockResolvedValueOnce(type === 'ip' ? banRecord : undefined)
+          .mockResolvedValueOnce(type === 'user' ? banRecord : undefined);
 
-      await checkBan(createReq(), createRes(), jest.fn());
+        await checkBan(createReq(), createRes(), jest.fn());
 
-      expect(mockBanCacheSet).toHaveBeenCalledWith(
-        'ban_cache:ip:192.168.1.1',
-        expect.any(Object),
-        expect.any(Number),
-      );
-      expect(mockBanCacheSet).toHaveBeenCalledWith(
-        'ban_cache:user:user123',
-        expect.any(Object),
-        expect.any(Number),
-      );
-    });
+        expect(mockBanCacheSet).toHaveBeenCalledTimes(1);
+        expect(mockBanCacheSet).toHaveBeenCalledWith(
+          type === 'ip' ? 'ban_cache:ip:192.168.1.1' : 'ban_cache:user:user123',
+          banRecord,
+          expect.any(Number),
+        );
+        expect(mockBanCacheSet).not.toHaveBeenCalledWith(
+          type === 'ip' ? 'ban_cache:user:user123' : 'ban_cache:ip:192.168.1.1',
+          expect.anything(),
+          expect.anything(),
+        );
+      },
+    );
   });
 
   describe('missing expiresAt guard (Finding 5)', () => {

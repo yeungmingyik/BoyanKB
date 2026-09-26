@@ -12,6 +12,7 @@ import {
 import type { TStartupConfig, TUser } from 'librechat-data-provider';
 import { cleanupTimestampedStorage } from '~/utils/timestamps';
 import useSpeechSettingsInit from './useSpeechSettingsInit';
+import { isKnowledgeRestricted } from '~/common/knowledge';
 import { useHasAccess, useCatalogReady } from '~/hooks';
 import { useMCPServersQuery } from '~/data-provider';
 import store from '~/store';
@@ -29,7 +30,7 @@ export default function useAppStartup({
     permission: Permissions.USE,
   });
 
-  useSpeechSettingsInit(!!user);
+  useSpeechSettingsInit(!!user && !isKnowledgeRestricted(startupConfig, user));
   /** Server metadata may warm after first paint because it powers lightweight
    * navigation affordances. Tool discovery stays owned by visible MCP consumers. */
   const mcpServersReady = useCatalogReady('mcpServers');

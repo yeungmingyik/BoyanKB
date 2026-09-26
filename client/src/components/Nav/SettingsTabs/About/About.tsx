@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import copy from 'copy-to-clipboard';
-import { Constants } from 'librechat-data-provider';
 import type { TStartupConfig } from 'librechat-data-provider';
 import CopyButton from '~/components/Messages/Content/CopyButton';
+import { PRODUCT_NAME, PRODUCT_VERSION } from '~/common/product';
 import { useGetStartupConfig } from '~/data-provider';
 import { useLocalize } from '~/hooks';
 
@@ -27,7 +27,7 @@ function buildDiagnosticsBlob(
   buildInfo: TStartupConfig['buildInfo'] | undefined,
 ): string {
   const lines: string[] = [
-    `LibreChat version: ${version}`,
+    `${PRODUCT_NAME} version: ${version}`,
     `Commit: ${buildInfo?.commit ?? UNKNOWN_PLACEHOLDER}`,
     `Branch: ${buildInfo?.branch ?? UNKNOWN_PLACEHOLDER}`,
     `Build date: ${formatBuildDate(buildInfo?.buildDate)}`,
@@ -52,7 +52,7 @@ function About() {
   const copyResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildInfo = startupConfig?.buildInfo;
-  const version: string = Constants.VERSION;
+  const version = PRODUCT_VERSION;
 
   const diagnosticsBlob = useMemo(
     () => buildDiagnosticsBlob(version, buildInfo),
@@ -99,9 +99,6 @@ function About() {
       </dl>
 
       <div className="mt-4 flex flex-col items-start gap-3 border-t border-border-light pt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <p className="min-w-0 flex-1 text-xs text-text-secondary">
-          {localize('com_nav_about_diagnostics_description')}
-        </p>
         <CopyButton
           isCopied={isCopied}
           onClick={handleCopy}

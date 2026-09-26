@@ -49,6 +49,11 @@ const QUERY_DEVTOOLS_CHUNK_MODULES = [
 
 export default defineConfig(({ command }) => ({
   base: '',
+  define: {
+    __BOYANKB_VERSION__: JSON.stringify(
+      fs.readFileSync(path.resolve(import.meta.dirname, '../VERSION'), 'utf8').trim(),
+    ),
+  },
   server: {
     allowedHosts:
       (process.env.VITE_ALLOWED_HOSTS && process.env.VITE_ALLOWED_HOSTS.split(',')) || [],
@@ -151,8 +156,8 @@ export default defineConfig(({ command }) => ({
       },
       includeAssets: [],
       manifest: {
-        name: 'LibreChat',
-        short_name: 'LibreChat',
+        name: 'BoyanKB',
+        short_name: 'BoyanKB',
         display: 'standalone',
         background_color: '#000000',
         theme_color: '#009688',

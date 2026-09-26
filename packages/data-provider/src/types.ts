@@ -661,6 +661,7 @@ export type TConfig = {
   modelDisplayLabel?: string;
   userProvide?: boolean | null;
   userProvideURL?: boolean | null;
+  userProvideModels?: boolean;
   userProvideAccessKeyId?: boolean;
   userProvideSecretAccessKey?: boolean;
   userProvideSessionToken?: boolean;

@@ -19,6 +19,9 @@ const streamTickAtom = atom<number>({ key: 'conversations-section-stream-tick', 
 
 const TEST_TIMEOUT = 30_000;
 
+let mockKnowledgeEnabled = false;
+let mockUserRole = 'USER';
+
 const mockUseFavorites = jest.fn(() => ({
   favorites: [] as unknown[],
   reorderFavorites: jest.fn(),
@@ -68,7 +71,7 @@ jest.mock('~/hooks', () => ({
   __esModule: true,
   useLocalize: () => (key: string) => key,
   useHasAccess: () => true,
-  useAuthContext: () => ({ isAuthenticated: true }),
+  useAuthContext: () => ({ isAuthenticated: true, user: { role: mockUserRole } }),
   useLocalStorage: () => [true, mockSetChatsExpanded],
   useNavScrolling: () => ({ moveToTop: mockMoveToTop }),
   useFavorites: () => mockUseFavorites(),
@@ -83,7 +86,9 @@ jest.mock('~/data-provider', () => ({
   usePinnedConversationsQuery: () => mockPinnedResult,
   useTitleGeneration: () => mockUseTitleGeneration(),
   useGetEndpointsQuery: () => ({ data: {}, isLoading: false }),
-  useGetStartupConfig: () => ({ data: { modelSpecs: { list: [] } } }),
+  useGetStartupConfig: () => ({
+    data: { modelSpecs: { list: [] }, knowledge: { enabled: mockKnowledgeEnabled } },
+  }),
   useGetConversationTags: () => mockUseGetConversationTags(),
 }));
 
@@ -284,5 +289,25 @@ describe('ConversationsSection shared scroll surface', () => {
     });
 
     expect(surface!.scrollTop).toBe(0);
+  });
+});
+
+describe('ConversationsSection knowledge access', () => {
+  afterEach(() => {
+    mockKnowledgeEnabled = false;
+    mockUserRole = 'USER';
+  });
+
+  it('does not mount projects for knowledge users', () => {
+    mockKnowledgeEnabled = true;
+    const view = renderSection();
+    expect(view.queryByTestId('projects-stub')).not.toBeInTheDocument();
+    expect(view.getByTestId('conversations-stub')).toBeInTheDocument();
+  });
+
+  it('preserves projects for administrators', () => {
+    mockKnowledgeEnabled = true;
+    mockUserRole = 'ADMIN';
+    expect(renderSection().getByTestId('projects-stub')).toBeInTheDocument();
   });
 });

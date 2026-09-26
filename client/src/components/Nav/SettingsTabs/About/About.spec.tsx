@@ -1,8 +1,8 @@
 import React from 'react';
 import userEvent from '@testing-library/user-event';
-import { Constants } from 'librechat-data-provider';
 import { act, render, screen } from '@testing-library/react';
 import type { TStartupConfig } from 'librechat-data-provider';
+import { PRODUCT_NAME, PRODUCT_VERSION } from '~/common/product';
 import About from './About';
 
 const mockCopy = jest.fn<boolean, unknown[]>();
@@ -38,7 +38,7 @@ describe('About', () => {
     it('renders version, commit (short), branch, and build date when buildInfo is populated', () => {
       render(<About />);
 
-      expect(screen.getByText(Constants.VERSION as string)).toBeInTheDocument();
+      expect(screen.getByText(PRODUCT_VERSION)).toBeInTheDocument();
       expect(screen.getByText('abcdef1')).toBeInTheDocument();
       expect(screen.getByText('dev')).toBeInTheDocument();
       expect(screen.getByText('2026-04-20 12:00:00 UTC')).toBeInTheDocument();
@@ -48,7 +48,6 @@ describe('About', () => {
       mockUseGetStartupConfig.mockReturnValue({ data: {} });
       render(<About />);
 
-      // version still populated from Constants.VERSION; the other three rows fall back to placeholder
       const placeholders = screen.getAllByText('—');
       expect(placeholders.length).toBeGreaterThanOrEqual(3);
     });
@@ -80,7 +79,7 @@ describe('About', () => {
       expect(mockCopy).toHaveBeenCalledTimes(1);
       const [blob, options] = mockCopy.mock.calls[0] as [string, { format: string }];
       expect(options).toEqual({ format: 'text/plain' });
-      expect(blob).toContain(`LibreChat version: ${Constants.VERSION}`);
+      expect(blob).toContain(`${PRODUCT_NAME} version: ${PRODUCT_VERSION}`);
       expect(blob).toContain(`Commit: ${populatedBuildInfo.commit}`);
       expect(blob).toContain(`Branch: ${populatedBuildInfo.branch}`);
       expect(blob).toContain('Build date: 2026-04-20 12:00:00 UTC');

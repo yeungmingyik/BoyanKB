@@ -6,21 +6,23 @@ import type { InfiniteQueryObserverResult } from '@tanstack/react-query';
 import type { ConversationListResponse } from 'librechat-data-provider';
 import type { List } from 'react-virtualized';
 import {
+  useConversationsInfiniteQuery,
+  usePinnedConversationsQuery,
+  useTitleGeneration,
+  useGetStartupConfig,
+} from '~/data-provider';
+import {
   chatFilterTagsAtom,
   chatSortAtom,
   isArchivedChatViewAtom,
 } from '~/components/Conversations/chatFilters';
-import {
-  useConversationsInfiniteQuery,
-  usePinnedConversationsQuery,
-  useTitleGeneration,
-} from '~/data-provider';
 import { useLocalize, useAuthContext, useLocalStorage, useNavScrolling } from '~/hooks';
 import ProjectsSection from '~/components/Conversations/ProjectsSection';
 import ChatFilterMenu from '~/components/Conversations/ChatFilterMenu';
 import PinnedSection from '~/components/Conversations/PinnedSection';
 import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
 import { Conversations } from '~/components/Conversations';
+import { isKnowledgeRestricted } from '~/common/knowledge';
 import { collectPinnedConversations } from '~/utils';
 import SearchBar from '~/components/Nav/SearchBar';
 import store from '~/store';
@@ -31,7 +33,9 @@ const ConversationsSection = memo(() => {
   const localize = useLocalize();
   const isSmallScreen = useMediaQuery('(max-width: 768px)');
   const { setSidebarOpen } = useSidebarToggle();
-  const { isAuthenticated } = useAuthContext();
+  const { isAuthenticated, user } = useAuthContext();
+  const { data: startupConfig } = useGetStartupConfig();
+  const knowledgeRestricted = isKnowledgeRestricted(startupConfig, user);
   useTitleGeneration(isAuthenticated);
 
   const [isChatsExpanded, setIsChatsExpanded] = useLocalStorage('chatsExpanded', true);
@@ -195,7 +199,7 @@ const ConversationsSection = memo(() => {
         {/* `min-h-full` keeps the sections filling a tall sidebar, so the chats
             list still claims the space below them when there is little to show. */}
         <div ref={setScrollContent} className="flex min-h-full flex-col">
-          {!search.query && (
+          {!search.query && !knowledgeRestricted && (
             <ProjectsSection toggleNav={toggleNav} isAuthenticated={isAuthenticated} />
           )}
           {!search.query && (

@@ -79,6 +79,9 @@ const { jwtLogin, ldapLogin, passportLogin } = require('~/strategies');
 const { startExpiredFileSweep } = require('./services/Files/process');
 const { checkMigrations } = require('./services/start/migration');
 const optionalJwtAuth = require('./middleware/optionalJwtAuth');
+const requireJwtAuth = require('./middleware/requireJwtAuth');
+const checkBan = require('./middleware/checkBan');
+const knowledgeAccess = require('./middleware/knowledgeAccess');
 const initializeMCPs = require('./services/initializeMCPs');
 const { configureSubagentTaskRouting } = require('./services/Endpoints/agents/subagentThreadStore');
 const configureSocialLogins = require('./socialLogins');
@@ -389,6 +392,7 @@ const startServer = async () => {
 
   /* Per-request capability cache — must be registered before any route that calls hasCapability */
   app.use(capabilityContextMiddleware);
+  app.use('/api', knowledgeAccess.createBoundary(requireJwtAuth, checkBan));
 
   /* Pre-auth tenant context for unauthenticated routes that need tenant scoping.
    * The reverse proxy / auth gateway sets `X-Tenant-Id` header for multi-tenant deployments. */
@@ -430,6 +434,7 @@ const startServer = async () => {
     '/images/',
     createValidateImageRequest({
       secureImageLinks: appConfig.secureImageLinks,
+      knowledgeEnabled: appConfig.config?.knowledge?.enabled,
     }),
     routes.staticRoute,
   );

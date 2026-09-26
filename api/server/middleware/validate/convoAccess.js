@@ -69,6 +69,9 @@ const validateConvoAccess = async (req, res, next) => {
     }
 
     if (conversation.user !== userId) {
+      if (res.locals?.knowledgeEnabled === true || req.config?.config?.knowledge?.enabled) {
+        return res.status(403).json({ code: 'KNOWLEDGE_CONVERSATION_ACCESS_DENIED' });
+      }
       const errorMessage = {
         type,
         error: 'User not authorized for this conversation',

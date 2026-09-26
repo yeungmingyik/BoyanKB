@@ -70,6 +70,7 @@ jest.mock('~/data-provider', () => ({
 }));
 
 jest.mock('~/hooks', () => ({
+  useAuthContext: () => ({ user: { role: 'USER' } }),
   useHasAccess: () => true,
   useLocalize: () => (key: string) => key,
   useNavigateToConvo: () => ({ navigateToConvo: jest.fn() }),

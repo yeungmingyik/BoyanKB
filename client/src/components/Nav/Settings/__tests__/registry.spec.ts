@@ -2,6 +2,7 @@ import { isValidElementType } from 'react-is';
 import { SettingsTabValues } from 'librechat-data-provider';
 import type { SettingsContextValue } from '../types';
 import en from '~/locales/en/translation.json';
+import { filterSettings } from '../search';
 import { registry } from '../registry';
 import { TABS } from '../types';
 
@@ -99,5 +100,21 @@ describe('settings registry', () => {
     it('hides the setting when stateful code sessions are unavailable', () => {
       expect(entry?.show?.({ ...settingsContext, hasStatefulCodeSessions: false })).toBe(false);
     });
+  });
+});
+
+describe('knowledge settings', () => {
+  const ctx = { ...settingsContext, knowledgeRestricted: true, hasUserProvidedEndpoints: true };
+
+  it('hides speech and file controls from settings and search', () => {
+    const entries = filterSettings(registry, '', ctx, (key) => key).map(({ entry }) => entry);
+    expect(entries.some((entry) => entry.tab === SettingsTabValues.SPEECH)).toBe(false);
+    expect(entries.some((entry) => entry.id === 'manageFiles')).toBe(false);
+    expect(TABS.find((tab) => tab.id === SettingsTabValues.SPEECH)?.show?.(ctx)).toBe(false);
+  });
+
+  it('preserves personal provider credentials', () => {
+    const results = filterSettings(registry, 'provider', ctx, (key) => key);
+    expect(results.map(({ entry }) => entry.id)).toContain('providerApiKeys');
   });
 });

@@ -1,0 +1,79 @@
+services:
+  app:
+    image: boyankb:${BOYANKB_IMAGE_TAG:-local}
+    pull_policy: never
+    build:
+      context: ../..
+      dockerfile: deploy/boyankb/Dockerfile
+      args:
+        BUILD_COMMIT: ${BOYANKB_BUILD_COMMIT:-}
+        BUILD_BRANCH: ${BOYANKB_BUILD_BRANCH:-}
+        BUILD_DATE: ${BOYANKB_BUILD_DATE:-}
+        PRODUCT_VERSION: ${BOYANKB_PRODUCT_VERSION:-}
+    init: true
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${BOYANKB_HTTP_PORT:-3080}:3080'
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    env_file:
+      - ${BOYANKB_STATE_DIR:?}/app.env
+    volumes:
+      - type: bind
+        source: ${BOYANKB_STATE_DIR:?}/librechat.yaml
+        target: /app/librechat.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - app-data:/app/data
+      - app-logs:/app/logs
+      - app-uploads:/app/uploads
+      - app-images:/app/client/public/images
+    healthcheck:
+      test: ['CMD', 'node', 'deploy/boyankb/healthcheck.mjs']
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 45s
+  mongodb:
+    image: mongo:8.0.20@sha256:098862b1339f031900ca66cf8fef799e616d6324fa41b9a263f2ec899552c1ef
+    restart: unless-stopped
+    env_file:
+      - ${BOYANKB_STATE_DIR:?}/mongo.env
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+      - type: bind
+        source: ./mongo-init.js
+        target: /docker-entrypoint-initdb.d/boyankb.js
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "const admin = db.getSiblingDB('admin'); if (!admin.auth(process.env.MONGO_INITDB_ROOT_USERNAME, process.env.MONGO_INITDB_ROOT_PASSWORD).ok || !admin.runCommand({ ping: 1 }).ok) quit(1);"
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 45s
+
+volumes:
+  mongodb-data:
+  mongodb-config:
+  app-data:
+  app-logs:
+  app-uploads:
+  app-images:

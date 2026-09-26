@@ -1,4 +1,5 @@
 import { TStartupConfig } from 'librechat-data-provider';
+import { PRODUCT_NAME, PRODUCT_VERSION } from '~/common/product';
 import { useLocalize } from '~/hooks';
 
 function Footer({ startupConfig }: { startupConfig: TStartupConfig | null | undefined }) {
@@ -35,6 +36,7 @@ function Footer({ startupConfig }: { startupConfig: TStartupConfig | null | unde
 
   return (
     <div className="align-end m-4 flex justify-center gap-2" role="contentinfo">
+      <span className="text-sm text-text-secondary">{`${PRODUCT_NAME} ${PRODUCT_VERSION}`}</span>
       {privacyPolicyRender}
       {privacyPolicyRender && termsOfServiceRender && (
         <div className="border-r-[1px] border-border-medium" />

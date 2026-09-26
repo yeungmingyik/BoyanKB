@@ -68,7 +68,7 @@ const connect = require('./connect');
   const errorMessage = {
     type: ViolationTypes.CONCURRENT,
     violation_count: 20,
-    user_id: user._id,
+    user_id: user._id.toString(),
     prev_count: 0,
     duration: duration,
   };

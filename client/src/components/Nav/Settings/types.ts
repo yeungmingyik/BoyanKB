@@ -38,6 +38,7 @@ export type SectionId =
   | 'about';
 
 export interface SettingsContextValue {
+  knowledgeRestricted?: boolean;
   balanceEnabled: boolean;
   hasAnyPersonalizationFeature: boolean;
   hasMemoryOptOut: boolean;
@@ -117,6 +118,7 @@ export const TABS: TabMeta[] = [
   },
   {
     id: SettingsTabValues.SPEECH,
+    show: (ctx) => !ctx.knowledgeRestricted,
     labelKey: 'com_nav_setting_speech',
     icon: createElement(SpeechIcon, { className: 'icon-sm' }),
     sections: [

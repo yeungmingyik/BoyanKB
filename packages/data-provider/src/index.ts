@@ -60,6 +60,7 @@ export {
   buildLoginRedirectUrl,
 } from './api-endpoints';
 export { default as request } from './request';
+export type { TKnowledgeAccessResponse } from './types/knowledge';
 export { dataService };
 import * as dataService from './data-service';
 /* provider identity */

@@ -61,6 +61,7 @@ export function loadCustomEndpointsConfig(
         type: EModelEndpoint.custom,
         userProvide: isUserProvided(resolvedApiKey) || userProvideURL,
         userProvideURL,
+        userProvideModels: isUserProvided(resolvedApiKey),
         customParams: resolvedCustomParams,
         modelDisplayLabel,
         iconURL,

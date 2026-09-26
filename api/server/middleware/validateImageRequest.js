@@ -1,10 +1,14 @@
 const cookie = require('cookie');
 const {
   createImageAuthorizationMiddleware,
+  createKnowledgeImageAuthorizer,
   getAppConfigOptionsFromUser,
   getBasePath,
   isEnabled,
 } = require('@librechat/api');
+const { runAsSystem } = require('@librechat/data-schemas');
+const checkBan = require('./checkBan');
+const knowledgeAccess = require('./knowledgeAccess');
 const {
   findSession,
   getAgent,
@@ -54,6 +58,13 @@ function createValidateImageRequest(config = {}) {
     hasCapabilityForPrincipals,
     hasPermission,
   };
+  if (config.knowledgeEnabled) {
+    deps.authorizeViewer = createKnowledgeImageAuthorizer({
+      getUser: (userId) => runAsSystem(() => getUserById(userId)),
+      checkBan,
+      authorize: knowledgeAccess.authorize,
+    });
+  }
   if (resolveDynamicConfig) {
     deps.getImageConfig = async ({ userId, user }) => {
       const appConfig = await getAppConfig(

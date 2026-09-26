@@ -1734,7 +1734,7 @@ const getListAgentsHandler = async (req, res) => {
     }
     const canReturnSkillConfig = hasEditBit(requiredPermission);
     // Base filter
-    const filter = {};
+    const filter = { ...res.locals.knowledgeAgentFilter };
 
     // Handle category filter - only apply if category is defined
     if (category !== undefined && category.trim() !== '') {

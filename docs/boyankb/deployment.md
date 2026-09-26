@@ -1,112 +1,145 @@
 # 部署与运维
 
-## 部署目标
+## 环境
 
-首期为本地 PC 上运行的 Web 应用，浏览器访问。应用、数据库与资料副本保存在本机；飞书同步需要联网，模型使用已配置的外部 API 或经验证的本地服务。本地部署不等同于模型完全离线。
+| 项目       | 要求                                            |
+| ---------- | ----------------------------------------------- |
+| 操作系统   | Windows PC，Docker Desktop 使用 WSL2 Linux 容器 |
+| 命令环境   | PowerShell 7+、Git、Docker Compose V2           |
+| 构建运行时 | 镜像内 Node.js `24.16.0`、npm `11.13.0`         |
+| 数据库     | MongoDB `8.0.20`，仅容器网络可达                |
+| 访问地址   | `http://localhost:3080`                         |
+| 模型连接   | 用户 API Key；启动与账号管理无需模型服务        |
 
-远程伙伴入口尚未选定。开发阶段绑定 localhost；试点前选定 VPN 或 HTTPS 域名并实机验收。仅通过 localhost 不能认定远程伙伴已可用。
+所有命令在仓库根目录执行。默认 Compose 项目为 `boyankb-librechat`，命名卷独立于其他项目。应用仅监听宿主 `127.0.0.1`。
 
-## 环境基线
-
-| 项目 | 要求 |
-|---|---|
-| 容器 | Docker Desktop、WSL2 Linux 容器、Compose V2 |
-| 主机命令环境 | PowerShell 7+ |
-| 源码运行时 | Node.js `24.16.0`、npm `11.13.0`，以固定上游版本为准 |
-| 数据库 | MongoDB、PostgreSQL + pgvector |
-| 文件检索 | 与基线兼容并固定版本的 RAG API |
-| 可选服务 | 原生消息搜索需要 Meilisearch；邮件邀请需要 SMTP |
-| 初始容量预算 | 16 GB 主机内存可做小规模试点，预留至少 8 GB 给容器；以实测调整 |
-| 模型配置 | 问答模型与 embedding 模型独立配置，不预设付费套餐 |
-
-2026-09-26 开发机检查：约 16 GB 内存、8 个逻辑处理器、D 盘约 236 GiB 可用，PowerShell `7.6.4`，Node.js `24.14.1`，npm `11.11.0`，Docker Server `29.8.0`。主机 Node/npm 尚未与基线对齐；可在固定容器镜像中构建。以上为环境检查，不是容量压测或应用启动结果。
-
-## 服务与数据
-
-| 服务 | 数据 | 首期暴露方式 |
-|---|---|---|
-| BoyanKB API + Web | 配置、应用日志 | localhost 开发入口；试点经选定入口 |
-| 同步 Worker | 同步租约、游标 | 不暴露端口 |
-| MongoDB | 账号、会话、ACL、目录、版本与任务 | 仅内部网络，独立凭据 |
-| PostgreSQL / pgvector | 文件向量索引 | 仅内部网络，独立凭据 |
-| RAG API | 解析与检索 | 仅内部网络 |
-| 快照与素材卷 | 原文、文件、图片 | 仅通过应用鉴权路由读取 |
-| Meilisearch | 原生消息搜索索引 | 启用时仅内部网络 |
-
-`0.1.0-alpha.2` 交付独立 `deploy/boyankb/compose.yaml`、无秘密的配置样例和启动入口。本阶段不创建指向未实现服务的 Compose。
-
-应用镜像从当前 BoyanKB 源码构建，使用产品版本与提交号标记；依赖镜像固定版本和发布时记录的 digest，不使用 `latest`。持久化采用命名卷，秘密与数据库使用不同存储位置。
-
-上游 `docker-compose.yml` 包含动态镜像、MongoDB `--noauth`、默认数据库凭据及对宿主开放的管理面板端口，不直接作为伙伴服务部署配置。首期不启用独立 admin-panel，使用原生账号命令和 Agent 分享界面。
-
-## 账号初始化
-
-设置本地登录开启、公开注册关闭、社交注册关闭。开放网络入口前创建 ADMIN 并验证其身份，随后创建企业知识 Agent。
-
-无 SMTP 时使用原生命令的交互模式；不把密码放入命令行、终端历史或仓库。
+## 初始化与启动
 
 ```powershell
-npm run create-user
+pwsh -NoProfile -File scripts/boyankb/init-local.ps1
+pwsh -NoProfile -File scripts/boyankb/start-local.ps1
 ```
 
-具备 SMTP 后可使用：
+`start-local.ps1` 自动初始化配置、构建当前源码镜像、启动服务并等待健康检查。镜像标签为 `boyankb:<产品版本>-<提交号前12位>`。Node.js 和 MongoDB 基础镜像固定版本及 digest。
+
+仅启动已构建镜像：
 
 ```powershell
-npm run invite-user
+pwsh -NoProfile -File scripts/boyankb/start-local.ps1 -NoBuild
 ```
 
-上述命令要求已安装依赖并连接正确数据库；在容器部署中通过应用容器运行对应命令。邀请邮件属于实际外发，由管理员按业务授权发起。本轮不发送邀请、不创建真实伙伴账号。
+独立实例：
 
-新 USER 默认不获得知识权限；由管理员在原生分享界面授予企业知识 Agent VIEW。移除 VIEW 撤销知识访问；限时封禁使用原生 `ban-user`，不能替代永久撤权。启用 `BAN_VIOLATIONS=true`，校验 `BAN_INTERVAL` 与原生命令触发条件兼容，封禁时长必须为有效正数。用户授权路径与全部资源拦截按验收清单验证。
+```powershell
+pwsh -NoProfile -File scripts/boyankb/start-local.ps1 -Name boyankb-librechat-test -Port 3081
+```
 
-## 源与模型连接
+实例名称以 `boyankb-librechat` 开头。`-Port` 仅首次初始化生效；后续初始化保留既有配置与凭据。
 
-部署时配置实际飞书 Wiki URL 与期望空间，先验证整空间可见性。开发盘点的 user 身份不自动等于长期同步服务身份。
+## 本机配置
 
-模型供应商、模型 ID、API 地址和 embedding 维度由运行环境配置。同步内容用于建立索引，命中的片段可能随问题发送给配置的模型服务；模型选型需确认资料使用边界。更换 embedding 模型必须重建索引，不能混用不同向量空间。
+| 文件                                      | 内容                           |
+| ----------------------------------------- | ------------------------------ |
+| `.local/boyankb-librechat/.env`           | 本机状态路径与端口             |
+| `.local/boyankb-librechat/app.env`        | 应用凭据、账号策略、供应商配置 |
+| `.local/boyankb-librechat/mongo.env`      | MongoDB root 与应用用户凭据    |
+| `.local/boyankb-librechat/librechat.yaml` | 知识入口、界面与模型端点       |
+| `.local/boyankb-librechat/image-tag`      | 实例使用的应用镜像标签         |
 
-首期不安装本地大模型作为默认依赖。需要完全离线推理时另行验收硬件、模型质量和授权；飞书实时同步仍需网络。
+初始化分别生成 MongoDB root 密码、应用密码、JWT 密钥、刷新密钥、加密密钥与监控密钥。应用数据库用户仅具有 `BoyanKB` 数据库的 `readWrite` 权限。私有配置限制为当前操作系统用户与 SYSTEM 访问，并由 Git 忽略。
 
-## 运行门槛
+配置样例位于 `deploy/boyankb/app.env.example` 和 `deploy/boyankb/librechat.yaml`。修改本机配置后执行 `start-local.ps1 -NoBuild` 应用环境变量；修改 YAML 后需重启应用容器。
 
-- 数据库、模型与飞书连接分别提供健康状态；失败不在界面输出密钥或堆栈。
-- PC 重启后容器自动恢复，账号、会话、原文和索引持续可用；部署期间禁止休眠。
-- 健康检查包含 Web/API 可达、数据库连接、资料存储可写和 Worker 心跳；模型超时与飞书失联单独降级。
-- 应用依赖失败时返回明确状态，不把无检索依据的模型生成作为知识答案。
-- 仅持有相关权限的管理员能看到同步配置和运行状态；伙伴看到操作结果，不显示基础设施信息。
-- 每次部署记录产品版本、源码提交、镜像 digest、数据 schema 版本、解析器及 embedding 版本。
+修改端口时同步更新 `.env` 的 `BOYANKB_HTTP_PORT` 和 `app.env` 的 `DOMAIN_CLIENT`、`DOMAIN_SERVER`。MongoDB 已初始化后，修改环境文件中的密码不会修改数据库用户密码。
 
-## 备份与恢复
+## 管理员与伙伴账号
 
-正式版初始目标：数据 RPO 不超过 24 小时，恢复 RTO 不超过 2 小时；均需演练证明。
+创建首个本地账号：
 
-每天自动生成加密备份，保留最近 7 个日备份和 4 个周备份，至少一份位于另一块磁盘或受控存储。秘密材料独立加密保管，不与公开代码或普通日志混存。
+```powershell
+pwsh -NoProfile -File scripts/boyankb/manage-users.ps1 -Action create-user
+```
 
-一致性备份过程：进入维护模式、停止新同步与会话写入、等待任务结束或保存断点，备份 MongoDB、PostgreSQL 与文件卷，生成校验清单后恢复写入。应用版本与配置摘要随备份保存。
+首个账号自动获得 ADMIN，后续账号为 USER。命令交互输入邮箱、名称、用户名和密码；邮箱验证选择 `Y`。密码不放入命令行参数或 Git。
 
-恢复到隔离空环境，验证管理员登录、伙伴授权、私有会话、资料快照、有效版本清单和检索，再切换访问入口。只成功生成压缩包不算恢复验收。恢复旧备份时，原备份之后撤销的账号权限必须重新对账，再开放伙伴访问。
+登录管理员账号，在原生 Agent 界面创建企业知识 Agent，然后设置其 Agent ID：
 
-## 更新与回滚
+```powershell
+pwsh -NoProfile -File scripts/boyankb/configure-agent.ps1 -AgentId agent_example
+```
 
-先在隔离环境验证版本与迁移；上线前备份、暂停写入，再应用迁移并替换镜像。数据库迁移必须明确兼容的最低应用版本。
+该命令更新本机 `BOYANKB_KNOWLEDGE_AGENT_ID` 并重新创建应用容器。使用 `-NoRestart` 只保存配置。Agent ID 为 `agent_...` 标识，不是 MongoDB ObjectId。
 
-代码可回滚时切回上一镜像；迁移不可逆时恢复匹配版本的完整备份。不使用单独回滚镜像掩盖数据不兼容。发布后执行登录、资料、撤权、检索与同步冒烟验证。
+通过原生分享界面逐账号授予知识 Agent 的 VIEW 权限。USER 新账号默认没有知识访问权限。移除 VIEW 后，知识请求拒绝访问并清除该用户刷新会话；重新授予 VIEW 恢复访问。
 
-## 云端迁移
+原生账号命令：
 
-保持同一容器与配置契约。将数据库迁至云主机或托管服务、BlobStore 切到对象存储，配置 HTTPS 域名和秘密管理。初期云部署无需 Kubernetes。
+```powershell
+pwsh -NoProfile -File scripts/boyankb/manage-users.ps1 -Action list-users
+pwsh -NoProfile -File scripts/boyankb/manage-users.ps1 -Action reset-password
+pwsh -NoProfile -File scripts/boyankb/manage-users.ps1 -Action ban-user
+```
 
-迁移过程为全量备份恢复、核对数量与摘要、暂停写入、迁移最终增量、更新入口、完整授权与资料验收。迁移前后仅一个 Worker 可写同一源，保留旧环境回滚窗口；不得同时运行两个未协调的同步器。
+封禁交互输入正数分钟。部署固定 `BAN_VIOLATIONS=true`、`BAN_INTERVAL=20`，默认违规封禁期限为两小时。永久撤销知识权限使用移除 VIEW。
 
-## 待实施输入
+配置 SMTP 后使用原生邀请：
 
-| 输入 | 默认推进方式 | 必须确定的阶段 |
-|---|---|---|
-| 伙伴远程入口 | localhost 开发 | 伙伴试点前确定 VPN 或 HTTPS |
-| SMTP | 先使用 create-user | 启用邮件邀请前 |
-| 嵌入服务、RAG 版本及额度 | 配置接口与隔离测试样本 | alpha.3 文件入库前 |
-| 问答模型供应商及额度 | 配置接口与隔离测试样本 | alpha.4 问答联调前 |
-| 飞书服务身份 | 已验证个人读取只用于盘点 | 正式同步前 |
-| 备份目的地 | 实现可配置路径 | 本地正式版前 |
+```powershell
+pwsh -NoProfile -File scripts/boyankb/manage-users.ps1 -Action invite-user
+```
 
-这些输入不阻塞源码与产品规划；依赖真实服务的验收不得以占位配置宣称通过。
+公开注册与社交注册关闭，有效且邮箱匹配的邀请可完成注册。邀请注册不自动获得知识权限。`invite-user` 会发送邮件。
+
+## 模型与密钥
+
+| 端点                      | 密钥与地址                               | 模型列表                            |
+| ------------------------- | ---------------------------------------- | ----------------------------------- |
+| OpenAI、Anthropic、Google | 用户通过原生设置保存 API Key             | 原生模型列表                        |
+| DeepSeek                  | 用户 API Key，`https://api.deepseek.com` | `deepseek-flash`、`deepseek-v4-pro` |
+| OpenAI Compatible         | 用户 API Key 与 API 地址                 | 使用该用户凭据获取 `/models`        |
+| Anthropic Compatible      | 用户 API Key 与 API 地址                 | 用户在原生密钥对话框填写模型 ID     |
+
+兼容端点的默认模型在本机 YAML 的 `models.default` 设置。用户可在原生密钥对话框填写个人模型 ID，每行一个；个人模型目录不对其他用户共享。默认选项不保证服务商支持。用户提供的地址经过上游 URL 检查。用户密钥和个人模型配置加密存储于 MongoDB，凭据 API 不返回明文。
+
+公司提供模型服务时，为伙伴分别发放专属网关凭据，通过相应兼容端点保存。不把一个公司公共密钥配置为全体账号默认可用的服务端密钥。
+
+## 状态与停止
+
+```powershell
+docker compose --project-name boyankb-librechat --env-file .local/boyankb-librechat/.env --file deploy/boyankb/compose.yaml ps
+docker compose --project-name boyankb-librechat --env-file .local/boyankb-librechat/.env --file deploy/boyankb/compose.yaml logs --tail 100 app
+pwsh -NoProfile -File scripts/boyankb/stop-local.ps1
+```
+
+应用健康检查包含 `/readyz`、MongoDB ping 和数据、日志、上传卷的写入检查。数据库健康检查使用认证后的 ping。启动失败返回非零退出码；既有容器与数据卷保留。
+
+容器配置 `restart: unless-stopped`。手动停止后通过启动脚本恢复。Docker Desktop 未运行时服务不可用。
+
+## 隔离验收
+
+隔离集成验证：
+
+```powershell
+pwsh -NoProfile -File scripts/boyankb/test-local-access.ps1
+```
+
+验证使用 `boyankb-librechat-test` 实例、端口 `3081` 和 `@boyankb-acceptance.invalid` 合成账号，拒绝含其他邮箱账号的数据库。私有测试账号和结果保存至 `.local/boyankb-librechat-test`。聊天链路通过容器内 OpenAI 协议测试服务验证，不调用真实模型或发送邮件。
+
+## 数据与备份
+
+| 命名卷后缀                       | 内容                                       |
+| -------------------------------- | ------------------------------------------ |
+| `mongodb-data`、`mongodb-config` | 用户、会话、授权、加密密钥数据与数据库配置 |
+| `app-data`                       | 应用持久数据                               |
+| `app-uploads`、`app-images`      | 上传与图片                                 |
+| `app-logs`                       | 应用日志                                   |
+
+停止脚本保留全部命名卷。备份需同时保存数据库、应用数据卷和独立加密的本机配置；丢失 `CREDS_KEY`、`CREDS_IV` 将无法解密已有用户密钥。
+
+更新前停止写入并完成备份，再执行 `start-local.ps1` 构建和启动。回滚必须使用与数据库结构及加密密钥匹配的镜像、数据和配置。
+
+## 部署边界
+
+当前 Compose 包含应用与 MongoDB。飞书 Worker、资料同步、RAG、向量库、自动备份恢复和云端迁移按后续版本交付。
+
+伙伴远程访问需配置 VPN 或 HTTPS 入口，并重新设置域名、代理与安全 Cookie。localhost 部署仅提供本机访问。云端部署沿用相同源码与配置契约，数据库与秘密材料独立迁移。

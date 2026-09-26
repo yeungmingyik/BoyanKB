@@ -2423,6 +2423,7 @@ export type EndpointsDropParamsMap = Record<string, string[] | Record<string, st
 
 export type TStartupConfig = {
   appTitle: string;
+  knowledge?: TKnowledgeConfig;
   socialLogins?: string[];
   langfuseFanoutEnabled?: boolean;
   langfuseConnectionAccess?: boolean;
@@ -3033,8 +3034,28 @@ export type TOpenIdDiscoveryConfig = z.infer<typeof openIdDiscoverySchema>;
 /** Maximum CAS attempts per ACL document, including the initial attempt. */
 export const permissionWriteAttemptsSchema = z.number().int().min(1).max(100).default(3);
 
+export const knowledgeConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  agentId: z.string().trim().max(128).optional(),
+});
+
+export type TKnowledgeConfig = z.infer<typeof knowledgeConfigSchema>;
+
+export const userProvidedModelsSchema = z
+  .array(
+    z
+      .string()
+      .trim()
+      .min(1)
+      .max(256)
+      .regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:/@+-]*$/),
+  )
+  .max(50)
+  .transform((models) => Array.from(new Set(models)));
+
 export const configSchema = z.object({
   version: z.string(),
+  knowledge: knowledgeConfigSchema.optional(),
   permissions: z.object({ maxWriteAttempts: permissionWriteAttemptsSchema }).optional(),
   cache: z.boolean().default(true),
   ocr: ocrSchema.optional(),

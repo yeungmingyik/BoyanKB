@@ -55,6 +55,7 @@ jest.mock('react-gtm-module', () => ({
 }));
 
 import useAppStartup from '../useAppStartup';
+import useSpeechSettingsInit from '../useSpeechSettingsInit';
 
 const mockUser = {
   id: 'user-123',
@@ -142,5 +143,23 @@ describe('useAppStartup: MCP permission gating', () => {
 
     expect(options.getAuthorizationHeader()).toBe('Bearer app-token');
     expect(mockGetTokenHeader).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useAppStartup knowledge speech access', () => {
+  it.each<[string, boolean, boolean]>([
+    ['USER', true, false],
+    ['ADMIN', true, true],
+    ['USER', false, true],
+  ])('initializes speech for %s with knowledge %s: %s', (role, enabled, expected) => {
+    renderHook(
+      () =>
+        useAppStartup({
+          startupConfig: { knowledge: { enabled } } as never,
+          user: { ...mockUser, role },
+        }),
+      { wrapper },
+    );
+    expect(useSpeechSettingsInit).toHaveBeenLastCalledWith(expected);
   });
 });

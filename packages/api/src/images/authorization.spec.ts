@@ -515,6 +515,36 @@ describe('createImageAuthorizationMiddleware', () => {
     expect(response.locals.privateImageCache).toBe(true);
   });
 
+  it('checks an image owner against the configured authorization gate', async () => {
+    deps.authorizeViewer = jest.fn(async (_userId, _req, res) => {
+      res.status(403).send('Access Denied');
+      return false;
+    });
+    const token = signUser(VIEWER_ID);
+    const middleware = createImageAuthorizationMiddleware({ secureImageLinks: false }, deps);
+
+    await middleware(
+      createRequest(`/images/${VIEWER_ID}/profile.png`, `refreshToken=${token}`),
+      response,
+      next,
+    );
+
+    expect(deps.authorizeViewer).toHaveBeenCalledWith(VIEWER_ID, expect.anything(), response);
+    expect(next).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(403);
+  });
+
+  it('rejects an anonymous image even when legacy public image links are configured', async () => {
+    deps.authorizeViewer = jest.fn().mockResolvedValue(true);
+    const middleware = createImageAuthorizationMiddleware({ secureImageLinks: false }, deps);
+
+    await middleware(createRequest(AGENT_PATH), response, next);
+
+    expect(deps.authorizeViewer).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(401);
+  });
+
   it('rejects encoded traversal before any resource lookup', async () => {
     const token = signUser(VIEWER_ID);
     const middleware = createImageAuthorizationMiddleware({}, deps);

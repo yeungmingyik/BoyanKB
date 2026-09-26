@@ -2,7 +2,7 @@
 
 ## 版本来源
 
-BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前为 `0.1.0-alpha.1`。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
+BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前为 `0.1.0-alpha.2`。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
 
 | 版本类型 | 使用范围 |
 |---|---|
@@ -19,8 +19,8 @@ BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前为 `0
 |---|---|
 | origin | `https://github.com/yeungmingyik/BoyanKB.git` |
 | upstream | `https://github.com/danny-avila/LibreChat.git` |
-| 稳定分支 | `main`，首次远程发布时建立 |
-| 当前规划分支 | `product-planning` |
+| 稳定分支 | `main` |
+| 当前开发分支 | `local-deployment` |
 | 后续功能分支 | `local-deployment`、`account-access`、`feishu-sync`、`knowledge-reader`、`knowledge-search` |
 | 版本标签 | `v` + VERSION，例如 `v0.1.0-alpha.1` |
 | 提交规范 | Conventional Commits；无表情或非标准前缀 |

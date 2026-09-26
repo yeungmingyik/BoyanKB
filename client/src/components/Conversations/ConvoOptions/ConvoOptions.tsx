@@ -32,8 +32,15 @@ import {
   useArchiveConvoMutation,
   usePinConversationMutation,
 } from '~/data-provider';
-import { useHasAccess, useLocalize, useNavigateToConvo, useNewConvo } from '~/hooks';
+import {
+  useHasAccess,
+  useLocalize,
+  useNavigateToConvo,
+  useNewConvo,
+  useAuthContext,
+} from '~/hooks';
 import { useChatContext, useLiveAnnouncer } from '~/Providers';
+import { isKnowledgeRestricted } from '~/common/knowledge';
 import { NotificationSeverity } from '~/common';
 import ProjectButton from './ProjectButton';
 import DeleteButton from './DeleteButton';
@@ -82,6 +89,8 @@ function ConvoOptions({
   const isSmallScreen = useMediaQuery('(max-width: 768px)');
   const { index, setConversation } = useChatContext();
   const { data: startupConfig } = useGetStartupConfig();
+  const { user } = useAuthContext();
+  const knowledgeRestricted = isKnowledgeRestricted(startupConfig, user);
   const { navigateToConvo } = useNavigateToConvo(index);
   const { showToast } = useToastContext();
   /* Archiving or restoring removes the row from the list that held it, unmounting this
@@ -341,6 +350,7 @@ function ConvoOptions({
       },
       {
         label: localize('com_ui_change_project'),
+        show: !knowledgeRestricted,
         onClick: projectHandler,
         icon: <FolderInput className="icon-sm mr-2 text-text-primary" aria-hidden="true" />,
         ariaHasPopup: 'dialog' as const,
@@ -352,7 +362,7 @@ function ConvoOptions({
       {
         label: localize('com_ui_remove_from_project'),
         onClick: removeProjectHandler,
-        show: Boolean(chatProjectId),
+        show: !knowledgeRestricted && Boolean(chatProjectId),
         hideOnClick: false,
         icon: assignConversationToProject.isLoading ? (
           <Spinner className="size-4" />
@@ -396,6 +406,7 @@ function ConvoOptions({
       projectHandler,
       removeProjectHandler,
       chatProjectId,
+      knowledgeRestricted,
       assignConversationToProject.isLoading,
     ],
   );

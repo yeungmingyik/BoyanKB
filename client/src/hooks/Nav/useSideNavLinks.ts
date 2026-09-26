@@ -25,6 +25,7 @@ import {
   useMCPServerManager,
   useGetAgentsConfig,
   useHasAccess,
+  useAuthContext,
 } from '~/hooks';
 import MCPBuilderPanel from '~/components/SidePanel/MCPBuilder/MCPBuilderPanel';
 import AgentPanelSwitch from '~/components/SidePanel/Agents/AgentPanelSwitch';
@@ -34,7 +35,9 @@ import { SchedulePanel } from '~/components/SidePanel/Schedules';
 import Parameters from '~/components/SidePanel/Parameters/Panel';
 import { MemoryPanel } from '~/components/SidePanel/Memories';
 import FilesPanel from '~/components/SidePanel/Files/Panel';
+import { isKnowledgeRestricted } from '~/common/knowledge';
 import { PromptsAccordion } from '~/components/Prompts';
+import { useGetStartupConfig } from '~/data-provider';
 import { SkillsAccordion } from '~/components/Skills';
 
 export default function useSideNavLinks({
@@ -54,6 +57,9 @@ export default function useSideNavLinks({
   endpointsConfig: TEndpointsConfig;
   includeHidePanel?: boolean;
 }) {
+  const { user } = useAuthContext();
+  const { data: startupConfig } = useGetStartupConfig();
+  const knowledgeRestricted = isKnowledgeRestricted(startupConfig, user);
   const hasAccessToPrompts = useHasAccess({
     permissionType: PermissionTypes.PROMPTS,
     permission: Permissions.USE,
@@ -196,13 +202,15 @@ export default function useSideNavLinks({
       });
     }
 
-    links.push({
-      title: 'com_sidepanel_attach_files',
-      label: '',
-      icon: AttachmentIcon,
-      id: 'files',
-      Component: FilesPanel,
-    });
+    if (!knowledgeRestricted) {
+      links.push({
+        title: 'com_sidepanel_attach_files',
+        label: '',
+        icon: AttachmentIcon,
+        id: 'files',
+        Component: FilesPanel,
+      });
+    }
 
     if (
       interfaceConfig.parameters === true &&
@@ -247,6 +255,7 @@ export default function useSideNavLinks({
     endpoint,
     endpointsConfig,
     keyProvided,
+    knowledgeRestricted,
     hasAccessToAgents,
     hasAccessToCreateAgents,
     hasAccessToPrompts,

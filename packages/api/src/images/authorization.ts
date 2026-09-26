@@ -79,6 +79,7 @@ export interface ImageAuthorizationDeps {
     secureImageLinks?: boolean;
     assistantEndpoints?: AssistantConfig[];
   }>;
+  authorizeViewer?: (userId: string, req: Request, res: Response) => Promise<boolean>;
   getUserPrincipals: (params: {
     userId: string;
     role?: string | null;
@@ -425,7 +426,7 @@ export function createImageAuthorizationMiddleware(
   options: ImageAuthorizationOptions,
   deps: ImageAuthorizationDeps,
 ): RequestHandler {
-  if (!deps.getImageConfig && options.secureImageLinks === false) {
+  if (!deps.getImageConfig && options.secureImageLinks === false && !deps.authorizeViewer) {
     return (_req: Request, _res: Response, next: NextFunction): void => next();
   }
 
@@ -437,7 +438,7 @@ export function createImageAuthorizationMiddleware(
     try {
       const imagePath = parseImagePath(req.originalUrl, deps.getBasePath());
       if (!imagePath) {
-        if (options.secureImageLinks === false) {
+        if (options.secureImageLinks === false && !deps.authorizeViewer) {
           next();
           return;
         }
@@ -450,7 +451,7 @@ export function createImageAuthorizationMiddleware(
         deps.getUserById(imagePath.ownerId, 'role tenantId idOnTheSource avatar'),
       );
       if (!owner) {
-        if (options.secureImageLinks === false) {
+        if (options.secureImageLinks === false && !deps.authorizeViewer) {
           next();
           return;
         }
@@ -469,7 +470,7 @@ export function createImageAuthorizationMiddleware(
             loadImageConfig,
           )
         : await runAsSystem(loadImageConfig);
-      if (!imageConfig.secureImageLinks) {
+      if (!imageConfig.secureImageLinks && !deps.authorizeViewer) {
         next();
         return;
       }
@@ -477,6 +478,15 @@ export function createImageAuthorizationMiddleware(
       res.locals.privateImageCache = true;
       const auth = await authPromise;
       const viewerId = auth.status === 'authenticated' ? auth.userId : undefined;
+      if (deps.authorizeViewer) {
+        if (!viewerId) {
+          denyRequest(res, auth);
+          return;
+        }
+        if (!(await deps.authorizeViewer(viewerId, req, res))) {
+          return;
+        }
+      }
       if (viewerId === imagePath.ownerId) {
         next();
         return;

@@ -7,6 +7,7 @@ import type {
   TTraceRecordDetail,
 } from './types/traces';
 import type { TInsightsAccessResponse, TInsightsParams, TInsightsResponse } from './types/insights';
+import type { TKnowledgeAccessResponse } from './types/knowledge';
 import type { TFileConfig } from './file-config';
 import type * as tl from './types/tools';
 import type * as t from './types';
@@ -42,6 +43,10 @@ export function getInsights(params: TInsightsParams = {}): Promise<TInsightsResp
 
 export function getInsightsAccess(): Promise<TInsightsAccessResponse> {
   return request.get(endpoints.insightsAccess());
+}
+
+export function getKnowledgeAccess(): Promise<TKnowledgeAccessResponse> {
+  return request.get(endpoints.knowledgeAccess());
 }
 
 export function getConversationTraceAvailability(

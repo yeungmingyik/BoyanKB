@@ -1,4 +1,10 @@
 {
+  "com_endpoint_custom_models": "Model IDs (optional)",
+  "com_endpoint_custom_models_placeholder": "One model ID per line, or separate with commas",
+  "com_endpoint_custom_models_invalid": "Enter up to 50 model IDs, each up to 256 characters, starting with a letter or number and using only letters, numbers, or _ . : / @ + -.",
+  "com_knowledge_access_denied": "You have not been granted access to the knowledge base.",
+  "com_knowledge_access_failed": "Unable to verify access. Please try again.",
+  "com_knowledge_unavailable": "The knowledge base is not available yet.",
   "com_ui_background_tasks": "Background tasks",
   "com_ui_background_tasks_cancel_disabled": "Stopping background tools is not enabled on this server",
   "com_ui_background_tasks_completed": "Completed",

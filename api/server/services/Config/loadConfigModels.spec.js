@@ -7,6 +7,10 @@ jest.mock('@librechat/api', () => ({
   fetchModels: jest.fn(),
 }));
 jest.mock('./app');
+jest.mock('node:dns/promises', () => ({
+  ...jest.requireActual('node:dns/promises'),
+  lookup: jest.fn().mockResolvedValue([{ address: '8.8.8.8', family: 4 }]),
+}));
 jest.mock('@librechat/data-schemas', () => ({
   ...jest.requireActual('@librechat/data-schemas'),
   logger: { debug: jest.fn(), error: jest.fn(), warn: jest.fn() },

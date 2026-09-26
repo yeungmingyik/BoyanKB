@@ -5,6 +5,7 @@ import type { SettingsContextValue } from './types';
 import useProviderKeys from '../SettingsTabs/ProviderKeys/useProviderKeys';
 import { useHasAccess, useAuthContext, useGetAgentsConfig } from '~/hooks';
 import usePersonalizationAccess from '~/hooks/usePersonalizationAccess';
+import { isKnowledgeRestricted } from '~/common/knowledge';
 import { useGetStartupConfig } from '~/data-provider';
 import store from '~/store';
 
@@ -31,6 +32,7 @@ export function useSettingsContext(): SettingsContextValue {
   const langfuseConnectionAccess = startupConfig?.langfuseConnectionAccess === true;
   const adminPanelURL = startupConfig?.adminPanelURL ?? '';
   const isLocalProvider = user?.provider === 'local';
+  const knowledgeRestricted = isKnowledgeRestricted(startupConfig, user);
   const twoFactorEnabled = user?.twoFactorEnabled === true;
   const allowAccountDeletion = startupConfig?.allowAccountDeletion !== false;
   const aboutEnabled = startupConfig?.interface?.buildInfo !== false;
@@ -53,6 +55,7 @@ export function useSettingsContext(): SettingsContextValue {
       hasMultiConvo: hasMultiConvoBool,
       hasPrompts: hasPromptsBool,
       isLocalProvider,
+      knowledgeRestricted,
       twoFactorEnabled,
       allowAccountDeletion,
       aboutEnabled,
@@ -70,6 +73,7 @@ export function useSettingsContext(): SettingsContextValue {
       hasMultiConvoBool,
       hasPromptsBool,
       isLocalProvider,
+      knowledgeRestricted,
       twoFactorEnabled,
       allowAccountDeletion,
       aboutEnabled,

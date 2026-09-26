@@ -7,6 +7,49 @@ import { updateInterfacePermissions } from './permissions';
 const mockUpdateAccessPermissions = jest.fn();
 const mockGetRoleByName = jest.fn();
 
+describe('knowledge roles', () => {
+  it('preserves administrator Agent management while disabling partner management', async () => {
+    const config = {
+      knowledge: { enabled: true },
+      interface: {
+        agents: { use: true, create: false, share: false, public: false },
+        runCode: true,
+        webSearch: true,
+      },
+    };
+    const interfaceConfig = await loadDefaultInterface({
+      config,
+      configDefaults: { interface: {} } as TConfigDefaults,
+    });
+    const updateAccessPermissions = jest.fn();
+    await updateInterfacePermissions({
+      appConfig: { config, interfaceConfig } as unknown as AppConfig,
+      getRoleByName: jest.fn().mockResolvedValue(null),
+      updateAccessPermissions,
+    });
+    const admin = updateAccessPermissions.mock.calls.find(
+      ([role]) => role === SystemRoles.ADMIN,
+    )![1];
+    const user = updateAccessPermissions.mock.calls.find(([role]) => role === SystemRoles.USER)![1];
+    expect(admin[PermissionTypes.AGENTS]).toMatchObject({
+      [Permissions.USE]: true,
+      [Permissions.CREATE]: true,
+      [Permissions.SHARE]: true,
+      [Permissions.SHARE_PUBLIC]: false,
+    });
+    expect(user[PermissionTypes.AGENTS]).toMatchObject({
+      [Permissions.USE]: true,
+      [Permissions.CREATE]: false,
+      [Permissions.SHARE]: false,
+      [Permissions.SHARE_PUBLIC]: false,
+    });
+    expect(user[PermissionTypes.RUN_CODE][Permissions.USE]).toBe(false);
+    expect(user[PermissionTypes.WEB_SEARCH][Permissions.USE]).toBe(false);
+    expect(admin[PermissionTypes.SHARED_LINKS][Permissions.CREATE]).toBe(false);
+    expect(user[PermissionTypes.SHARED_LINKS][Permissions.CREATE]).toBe(false);
+  });
+});
+
 describe('updateInterfacePermissions - permissions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
