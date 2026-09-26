@@ -621,7 +621,26 @@ async function main() {
     201,
     'Own rename',
   );
+  status(
+    await request('/api/convos', {
+      method: 'DELETE',
+      session: sessions.authorized,
+      body: { arg: { conversationId } },
+    }),
+    201,
+    'Own delete',
+  );
+  status(
+    await request(`/api/convos/${conversationId}`, { session: sessions.authorized }),
+    404,
+    'Deleted conversation',
+  );
+  assert(
+    !(await mongoose.models.Conversation.exists({ conversationId })),
+    'Deleted conversation remains in MongoDB.',
+  );
   pass('private conversation and message read/write isolation');
+  pass('own conversation deletion removes HTTP and MongoDB access');
 
   assert(
     (await mongoose.models.Session.countDocuments({ user: sessions.authorized.user.id })) > 0,
@@ -647,8 +666,8 @@ async function main() {
   );
   for (const route of [
     '/api/convos',
-    `/api/convos/${conversationId}`,
-    `/api/messages/${conversationId}`,
+    `/api/convos/${nativeStart.data.conversationId}`,
+    `/api/messages/${nativeStart.data.conversationId}`,
     '/api/keys?name=DeepSeek',
     '/api/models',
   ]) {
@@ -662,7 +681,9 @@ async function main() {
   await grant('authorized');
   sessions.authorized = await login('authorized');
   status(
-    await request(`/api/convos/${conversationId}`, { session: sessions.authorized }),
+    await request(`/api/convos/${nativeStart.data.conversationId}`, {
+      session: sessions.authorized,
+    }),
     200,
     'Reauthorized history',
   );
