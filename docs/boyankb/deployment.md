@@ -179,6 +179,6 @@ pwsh -NoProfile -File scripts/boyankb/test-local-access.ps1
 
 ## 部署边界
 
-基础部署包含应用与 MongoDB 副本集；启用同步后增加 Worker、模型初始化、RAG 与向量库。alpha.3 为开发版，真实 HTTP、RAG 与浏览器集成待验收。关键词与语义搜索、企业知识问答、自动备份恢复、自动物理清理和云端迁移尚未交付。
+基础部署包含应用与 MongoDB 副本集；启用同步后增加 Worker、模型初始化、RAG 与向量库。alpha.3 预发布功能已交付，合成场景集成通过，首次实际同步发现 18 份资料、发布 12 份。最终镜像的 HTTP、Worker、正式部署阅读与索引核对通过，运行范围见[验收清单](acceptance.md#8-alpha3-验证记录)。其余 6 份的未发布原因见[资料覆盖清单](source-coverage.md)。关键词与语义搜索、企业知识问答、自动备份恢复、自动物理清理和云端迁移尚未交付。
 
 伙伴远程访问需配置 VPN 或 HTTPS 入口，并重新设置域名、代理与安全 Cookie。localhost 部署仅提供本机访问。云端部署沿用相同源码与配置契约，数据库与秘密材料独立迁移。
