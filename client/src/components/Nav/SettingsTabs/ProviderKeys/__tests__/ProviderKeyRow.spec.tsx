@@ -29,7 +29,7 @@ describe('ProviderKeyRow', () => {
   it('interpolates a finite key expiry without leaving a placeholder', () => {
     render(<ProviderKeyRow endpoint="openAI" endpointsConfig={{} as TEndpointsConfig} />);
 
-    const formattedExpiry = new Date(mockExpiry).toLocaleString();
+    const formattedExpiry = new Date(mockExpiry).toLocaleString(undefined, { hour12: true });
     expect(
       screen.getByText(`Current key is encrypted and will be deleted at ${formattedExpiry}`),
     ).toBeInTheDocument();
@@ -40,7 +40,8 @@ describe('ProviderKeyRow', () => {
     await changeLanguageSafely('fr');
     render(<ProviderKeyRow endpoint="openAI" endpointsConfig={{} as TEndpointsConfig} />);
 
-    expect(screen.getByText(new RegExp(new Date(mockExpiry).toLocaleString()))).toBeInTheDocument();
+    const formattedExpiry = new Date(mockExpiry).toLocaleString(undefined, { hour12: true });
+    expect(screen.getByText((text) => text.includes(formattedExpiry))).toBeInTheDocument();
   });
 
   it('renders a configured endpoint image instead of the generic mark', () => {

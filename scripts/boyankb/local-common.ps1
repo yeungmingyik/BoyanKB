@@ -126,6 +126,9 @@ function Invoke-BoyanCompose {
         if ((Get-Content -LiteralPath $Context.Environment -Raw) -match '(?m)^BOYANKB_SYNC_ENABLED=1\r?$') {
             $composeFiles += @('--file', (Join-Path $Context.Repository 'deploy/boyankb/compose.sync.yaml'))
         }
+        if ((Get-Content -LiteralPath $Context.Environment -Raw) -match '(?m)^BOYANKB_TUNNEL_ENABLED=1\r?$') {
+            $composeFiles += @('--file', (Join-Path $Context.Repository 'deploy/boyankb/compose.tunnel.yaml'))
+        }
         & docker compose --project-name $Context.Name --env-file $Context.Environment @composeFiles @DockerArguments
         if ($LASTEXITCODE -ne 0) {
             throw "Docker Compose failed ($LASTEXITCODE)."
@@ -150,4 +153,14 @@ function Get-BoyanLocalUrl {
     }
     $port = $portLines[0].Substring('BOYANKB_HTTP_PORT='.Length)
     "http://localhost:$port"
+}
+
+function Get-BoyanAccessUrl {
+    param([Parameter(Mandatory)]$Context)
+
+    if ((Get-Content -LiteralPath $Context.Environment -Raw) -match '(?m)^BOYANKB_TUNNEL_ENABLED=1\r?$') {
+        $plan = Get-Content -LiteralPath (Join-Path $Context.State 'access/plan.json') -Raw | ConvertFrom-Json
+        return $plan.origin
+    }
+    Get-BoyanLocalUrl -Context $Context
 }

@@ -173,6 +173,17 @@ pwsh -NoProfile -File scripts/boyankb/test-knowledge-stream.ps1 -IncludeSourceCh
 
 同步与搜索测试准备合成资料，流式权限测试会暂时改变测试源状态；各组按顺序执行，不与其他写入测试并行。问答报告保存在 `.local/boyankb-librechat-sync-test`，包含实际镜像、源码覆盖挂载、运行标识、测试脚本和题集 SHA-256。标准图片资产卷不计为源码覆盖。测试通过不替代真实企业题集、伙伴网络或备份恢复验收。
 
+10 人并发验收使用同一隔离实例，在合成资料准备完成后执行：
+
+```powershell
+pwsh -NoProfile -File scripts/boyankb/test-knowledge-performance.ps1 -Users 10 -ModelMode Stub
+pwsh -NoProfile -File scripts/boyankb/test-knowledge-performance.ps1 -Users 10 -ModelMode Real -Scenario Qa
+```
+
+默认阅读、关键词和语义检索各执行 3 轮，问答每用户 1 次。Stub 使用合成模型响应；Real 使用独立合成账号的个人 DeepSeek 密钥，限 10 人、每人 1 次、最大输出 256 token，并要求关闭模型重试、标题生成和思考模式。两种结果分别记录，不把本地模型替身耗时当作外部模型响应速度。
+
+脚本拒绝正式实例，核对源快照未变化，并清理本次创建的账号、密钥、授权和会话。报告包含 P50/P95、失败率、会话隔离、容器 CPU/内存采样和镜像信息。首次冷启动与后续请求分别验收；最终记录必须来自无源码覆盖挂载的镜像。测试期间不要同时运行同步、流式权限或浏览器写入验收。
+
 ## 数据与备份
 
 | 命名卷后缀                       | 内容                                       |
@@ -200,4 +211,4 @@ pwsh -NoProfile -File scripts/boyankb/test-knowledge-stream.ps1 -IncludeSourceCh
 
 伙伴目标网络、真实企业题集和完整格式覆盖仍须验收；自动备份恢复、自动物理清理和云端迁移未交付。
 
-伙伴远程访问需配置 VPN 或 HTTPS 入口，并重新设置域名、代理与安全 Cookie。localhost 部署仅提供本机访问。云端部署沿用相同源码与配置契约，数据库与秘密材料独立迁移。
+伙伴远程访问使用自有子域名与 Cloudflare 命名 Tunnel，配置与停用操作见[伙伴远程访问](partner-access.md)。公网验收通过前，localhost 部署仅提供本机访问。云端部署沿用相同源码与配置契约，数据库与秘密材料独立迁移。

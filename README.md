@@ -14,7 +14,9 @@
 
 ## 产品版本
 
-`0.1.0-alpha.4` 预发布版：关键词与语义检索、带资料引用的知识问答、生成期间撤权、封禁与源暂停控制。最终镜像的同步、检索、34 题真实模型问答和流式权限验收通过；问答题集使用虚构业务资料，不替代真实企业业务验收。
+`0.1.0-beta.1` 开发候选：命名 Tunnel 接入配置、移动端附件与个人密钥状态修复、知识检索并发优化。公网访问与最终镜像验收完成后发布。
+
+当前部署为 `0.1.0-alpha.4`：关键词与语义检索、带资料引用的知识问答、生成期间撤权、封禁与源暂停控制。该版最终镜像的同步、检索、34 题真实模型问答和流式权限验收通过；问答题集使用虚构业务资料，不替代真实企业业务验收。
 
 实际知识空间共发现 18 份资料，12 份已发布，6 份保持未发布并列明原因，见[资料覆盖清单](docs/boyankb/source-coverage.md)。
 
@@ -43,9 +45,9 @@
 
 当前发布支持可完整解析的 Docx；未支持的格式和嵌入对象显示明确状态，不发布空白或部分新版本。图片与正文通过系统内授权读取，真实资料与凭据不进入仓库。
 
-伙伴可选择原生模型供应商、DeepSeek、OpenAI 兼容或 Anthropic 兼容服务，使用自己的 API Key。本版实测同一 DeepSeek 服务商的两种协议，其他供应商和模型需分别验收。公司服务计划采用伙伴专属网关密钥，网关计量与收费在试点阶段验收，详见 [模型服务](docs/boyankb/models.md)。
+伙伴可选择原生模型供应商、DeepSeek、OpenAI 兼容或 Anthropic 兼容服务，使用自己的 API Key。本版实测同一 DeepSeek 服务商的两种协议，其他供应商和模型需分别验收。公司服务计划采用伙伴专属网关密钥，网关计量与收费暂缓，详见 [模型服务](docs/boyankb/models.md)。
 
-首期部署在本地 PC。远程访问入口在 VPN 与 HTTPS 域名之间选定后验收。云服务器迁移纳入后续版本。
+首期部署在本地 PC。远程访问采用自有 HTTPS 子域名与命名 Tunnel，须完成目标网络验收。云服务器迁移纳入后续版本。
 
 ## 开发环境
 
@@ -98,6 +100,7 @@ node scripts/boyankb/check-project.mjs
 - [飞书应用开通](docs/boyankb/feishu-setup.md)
 - [资料覆盖](docs/boyankb/source-coverage.md)
 - [部署与恢复](docs/boyankb/deployment.md)
+- [伙伴远程访问](docs/boyankb/partner-access.md)
 - [模型服务](docs/boyankb/models.md)
 - [版本规范](docs/boyankb/versions.md)
 - [开发路线图](docs/boyankb/roadmap.md)

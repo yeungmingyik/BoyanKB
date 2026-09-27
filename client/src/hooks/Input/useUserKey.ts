@@ -18,9 +18,7 @@ const useUserKey = (endpoint: string) => {
   const checkUserKey = useUserKeyQuery(keyName);
 
   const getExpiry = useCallback(() => {
-    if (checkUserKey.data) {
-      return checkUserKey.data.expiresAt || 'never';
-    }
+    return checkUserKey.data?.expiresAt ?? undefined;
   }, [checkUserKey.data]);
 
   const checkExpiry = useCallback(() => {

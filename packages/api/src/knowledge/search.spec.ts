@@ -1,7 +1,12 @@
+import mongoose from 'mongoose';
 import { createHash } from 'node:crypto';
-import mongoose, { Schema } from 'mongoose';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
-import { createKnowledgeModels } from '@librechat/data-schemas';
+import {
+  createKnowledgeModels,
+  createModels,
+  tenantStorage,
+  SYSTEM_TENANT_ID,
+} from '@librechat/data-schemas';
 import type { KnowledgeReadingBlock } from 'librechat-data-provider';
 import type { KnowledgeSemanticSearch } from './search';
 import type { KnowledgeServiceModels } from './store';
@@ -17,16 +22,13 @@ describe('knowledge search over MongoDB published revisions', () => {
   let store: KnowledgeStore;
   let semantic: jest.Mocked<KnowledgeSemanticSearch>;
   let search: KnowledgeSearchService;
-  const ownerId = 'fixture-owner';
+  const ownerId = new mongoose.Types.ObjectId().toString();
   const sourceId = knowledgeId('source', 'fixture');
 
   beforeAll(async () => {
     replica = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
     await mongoose.connect(replica.getUri('boyankb_search_test'));
-    const Agent = mongoose.model(
-      'SearchTestAgent',
-      new Schema({ id: String, author: String, tool_resources: Schema.Types.Mixed }),
-    );
+    const { Agent } = createModels(mongoose);
     models = { ...createKnowledgeModels(mongoose), Agent } as unknown as KnowledgeServiceModels;
     await Promise.all(Object.values(models).map((model) => model.init()));
   });
@@ -38,9 +40,12 @@ describe('knowledge search over MongoDB published revisions', () => {
 
   beforeEach(async () => {
     await Promise.all(Object.values(models).map((model) => model.deleteMany({})));
+    await models.Agent.collection.deleteMany({});
     await models.Agent.create({
       id: 'agent_fixture',
       author: ownerId,
+      provider: 'openai',
+      model: 'fixture-model',
       tool_resources: { file_search: { file_ids: [] } },
     });
     await models.KnowledgeSource.create({
@@ -273,6 +278,164 @@ describe('knowledge search over MongoDB published revisions', () => {
     ).toBe(false);
   });
 
+  it('coalesces simultaneous reference reads and reloads settled source and blob state', async () => {
+    const first = await document('a', '课程', ['机器人']);
+    const result = await search.search({ query: '机器人', mode: 'keyword' });
+    const read = jest.spyOn(store.blobs, 'read');
+    const sessions = jest.spyOn(models.KnowledgeSource.db, 'startSession');
+    try {
+      expect(
+        await Promise.all(
+          Array.from({ length: 10 }, () => search.validateHits(result.items, result.snapshotId)),
+        ),
+      ).toEqual(Array(10).fill(true));
+      expect(read).toHaveBeenCalledTimes(1);
+      expect(sessions.mock.calls.length).toBeLessThanOrEqual(3);
+      blobs.set(
+        first.blobKey,
+        Buffer.from(JSON.stringify({ blocks: [{ id: 'b2', type: 'paragraph', text: 'changed' }] })),
+      );
+      await expect(search.validateHits(result.items, result.snapshotId)).rejects.toMatchObject({
+        code: 'KNOWLEDGE_SEARCH_SNAPSHOT_INVALID',
+      });
+      expect(read).toHaveBeenCalledTimes(2);
+    } finally {
+      read.mockRestore();
+      sessions.mockRestore();
+    }
+  });
+
+  it('rejects every concurrent reference check when the source is paused during blob loading', async () => {
+    await document('a', '课程', ['机器人']);
+    const result = await search.search({ query: '机器人', mode: 'keyword' });
+    let release!: () => void;
+    let entered!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const read = jest.spyOn(store.blobs, 'read').mockImplementation(async (key) => {
+      entered();
+      await blocked;
+      return blobs.get(key)!;
+    });
+    const pending = Promise.allSettled(
+      Array.from({ length: 10 }, () => search.validateHits(result.items, result.snapshotId)),
+    );
+    try {
+      await started;
+      await models.KnowledgeSource.updateOne({ id: sourceId }, { $set: { health: 'paused' } });
+      release();
+      const outcomes = await pending;
+      expect(
+        outcomes.every(
+          (item) =>
+            item.status === 'rejected' && item.reason.code === 'KNOWLEDGE_SOURCE_UNAVAILABLE',
+        ),
+      ).toBe(true);
+      expect(read).toHaveBeenCalledTimes(1);
+      await models.KnowledgeSource.updateOne({ id: sourceId }, { $set: { health: 'healthy' } });
+      await expect(search.validateHits(result.items, result.snapshotId)).resolves.toBe(true);
+    } finally {
+      release();
+      await pending;
+      read.mockRestore();
+    }
+  });
+
+  it('clears failed shared blob reads before retrying', async () => {
+    await document('a', '课程', ['机器人']);
+    const result = await search.search({ query: '机器人', mode: 'keyword' });
+    let release!: () => void;
+    let entered!: () => void;
+    const blocked = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const read = jest.spyOn(store.blobs, 'read').mockImplementation(async () => {
+      entered();
+      await blocked;
+      throw new Error('fixture-read-failed');
+    });
+    const pending = Promise.allSettled(
+      Array.from({ length: 10 }, () => search.validateHits(result.items, result.snapshotId)),
+    );
+    try {
+      await started;
+      release();
+      const outcomes = await pending;
+      expect(outcomes.every((item) => item.status === 'rejected')).toBe(true);
+      expect(read).toHaveBeenCalledTimes(1);
+      read.mockImplementation(async (key) => blobs.get(key)!);
+      await expect(search.validateHits(result.items, result.snapshotId)).resolves.toBe(true);
+      expect(read).toHaveBeenCalledTimes(2);
+    } finally {
+      release();
+      await pending;
+      read.mockRestore();
+    }
+  });
+
+  it('does not share in-flight manifests between service owners', async () => {
+    await document('a', '课程', ['机器人']);
+    const result = await search.search({ query: '机器人', mode: 'keyword' });
+    const foreign = new KnowledgeSearchService({ store, semantic, ownerId: 'other-owner' });
+    const outcomes = await Promise.allSettled([
+      search.validateHits(result.items, result.snapshotId),
+      foreign.validateHits(result.items, result.snapshotId),
+    ]);
+    expect(outcomes[0]).toEqual({ status: 'fulfilled', value: true });
+    expect(outcomes[1]).toMatchObject({
+      status: 'rejected',
+      reason: { code: 'KNOWLEDGE_SEARCH_SCOPE_INVALID' },
+    });
+  });
+
+  it.each([
+    { allowed: 'tenant-a', denied: 'tenant-b' },
+    { allowed: SYSTEM_TENANT_ID, denied: undefined },
+  ])(
+    'isolates simultaneous manifest reads by tenant scope $allowed and $denied',
+    async ({ allowed, denied }) => {
+      await document('a', '课程', ['机器人']);
+      const result = await search.search({ query: '机器人', mode: 'keyword' });
+      await models.Agent.collection.updateOne(
+        { id: 'agent_fixture' },
+        { $set: { tenantId: 'tenant-a' } },
+      );
+      const sessions = jest.spyOn(models.KnowledgeSource.db, 'startSession');
+      const pending = [
+        tenantStorage.run({ tenantId: allowed }, async () =>
+          search.validateHits(result.items, result.snapshotId),
+        ),
+        tenantStorage.run({ tenantId: denied }, async () =>
+          search.validateHits(result.items, result.snapshotId),
+        ),
+      ];
+      try {
+        expect(sessions).toHaveBeenCalledTimes(2);
+        const outcomes = await Promise.allSettled(pending);
+        expect(outcomes[0]).toEqual({ status: 'fulfilled', value: true });
+        if (denied === undefined) expect(outcomes[1]).toEqual({ status: 'fulfilled', value: true });
+        else
+          expect(outcomes[1]).toMatchObject({
+            status: 'rejected',
+            reason: { code: 'KNOWLEDGE_SEARCH_SCOPE_INVALID' },
+          });
+      } finally {
+        await Promise.allSettled(pending);
+        sessions.mockRestore();
+        await tenantStorage.run({ tenantId: SYSTEM_TENANT_ID }, async () => {
+          await models.Agent.deleteMany({});
+        });
+      }
+    },
+  );
+
   it('keeps the published snapshot searchable while an update is partial', async () => {
     const first = await document('a', '课程', ['机器人旧版本']);
     await models.KnowledgeDocument.updateOne({ id: first.id }, { $set: { status: 'partial' } });
@@ -367,7 +530,12 @@ describe('knowledge search over MongoDB published revisions', () => {
     });
     await models.Agent.updateOne(
       { id: 'agent_fixture' },
-      { $set: { author: 'other', 'tool_resources.file_search.file_ids': [first.fileId] } },
+      {
+        $set: {
+          author: new mongoose.Types.ObjectId().toString(),
+          'tool_resources.file_search.file_ids': [first.fileId],
+        },
+      },
     );
     await expect(search.search({ query: '机器人' })).rejects.toMatchObject({
       code: 'KNOWLEDGE_SEARCH_SCOPE_INVALID',

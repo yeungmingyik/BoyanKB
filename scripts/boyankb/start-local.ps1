@@ -24,5 +24,8 @@ $services = @('app')
 if ((Get-Content -LiteralPath $context.Environment -Raw) -match '(?m)^BOYANKB_SYNC_ENABLED=1\r?$') {
     $services += 'worker'
 }
+if ((Get-Content -LiteralPath $context.Environment -Raw) -match '(?m)^BOYANKB_TUNNEL_ENABLED=1\r?$') {
+    $services += 'tunnel'
+}
 Invoke-BoyanCompose -Context $context -ImageTag $imageTag -DockerArguments (@('up', '--detach', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '600') + $services)
-Write-Output (Get-BoyanLocalUrl -Context $context)
+Write-Output (Get-BoyanAccessUrl -Context $context)

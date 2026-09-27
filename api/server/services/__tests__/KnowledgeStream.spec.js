@@ -4,6 +4,7 @@ const mockUserRead = jest.fn();
 const mockAgentRead = jest.fn();
 const mockHealth = jest.fn();
 const mockValidateHits = jest.fn();
+const mockTokenizerInit = jest.fn();
 const mockManager = {
   getJob: jest.fn(),
   updateMetadata: jest.fn(),
@@ -16,6 +17,7 @@ jest.mock('@librechat/api', () => ({
   resolveKnowledgeConfig: (config) => config,
   createKnowledgeUserPermissionChecker: (check) => check,
   GenerationJobManager: mockManager,
+  Tokenizer: { initEncoding: (...args) => mockTokenizerInit(...args) },
 }));
 jest.mock('mongoose', () => {
   const query = (read) => ({
@@ -84,6 +86,7 @@ describe('knowledge generation wiring', () => {
     mockAgentRead.mockResolvedValue({ _id: { toString: () => 'synthetic-agent-resource' } });
     mockHealth.mockResolvedValue({ sourceStatus: 'ready' });
     mockValidateHits.mockResolvedValue(true);
+    mockTokenizerInit.mockResolvedValue(undefined);
     mockManager.getJob.mockResolvedValue(undefined);
     mockManager.updateMetadata.mockResolvedValue(undefined);
     mockManager.abortJob.mockResolvedValue(undefined);
@@ -108,6 +111,40 @@ describe('knowledge generation wiring', () => {
     await assertKnowledgeJobAccess(input.req, input.job, input.streamId);
     expect(mockUserRead).not.toHaveBeenCalled();
     expect(mockHealth).not.toHaveBeenCalled();
+    expect(mockTokenizerInit).not.toHaveBeenCalled();
+  });
+
+  it('initializes budgeting encodings before arming guards and then checks fresh access', async () => {
+    let release;
+    const loading = new Promise((resolve) => {
+      release = resolve;
+    });
+    mockTokenizerInit.mockReturnValue(loading);
+    const pending = start(fixture());
+    expect(mockTokenizerInit).toHaveBeenCalledWith('o200k_base');
+    expect(mockTokenizerInit).toHaveBeenCalledWith('claude');
+    expect(mockUserRead).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(4000);
+    expect(mockManager.abortJob).not.toHaveBeenCalled();
+    mockPermission.mockResolvedValue(false);
+    release();
+    await expect(pending).rejects.toMatchObject({ code: 'KNOWLEDGE_ACCESS_DENIED' });
+    expect(mockUserRead).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects initialization failure with a safe code before creating a guard', async () => {
+    mockTokenizerInit.mockRejectedValue(new Error('private initialization input'));
+    const error = await start(fixture()).catch((value) => value);
+    expect(error.code).toBe('KNOWLEDGE_STREAM_UNAVAILABLE');
+    expect(String(error)).not.toContain('private initialization input');
+    expect(mockUserRead).not.toHaveBeenCalled();
+  });
+
+  it('does not start a generation canceled while encodings initialize', async () => {
+    const input = fixture();
+    mockTokenizerInit.mockImplementation(async () => input.job.abortController.abort());
+    await expect(start(input)).rejects.toMatchObject({ code: 'KNOWLEDGE_STREAM_CLOSED' });
+    expect(mockUserRead).not.toHaveBeenCalled();
   });
 
   it('checks source health before search and persists only snapshot identity after search', async () => {

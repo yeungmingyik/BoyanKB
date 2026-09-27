@@ -67,11 +67,12 @@ export default function KnowledgeAsset({ asset, caption }: { asset: Asset; capti
       <figcaption className="flex items-center justify-between gap-3 bg-surface-secondary p-3 text-sm">
         <span className="flex min-w-0 items-center gap-2 text-text-secondary">
           <File className="size-4 shrink-0" aria-hidden="true" />
-          <span className="break-words">{asset.name}</span>
+          <span className="min-w-0 break-words">{asset.name}</span>
         </span>
         <Button
           variant="outline"
           size="sm"
+          className="shrink-0"
           disabled={download.isLoading}
           onClick={() => download.mutate()}
           aria-label={`${localize('com_ui_download')} ${asset.name}`}

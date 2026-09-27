@@ -19,6 +19,7 @@ const documents = [
   'docs/boyankb/feishu-setup.md',
   'docs/boyankb/source-coverage.md',
   'docs/boyankb/deployment.md',
+  'docs/boyankb/partner-access.md',
   'docs/boyankb/models.md',
   'docs/boyankb/versions.md',
   'docs/boyankb/roadmap.md',

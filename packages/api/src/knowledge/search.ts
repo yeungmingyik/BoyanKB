@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { getTenantId } from '@librechat/data-schemas';
 import { knowledgeSearchConfigSchema } from 'librechat-data-provider';
 import type {
   KnowledgeReadingBlock,
@@ -142,6 +143,8 @@ function snippet(text: string, tokens: string[], maxChars: number): string {
 
 export class KnowledgeSearchService {
   readonly config: TKnowledgeSearchConfig;
+  private readonly pendingManifests = new Map<string | undefined, Promise<Manifest>>();
+  private readonly pendingBlobs = new Map<string, Promise<Buffer>>();
 
   constructor(
     private readonly deps: {
@@ -154,7 +157,20 @@ export class KnowledgeSearchService {
     this.config = knowledgeSearchConfigSchema.parse(deps.config ?? {});
   }
 
-  private async manifest(): Promise<Manifest> {
+  private async manifest(fresh = false): Promise<Manifest> {
+    const tenantId = getTenantId();
+    const existing = this.pendingManifests.get(tenantId);
+    if (fresh && existing) await existing;
+    const current = this.pendingManifests.get(tenantId);
+    if (current) return current;
+    const pending = this.loadManifest().finally(() => {
+      if (this.pendingManifests.get(tenantId) === pending) this.pendingManifests.delete(tenantId);
+    });
+    this.pendingManifests.set(tenantId, pending);
+    return pending;
+  }
+
+  private async loadManifest(): Promise<Manifest> {
     const { models, sourceId } = this.deps.store;
     const session = await models.KnowledgeSource.db.startSession();
     try {
@@ -262,7 +278,15 @@ export class KnowledgeSearchService {
     revision: KnowledgeRevisionRecord,
     budget = { remaining: this.config.maxScanBytes },
   ): Promise<TextBlock[]> {
-    const bytes = await this.deps.store.blobs.read(revision.blobKey);
+    const scope = JSON.stringify([getTenantId(), revision.blobKey]);
+    let pending = this.pendingBlobs.get(scope);
+    if (!pending) {
+      pending = this.deps.store.blobs.read(revision.blobKey).finally(() => {
+        if (this.pendingBlobs.get(scope) === pending) this.pendingBlobs.delete(scope);
+      });
+      this.pendingBlobs.set(scope, pending);
+    }
+    const bytes = await pending;
     budget.remaining -= bytes.byteLength;
     if (budget.remaining < 0) throw new KnowledgeError('KNOWLEDGE_SEARCH_BUDGET_EXCEEDED');
     try {
@@ -297,7 +321,7 @@ export class KnowledgeSearchService {
       }
       if (!blockIds.has(item.blockId)) return false;
     }
-    return (await this.manifest()).snapshotId === snapshotId;
+    return (await this.manifest(true)).snapshotId === snapshotId;
   }
 
   async search(input: KnowledgeSearchRequest): Promise<KnowledgeSearchResponse> {
@@ -493,7 +517,7 @@ export class KnowledgeSearchService {
     }
     if (Date.now() - started > this.config.requestTimeoutMs)
       throw new KnowledgeError('KNOWLEDGE_SEARCH_UNAVAILABLE');
-    if ((await this.manifest()).snapshotId !== state.snapshotId)
+    if ((await this.manifest(true)).snapshotId !== state.snapshotId)
       throw new KnowledgeError('KNOWLEDGE_SEARCH_SNAPSHOT_CHANGED', 409);
     const nextOffset = offset + items.length;
     return {

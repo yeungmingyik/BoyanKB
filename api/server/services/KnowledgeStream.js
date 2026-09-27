@@ -113,7 +113,20 @@ async function startKnowledgeGeneration({ req, job, streamId }) {
   if (!enabled(req)) {
     return null;
   }
-  const { createKnowledgeStreamGuard, GenerationJobManager } = require('@librechat/api');
+  const {
+    createKnowledgeStreamGuard,
+    GenerationJobManager,
+    Tokenizer,
+    KnowledgeStreamError,
+  } = require('@librechat/api');
+  try {
+    await Promise.all([Tokenizer.initEncoding('o200k_base'), Tokenizer.initEncoding('claude')]);
+  } catch {
+    throw new KnowledgeStreamError('KNOWLEDGE_STREAM_UNAVAILABLE');
+  }
+  if (job.abortController.signal.aborted) {
+    throw new KnowledgeStreamError('KNOWLEDGE_STREAM_CLOSED');
+  }
   const key = identity(streamId, job.createdAt);
   const record = {
     key,

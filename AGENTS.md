@@ -19,6 +19,7 @@
 | 模型供应商、个人密钥 | [models.md](docs/boyankb/models.md) |
 | 飞书接入与同步 | [sync.md](docs/boyankb/sync.md) |
 | 环境与运维 | [deployment.md](docs/boyankb/deployment.md) |
+| 伙伴远程接入 | [partner-access.md](docs/boyankb/partner-access.md) |
 | 版本与上游更新 | [versions.md](docs/boyankb/versions.md) |
 | 排期与验收 | [roadmap.md](docs/boyankb/roadmap.md)、[acceptance.md](docs/boyankb/acceptance.md) |
 
