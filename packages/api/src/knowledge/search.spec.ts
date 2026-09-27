@@ -290,7 +290,7 @@ describe('knowledge search over MongoDB published revisions', () => {
         ),
       ).toEqual(Array(10).fill(true));
       expect(read).toHaveBeenCalledTimes(1);
-      expect(sessions.mock.calls.length).toBeLessThanOrEqual(3);
+      expect(sessions).toHaveBeenCalledTimes(2);
       blobs.set(
         first.blobKey,
         Buffer.from(JSON.stringify({ blocks: [{ id: 'b2', type: 'paragraph', text: 'changed' }] })),
@@ -301,6 +301,90 @@ describe('knowledge search over MongoDB published revisions', () => {
       expect(read).toHaveBeenCalledTimes(2);
     } finally {
       read.mockRestore();
+      sessions.mockRestore();
+    }
+  });
+
+  it('starts a later final snapshot after an already running snapshot settles', async () => {
+    const first = await document('a', '课程甲', ['机器人甲']);
+    const second = await document('b', '课程乙', ['机器人乙']);
+    const result = await search.search({ query: '机器人', mode: 'keyword' });
+    let releaseBlob!: () => void;
+    let releaseSnapshot!: () => void;
+    let enteredSnapshot!: () => void;
+    const blockedBlob = new Promise<void>((resolve) => (releaseBlob = resolve));
+    const blockedSnapshot = new Promise<void>((resolve) => (releaseSnapshot = resolve));
+    const startedSnapshot = new Promise<void>((resolve) => (enteredSnapshot = resolve));
+    const read = jest.spyOn(store.blobs, 'read').mockImplementation(async (key) => {
+      if (key === second.blobKey) await blockedBlob;
+      return blobs.get(key)!;
+    });
+    const startSession = models.KnowledgeSource.db.startSession.bind(models.KnowledgeSource.db);
+    let round = 0;
+    const sessions = jest
+      .spyOn(models.KnowledgeSource.db, 'startSession')
+      .mockImplementation(async (...args) => {
+        const ordinal = ++round;
+        const session = await startSession(...args);
+        const transaction = session.withTransaction.bind(session);
+        session.withTransaction = (callback, options) =>
+          transaction(async (current) => {
+            const value = await callback(current);
+            if (ordinal === 2) {
+              enteredSnapshot();
+              await blockedSnapshot;
+            }
+            return value;
+          }, options);
+        return session;
+      });
+    const pending = [
+      search.validateHits(
+        result.items.filter((item) => item.documentId === first.id),
+        result.snapshotId,
+      ),
+      search.validateHits(
+        result.items.filter((item) => item.documentId === second.id),
+        result.snapshotId,
+      ),
+    ];
+    const outcomes = Promise.allSettled(pending);
+    try {
+      await startedSnapshot;
+      releaseBlob();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(sessions).toHaveBeenCalledTimes(2);
+      await models.KnowledgeSource.updateOne({ id: sourceId }, { $set: { health: 'paused' } });
+      releaseSnapshot();
+      expect(await outcomes).toMatchObject([
+        { status: 'fulfilled', value: true },
+        { status: 'rejected', reason: { code: 'KNOWLEDGE_SOURCE_UNAVAILABLE' } },
+      ]);
+      expect(sessions).toHaveBeenCalledTimes(3);
+    } finally {
+      releaseBlob();
+      releaseSnapshot();
+      await outcomes;
+      read.mockRestore();
+      sessions.mockRestore();
+    }
+  });
+
+  it('clears a failed shared manifest before retrying a fresh snapshot', async () => {
+    await document('a', '课程', ['机器人']);
+    const result = await search.search({ query: '机器人', mode: 'keyword' });
+    const sessions = jest
+      .spyOn(models.KnowledgeSource.db, 'startSession')
+      .mockRejectedValueOnce(new Error('fixture-session-failed'));
+    try {
+      const outcomes = await Promise.allSettled(
+        Array.from({ length: 10 }, () => search.validateHits(result.items, result.snapshotId)),
+      );
+      expect(outcomes.every((item) => item.status === 'rejected')).toBe(true);
+      expect(sessions).toHaveBeenCalledTimes(1);
+      await expect(search.validateHits(result.items, result.snapshotId)).resolves.toBe(true);
+      expect(sessions).toHaveBeenCalledTimes(3);
+    } finally {
       sessions.mockRestore();
     }
   });
@@ -417,6 +501,7 @@ describe('knowledge search over MongoDB published revisions', () => {
         ),
       ];
       try {
+        await new Promise<void>((resolve) => setImmediate(resolve));
         expect(sessions).toHaveBeenCalledTimes(2);
         const outcomes = await Promise.allSettled(pending);
         expect(outcomes[0]).toEqual({ status: 'fulfilled', value: true });

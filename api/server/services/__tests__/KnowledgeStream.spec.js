@@ -162,8 +162,50 @@ describe('knowledge generation wiring', () => {
       [{ documentId: 'doc', revisionId: 'rev', blockId: 'block' }],
       'synthetic-snapshot',
     );
+    expect(mockHealth).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(mockManager.updateMetadata.mock.calls)).not.toContain('synthetic body');
   });
+
+  it.each(['ready', 'paused'])(
+    'rechecks context published during the initial health read with source status %s',
+    async (sourceStatus) => {
+      const input = fixture();
+      let release;
+      mockHealth.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+      );
+      const pending = start(input);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(mockHealth).toHaveBeenCalledTimes(1);
+      input.req.knowledgeContext = { snapshotId: 'synthetic-published', items: [] };
+      mockValidateHits.mockResolvedValue(false);
+      release({ sourceStatus });
+      await expect(pending).rejects.toMatchObject({
+        code:
+          sourceStatus === 'ready' ? 'KNOWLEDGE_SOURCE_CHANGED' : 'KNOWLEDGE_SOURCE_UNAVAILABLE',
+      });
+      if (sourceStatus === 'ready') {
+        expect(mockValidateHits).toHaveBeenCalledWith([], 'synthetic-published');
+      } else {
+        expect(mockValidateHits).not.toHaveBeenCalled();
+      }
+      expect(input.job.abortController.signal.aborted).toBe(true);
+    },
+  );
+
+  it.each([null, {}, { snapshotId: 'synthetic-invalid', items: null }])(
+    'rejects malformed context before issuing source reads: %j',
+    async (context) => {
+      const input = fixture();
+      input.req.knowledgeContext = context;
+      await expect(start(input)).rejects.toMatchObject({ code: 'KNOWLEDGE_SOURCE_CHANGED' });
+      expect(mockHealth).not.toHaveBeenCalled();
+      expect(mockValidateHits).not.toHaveBeenCalled();
+    },
+  );
 
   it('freshly reads VIEW on every interval and aborts the exact provider generation', async () => {
     const input = fixture();
@@ -206,6 +248,7 @@ describe('knowledge generation wiring', () => {
     const input = fixture();
     input.req.knowledgeContext = { snapshotId: 'synthetic-empty', items: [] };
     const record = await start(input);
+    expect(mockHealth).not.toHaveBeenCalled();
     mockValidateHits.mockResolvedValue(false);
     await jest.advanceTimersByTimeAsync(1000);
     expect(mockValidateHits).toHaveBeenCalledWith([], 'synthetic-empty');
@@ -237,21 +280,29 @@ describe('knowledge generation wiring', () => {
     const subscriber = await attach(input);
     finishKnowledgeGeneration(record);
     await subscriber.checkNow();
-    mockHealth.mockResolvedValue({ sourceStatus: 'paused' });
+    mockValidateHits.mockRejectedValue(new Error('synthetic source paused'));
     await expect(subscriber.checkNow()).rejects.toMatchObject({
       code: 'KNOWLEDGE_SOURCE_UNAVAILABLE',
     });
     expect(subscriber.allowWrite()).toBe(false);
   });
 
-  it('fails closed with a static code when source validation throws', async () => {
-    const input = fixture();
-    mockHealth.mockRejectedValue(new Error('synthetic credential and body'));
-    const error = await start(input).catch((value) => value);
-    expect(error.code).toBe('KNOWLEDGE_SOURCE_UNAVAILABLE');
-    expect(JSON.stringify(error)).not.toContain('synthetic credential');
-    expect(JSON.stringify(mockManager.updateMetadata.mock.calls)).not.toContain(
-      'synthetic credential',
-    );
-  });
+  it.each([false, true])(
+    'fails closed with a static code when source validation throws with context: %s',
+    async (hasContext) => {
+      const input = fixture();
+      if (hasContext) {
+        input.req.knowledgeContext = { snapshotId: 'synthetic-current', items: [] };
+      }
+      mockHealth.mockRejectedValue(new Error('synthetic credential and body'));
+      mockValidateHits.mockRejectedValue(new Error('synthetic credential and body'));
+      const error = await start(input).catch((value) => value);
+      expect(error.code).toBe('KNOWLEDGE_SOURCE_UNAVAILABLE');
+      expect(mockHealth).toHaveBeenCalledTimes(hasContext ? 0 : 1);
+      expect(JSON.stringify(error)).not.toContain('synthetic credential');
+      expect(JSON.stringify(mockManager.updateMetadata.mock.calls)).not.toContain(
+        'synthetic credential',
+      );
+    },
+  );
 });

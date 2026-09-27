@@ -40,6 +40,8 @@ type Manifest = {
   nodes: KnowledgeNodeRecord[];
 };
 
+type ManifestRound = { started: boolean; promise: Promise<Manifest> };
+
 type TextBlock = { id: string; text: string; start: number; end: number };
 
 type WordSegmenter = {
@@ -143,7 +145,7 @@ function snippet(text: string, tokens: string[], maxChars: number): string {
 
 export class KnowledgeSearchService {
   readonly config: TKnowledgeSearchConfig;
-  private readonly pendingManifests = new Map<string | undefined, Promise<Manifest>>();
+  private readonly pendingManifests = new Map<string | undefined, ManifestRound>();
   private readonly pendingBlobs = new Map<string, Promise<Buffer>>();
 
   constructor(
@@ -160,14 +162,23 @@ export class KnowledgeSearchService {
   private async manifest(fresh = false): Promise<Manifest> {
     const tenantId = getTenantId();
     const existing = this.pendingManifests.get(tenantId);
-    if (fresh && existing) await existing;
+    if (fresh && existing?.started) await existing.promise;
     const current = this.pendingManifests.get(tenantId);
-    if (current) return current;
-    const pending = this.loadManifest().finally(() => {
-      if (this.pendingManifests.get(tenantId) === pending) this.pendingManifests.delete(tenantId);
-    });
+    if (current) return current.promise;
+    const pending: ManifestRound = {
+      started: false,
+      promise: new Promise<void>((resolve) => setImmediate(resolve))
+        .then(() => {
+          pending.started = true;
+          return this.loadManifest();
+        })
+        .finally(() => {
+          if (this.pendingManifests.get(tenantId) === pending)
+            this.pendingManifests.delete(tenantId);
+        }),
+    };
     this.pendingManifests.set(tenantId, pending);
-    return pending;
+    return pending.promise;
   }
 
   private async loadManifest(): Promise<Manifest> {

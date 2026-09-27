@@ -72,11 +72,14 @@ function dependencies(req, getContext) {
     assertKnowledgeCurrent: async () => {
       try {
         const service = await getKnowledgeService();
-        const health = await service.getSourceHealth();
-        if (health.sourceStatus !== 'ready') {
-          throw new KnowledgeStreamError('KNOWLEDGE_SOURCE_UNAVAILABLE');
+        let context = projectContext(await getContext());
+        if (context === undefined) {
+          const health = await service.getSourceHealth();
+          if (health.sourceStatus !== 'ready') {
+            throw new KnowledgeStreamError('KNOWLEDGE_SOURCE_UNAVAILABLE');
+          }
+          context = projectContext(await getContext());
         }
-        const context = projectContext(await getContext());
         if (context && !(await service.validateHits(context.items, context.snapshotId))) {
           throw new KnowledgeStreamError('KNOWLEDGE_SOURCE_CHANGED');
         }
