@@ -228,6 +228,22 @@ export default defineConfig(({ command }) => ({
         codeSplitting: {
           groups: [
             {
+              name: 'shared-runtime',
+              priority: 100,
+              test(id: string) {
+                const normalizedId = id.replace(/\\/g, '/');
+                return (
+                  normalizedId.includes('vite/preload-helper') ||
+                  normalizedId.includes('vite-plugin-node-polyfills/shims/')
+                );
+              },
+            },
+            {
+              name: 'shared-libraries',
+              priority: 90,
+              test: /node_modules[\\/](?:dayjs|uuid|dompurify)[\\/]/,
+            },
+            {
               name(id: string) {
                 const normalizedId = id.replace(/\\/g, '/');
                 if (normalizedId.includes('node_modules')) {

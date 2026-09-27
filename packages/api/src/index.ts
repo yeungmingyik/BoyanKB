@@ -2,6 +2,7 @@ export * from './app';
 export * from './knowledge/access';
 export * from './knowledge/answer';
 export * from './knowledge/stream';
+export * from './knowledge/runtime';
 export * from './knowledge/streamAccess';
 export * from './knowledge/streamOutput';
 export * from './knowledge/routes';

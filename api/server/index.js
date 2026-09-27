@@ -34,6 +34,7 @@ const {
   agentStartupTelemetryMiddleware,
   initializeFileStorage,
   initializeDeploymentSkills,
+  initializeKnowledgeRuntime,
   initializeDeploymentPlugins,
   getDeploymentPluginSkills,
   getDeploymentPluginHookCapabilities,
@@ -234,6 +235,7 @@ const startServer = async () => {
     logger.error('[sweepOrphanedPreviews] Background sweep failed:', err);
   });
   const appConfig = await getAppConfig({ baseOnly: true });
+  initializeKnowledgeRuntime(appConfig.config?.knowledge);
   configureAgentEventRuntime(appConfig?.endpoints?.agents?.eventDriven);
   warnOnUnreachableDeliveryPaths(appConfig);
   initializeFileStorage(appConfig);
