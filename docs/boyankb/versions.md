@@ -49,6 +49,8 @@ chore(release): prepare 0.1.0-beta.1
 
 `0.1.0-alpha.4` 的应用提交为 `3a7a125781f627c287bc30d1a7a9aea6766c6126`，验证镜像为 `boyankb:0.1.0-alpha.4-3a7a125781f6`，镜像 ID 为 `sha256:8984d119d48e29208cc27c9dbba1ebf9058a2813b3fc4a0f148575f8ffa0cfa2`。最终隔离验收无源码覆盖挂载；报告保留应用镜像、测试脚本和题集摘要。
 
+`0.1.0-beta.1` 候选应用提交为 `46fc9308fea3fdc28c3fbfe02b6a97c1cf7801dd`，镜像为 `boyankb:0.1.0-beta.1-46fc9308fea3`，镜像 ID 为 `sha256:ac40e9ba17ccaa1bfb5d51ada2ac779628d25c955aa4f78eecb9af815b2492aa`。[应用检查 1016 项、Tunnel 配置检查 28 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36304158295)通过。干净镜像模拟并发通过，冷启动真实模型问答为 0/10；移动端完整流程与公网 SSE 验收未完成。该候选不创建发布标签，正式实例仍使用 alpha.4；详细结果见[候选验收记录](acceptance.md#10-beta1-候选验证记录)。
+
 应用开发后，构建读取 `VERSION` 显示产品版本，构建产物标记源码提交；不要求手动修改所有上游 npm 包版本。交付记录包含镜像 digest、数据迁移、配置兼容性、验证结果和回滚版本。
 
 同步依赖镜像固定于 `deploy/boyankb/compose.yaml` 和 `compose.sync.yaml` 的 digest。向量模型修订、维度与文件摘要固定于 `deploy/boyankb/embedding.lock.json`。更换模型、维度或解析器须建立新的索引版本，验证后发布，不能复用不兼容的现有索引。

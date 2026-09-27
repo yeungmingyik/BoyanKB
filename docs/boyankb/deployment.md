@@ -209,6 +209,8 @@ pwsh -NoProfile -File scripts/boyankb/test-knowledge-performance.ps1 -Users 10 -
 
 正式应用与 Worker 已升级至 `boyankb:0.1.0-alpha.4-3a7a125781f6`，应用、Worker、MongoDB、PostgreSQL 和 RAG 健康，无源码覆盖挂载。升级前后资料状态、授权代次、已发布版本和索引关联一致：18 份资料、12 份已发布、12 个原生文件、12 个 RAG 文件标识。此次数据核对只读取元信息，未调用正式资料的问答模型。其余 6 份的未发布原因见[资料覆盖清单](source-coverage.md)。
 
+`boyankb:0.1.0-beta.1-46fc9308fea3` 仅为隔离验收候选，尚未替换正式实例。应用检查 1016 项、Tunnel 配置检查 28 项及构建通过；干净镜像模拟并发通过，冷启动真实模型问答为 0/10。登录入口重新分包的体积减少不作为实际手机首屏验收结果；移动端重载回登录问题、公网 SSE 和目标网络完整流程仍待验证。候选状态见[验收清单](acceptance.md#10-beta1-候选验证记录)。
+
 伙伴目标网络、真实企业题集和完整格式覆盖仍须验收；自动备份恢复、自动物理清理和云端迁移未交付。
 
 伙伴远程访问使用自有子域名与 Cloudflare 命名 Tunnel，配置与停用操作见[伙伴远程访问](partner-access.md)。公网验收通过前，localhost 部署仅提供本机访问。云端部署沿用相同源码与配置契约，数据库与秘密材料独立迁移。
