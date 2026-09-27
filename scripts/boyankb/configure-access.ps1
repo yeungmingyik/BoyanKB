@@ -82,7 +82,7 @@ function Read-AccessToken {
     if ($value.Length -gt 4096 -or $value -notmatch '^[A-Za-z0-9+/]+={0,2}$') { throw 'ACCESS_TOKEN_INVALID' }
     try {
         $decoded = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($value)) | ConvertFrom-Json -AsHashtable
-        if ($decoded.a -notmatch '^[a-f0-9]{32}$' -or $decoded.t -notmatch '^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$' -or [Convert]::FromBase64String($decoded.s).Length -ne 32) { throw 'ACCESS_TOKEN_INVALID' }
+        if ($decoded.a -notmatch '^[a-f0-9]{32}$' -or $decoded.t -notmatch '^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$' -or [Convert]::FromBase64String($decoded.s).Length -lt 32) { throw 'ACCESS_TOKEN_INVALID' }
     } catch { throw 'ACCESS_TOKEN_INVALID' }
     $value
 }

@@ -63,6 +63,22 @@ try {
     $beforeCompose = (Get-FileHash -LiteralPath $testContext.Environment).Hash
     $prepare = & $configurationScript -Name $testName -Action Prepare -Origin 'https://KB.Example.test:443/' -TokenFile $testTokenFile | ConvertFrom-Json
     Add-AccessCheck -Name 'prepare-is-inactive' -Passed ($prepare.prepared -and -not $prepare.enabled -and $prepare.url -eq 'https://kb.example.test' -and (Get-FileHash -LiteralPath $testApp).Hash -eq $beforeApp -and (Get-FileHash -LiteralPath $testContext.Environment).Hash -eq $beforeCompose)
+    foreach ($secretLength in @(64, 31)) {
+        $lengthTokenFile = Join-Path $testContext.State "fixture-token-$secretLength"
+        $lengthToken = @{ a = '0123456789abcdef0123456789abcdef'; t = '11111111-2222-3333-4444-555555555555'; s = [Convert]::ToBase64String([byte[]](1..$secretLength)) } | ConvertTo-Json -Compress
+        $lengthToken = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($lengthToken))
+        Write-BoyanPrivateFile -Path $lengthTokenFile -Content $lengthToken
+        $beforeToken = (Get-FileHash -LiteralPath (Join-Path $testAccess 'tunnel-token')).Hash
+        $tokenAccepted = $false
+        $tokenRejected = $false
+        try {
+            $tokenPrepare = & $configurationScript -Name $testName -Action Prepare -Origin 'https://kb.example.test' -TokenFile $lengthTokenFile | ConvertFrom-Json
+            $tokenAccepted = $tokenPrepare.prepared -and $tokenPrepare.tokenReady -and -not $tokenPrepare.enabled
+        } catch { $tokenRejected = $_.Exception.Message -eq 'ACCESS_TOKEN_INVALID' }
+        $tokenPreserved = (Get-FileHash -LiteralPath (Join-Path $testAccess 'tunnel-token')).Hash -eq $beforeToken
+        Add-AccessCheck -Name "token-secret-$secretLength" -Passed $(if ($secretLength -eq 64) { $tokenAccepted } else { $tokenRejected -and $tokenPreserved })
+    }
+    $null = & $configurationScript -Name $testName -Action Prepare -Origin 'https://kb.example.test' -TokenFile $testTokenFile
     $lock = [IO.File]::Open((Join-Path $testAccess 'configure.lock'), [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
     try {
         $busy = Invoke-MockedAccess -Action Enable
