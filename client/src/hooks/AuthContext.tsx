@@ -67,6 +67,7 @@ const AuthContextProvider = ({
   children: ReactNode;
 }) => {
   const isExternalRedirectRef = useRef(false);
+  const sessionGenerationRef = useRef(0);
   const [user, setUser] = useRecoilState(store.user);
   const logoutRedirectRef = useRef<string | undefined>(undefined);
   const [token, setToken] = useState<string | undefined>(undefined);
@@ -137,6 +138,8 @@ const AuthContextProvider = ({
 
   const loginUser = useLoginUserMutation({
     onSuccess: (data: t.TLoginResponse) => {
+      sessionGenerationRef.current += 1;
+      setUserContext.cancel();
       const { user, token, twoFAPending, tempToken } = data;
       if (twoFAPending) {
         navigate(`/login/2fa?tempToken=${tempToken}`, { replace: true });
@@ -162,6 +165,8 @@ const AuthContextProvider = ({
   });
   const logoutUser = useLogoutUserMutation({
     onSuccess: (data) => {
+      sessionGenerationRef.current += 1;
+      setUserContext.cancel();
       if (data.redirect) {
         /** data.redirect is the IdP's end_session_endpoint URL: an absolute URL generated
          * server-side from trusted IdP metadata (not user input), so isSafeRedirect is bypassed.
@@ -182,6 +187,8 @@ const AuthContextProvider = ({
       });
     },
     onError: (error) => {
+      sessionGenerationRef.current += 1;
+      setUserContext.cancel();
       endSessionClientState();
       doSetError((error as Error).message);
       setUserContext({
@@ -196,12 +203,14 @@ const AuthContextProvider = ({
 
   const logout = useCallback(
     (redirect?: string) => {
+      sessionGenerationRef.current += 1;
+      setUserContext.cancel();
       if (redirect) {
         logoutRedirectRef.current = redirect;
       }
       logoutUser.mutate(undefined);
     },
-    [logoutUser],
+    [logoutUser, setUserContext],
   );
 
   const userQuery = useGetUserQuery({ enabled: !!(token ?? '') });
@@ -217,9 +226,10 @@ const AuthContextProvider = ({
     if (isExternalRedirectRef.current) {
       return;
     }
+    const sessionGeneration = sessionGenerationRef.current;
     refreshToken.mutate(undefined, {
       onSuccess: (data: t.TRefreshTokenResponse | undefined) => {
-        if (isExternalRedirectRef.current) {
+        if (isExternalRedirectRef.current || sessionGeneration !== sessionGenerationRef.current) {
           return;
         }
         const { user, token = '' } = data ?? {};
@@ -250,7 +260,7 @@ const AuthContextProvider = ({
         }
       },
       onError: (error) => {
-        if (isExternalRedirectRef.current) {
+        if (isExternalRedirectRef.current || sessionGeneration !== sessionGenerationRef.current) {
           return;
         }
         console.log('refreshToken mutation error:', error);

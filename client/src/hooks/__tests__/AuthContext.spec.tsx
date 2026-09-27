@@ -5,7 +5,7 @@ import React from 'react';
 import { RecoilRoot } from 'recoil';
 import { getDefaultStore } from 'jotai';
 import { MemoryRouter } from 'react-router-dom';
-import { render, act } from '@testing-library/react';
+import { render, act, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { TAuthConfig } from '~/common';
 import {
@@ -73,6 +73,7 @@ jest.mock('~/data-provider', () => ({
 }));
 
 const authConfig: TAuthConfig = { loginRedirect: '/login', test: true };
+const logoutLabel = 'Sign out';
 
 function TestConsumer() {
   const ctx = useAuthContext();
@@ -81,9 +82,12 @@ function TestConsumer() {
       data-testid="consumer"
       data-authenticated={ctx.isAuthenticated}
       data-auth-ready={ctx.isAuthReady}
+      data-user-id={ctx.user?.id ?? ''}
       data-error={ctx.error ?? ''}
       data-roles={JSON.stringify(ctx.roles ?? {})}
-    />
+    >
+      <button onClick={() => ctx.logout()}>{logoutLabel}</button>
+    </div>
   );
 }
 
@@ -336,6 +340,235 @@ describe('AuthContextProvider — logout onSuccess/onError handling', () => {
 
     expect(replaceSpy).toHaveBeenCalled();
     expect(mockRefreshMutate).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthContextProvider — refresh session boundaries', () => {
+  const mockSetTokenHeader = jest.requireMock('librechat-data-provider').setTokenHeader;
+  const currentUser = { id: 'current-user', role: 'USER' };
+  const previousUser = { id: 'previous-user', role: 'ADMIN' };
+  type RefreshCallbacks = {
+    onSuccess: (data: unknown) => void;
+    onError: (error: unknown) => void;
+  };
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    sessionStorage.clear();
+    getDefaultStore().set(resetChatFilterSessionAtom);
+    window.history.replaceState({}, '', '/login');
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
+    sessionStorage.clear();
+    getDefaultStore().set(resetChatFilterSessionAtom);
+    window.history.replaceState({}, '', '/');
+  });
+
+  it.each([
+    {
+      response: 'an empty token response',
+      complete: (callbacks: RefreshCallbacks) => callbacks.onSuccess(undefined),
+    },
+    {
+      response: 'a network error',
+      complete: (callbacks: RefreshCallbacks) =>
+        callbacks.onError(new Error('Network unavailable')),
+    },
+    {
+      response: 'a previous session token',
+      complete: (callbacks: RefreshCallbacks) =>
+        callbacks.onSuccess({ user: previousUser, token: 'previous-token' }),
+    },
+  ])('ignores $response from a refresh started before a successful login', ({ complete }) => {
+    const { getByTestId } = renderProviderLive();
+    const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+    act(() => {
+      mockCapturedLoginOptions.onSuccess({ user: currentUser, token: 'current-token' });
+    });
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/c/new', { replace: true });
+    expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'true');
+    const jotaiStore = getDefaultStore();
+    jotaiStore.set(chatFilterStatusAtom, 'archived');
+    jotaiStore.set(chatFilterTagsAtom, ['current-session']);
+    mockNavigate.mockClear();
+    mockSetTokenHeader.mockClear();
+
+    act(() => {
+      complete(refreshCallbacks);
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockSetTokenHeader).not.toHaveBeenCalled();
+    expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'true');
+    expect(getByTestId('consumer')).toHaveAttribute('data-user-id', currentUser.id);
+    expect(jotaiStore.get(chatFilterStatusAtom)).toBe('archived');
+    expect(jotaiStore.get(chatFilterTagsAtom)).toEqual(['current-session']);
+  });
+
+  it('keeps a successful login when an older refresh resolves during its debounce', () => {
+    const { getByTestId } = renderProviderLive();
+    const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+    act(() => {
+      mockCapturedLoginOptions.onSuccess({ user: currentUser, token: 'current-token' });
+      refreshCallbacks.onSuccess({ user: previousUser, token: 'previous-token' });
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(mockSetTokenHeader).toHaveBeenLastCalledWith('current-token');
+    expect(getByTestId('consumer')).toHaveAttribute('data-user-id', currentUser.id);
+    expect(mockNavigate).toHaveBeenCalledWith('/c/new', { replace: true });
+  });
+
+  it.each(['success', 'error'] as const)(
+    'does not restore a session from an older refresh after logout %s',
+    (outcome) => {
+      const { getByTestId } = renderProviderLive();
+      const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+      act(() => {
+        if (outcome === 'success') {
+          mockCapturedLogoutOptions.onSuccess({ message: 'Logout successful' });
+        } else {
+          mockCapturedLogoutOptions.onError(new Error('Logout failed'));
+        }
+        jest.advanceTimersByTime(100);
+      });
+      mockNavigate.mockClear();
+      mockSetTokenHeader.mockClear();
+
+      act(() => {
+        refreshCallbacks.onSuccess({ user: previousUser, token: 'previous-token' });
+        jest.advanceTimersByTime(100);
+      });
+
+      expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'false');
+      expect(mockSetTokenHeader).not.toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    },
+  );
+
+  it('ignores an older refresh as soon as logout starts', () => {
+    const { getByRole, getByTestId } = renderProviderLive();
+    const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+    fireEvent.click(getByRole('button', { name: 'Sign out' }));
+    act(() => {
+      refreshCallbacks.onSuccess({ user: previousUser, token: 'previous-token' });
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'false');
+    expect(mockSetTokenHeader).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('discards an already queued refresh context when logout starts', () => {
+    const { getByRole, getByTestId } = renderProviderLive();
+    const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+    act(() => {
+      refreshCallbacks.onSuccess({ user: previousUser, token: 'previous-token' });
+    });
+    fireEvent.click(getByRole('button', { name: 'Sign out' }));
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'false');
+    expect(mockSetTokenHeader).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    'keeps the two-factor route when an older refresh context is queued: %s',
+    (alreadyQueued) => {
+      const { getByTestId } = renderProviderLive();
+      const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+      act(() => {
+        if (alreadyQueued) {
+          refreshCallbacks.onSuccess({ user: previousUser, token: 'previous-token' });
+        }
+        mockCapturedLoginOptions.onSuccess({ twoFAPending: true, tempToken: 'synthetic-2fa' });
+        if (!alreadyQueued) {
+          refreshCallbacks.onSuccess(undefined);
+        }
+        jest.advanceTimersByTime(100);
+      });
+
+      expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'false');
+      expect(mockSetTokenHeader).not.toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).toHaveBeenCalledWith('/login/2fa?tempToken=synthetic-2fa', {
+        replace: true,
+      });
+    },
+  );
+
+  it('replaces an already queued refresh context with a successful login', () => {
+    const { getByTestId } = renderProviderLive();
+    const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+    act(() => {
+      refreshCallbacks.onSuccess({ user: previousUser, token: 'previous-token' });
+      mockCapturedLoginOptions.onSuccess({ user: currentUser, token: 'current-token' });
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'true');
+    expect(getByTestId('consumer')).toHaveAttribute('data-user-id', currentUser.id);
+    expect(mockSetTokenHeader).toHaveBeenCalledTimes(1);
+    expect(mockSetTokenHeader).toHaveBeenCalledWith('current-token');
+  });
+
+  it('accepts the refresh response after its transport updates the token', () => {
+    const { getByTestId } = renderProviderLive();
+    const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent('tokenUpdated', { detail: 'recovered-token' }));
+      refreshCallbacks.onSuccess({ user: currentUser, token: 'rotated-token' });
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'true');
+    expect(getByTestId('consumer')).toHaveAttribute('data-user-id', currentUser.id);
+    expect(mockSetTokenHeader).toHaveBeenLastCalledWith('rotated-token');
+  });
+
+  it('allows a successful login retry after a failed login and anonymous refresh', () => {
+    const { getByTestId } = renderProviderLive();
+    const [, refreshCallbacks] = mockRefreshMutate.mock.calls[0] as [unknown, RefreshCallbacks];
+
+    act(() => {
+      mockCapturedLoginOptions.onError({ message: 'Invalid credentials' });
+      refreshCallbacks.onSuccess(undefined);
+      jest.advanceTimersByTime(400);
+    });
+    expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'false');
+
+    act(() => {
+      mockCapturedLoginOptions.onSuccess({ user: currentUser, token: 'current-token' });
+    });
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(getByTestId('consumer')).toHaveAttribute('data-authenticated', 'true');
+    expect(getByTestId('consumer')).toHaveAttribute('data-user-id', currentUser.id);
+    expect(mockSetTokenHeader).toHaveBeenLastCalledWith('current-token');
+    expect(mockNavigate).toHaveBeenLastCalledWith('/c/new', { replace: true });
   });
 });
 
