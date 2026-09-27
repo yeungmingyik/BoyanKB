@@ -10,7 +10,7 @@
 | 数据库     | MongoDB `8.0.20`，单节点副本集 `boyankb`，仅容器网络可达 |
 | 知识索引   | 固定 digest 的 RAG API 与 pgvector，启用同步时启动       |
 | 向量模型   | 本地 `BAAI/bge-small-zh-v1.5`，512 维，首次下载需网络    |
-| 访问地址   | `http://localhost:3080`                                  |
+| 访问地址   | 本机 `http://localhost:3080`；伙伴 `https://kb.boyantech.xyz` |
 | 模型连接   | 用户 API Key；启动与账号管理无需模型服务                 |
 
 所有命令在仓库根目录执行。默认 Compose 项目为 `boyankb-librechat`，命名卷独立于其他项目。应用仅监听宿主 `127.0.0.1`。
@@ -201,20 +201,20 @@ pwsh -NoProfile -File scripts/boyankb/test-knowledge-performance.ps1 -Users 10 -
 
 快照默认保留策略为 30 天，任务与审计为 90 天；自动物理清理未提供。已下线内容保留在卷中时仍受授权与版本限制，不对伙伴提供读取。
 
-2026-09-27 的 alpha.4 升级前备份保存于私有 `.local/backups/20260926-170020-before-alpha4`，包含 MongoDB archive、PostgreSQL custom dump、四个数据卷归档、实例配置和 SHA-256 清单。归档列表与校验检查通过；该记录不等于恢复演练通过。回退镜像标签 `rollback-alpha3-20260926-170020` 保留。自动定时备份、完整恢复和失败回退演练尚未交付或完成。
+2026-09-27 的 beta.1 升级前备份保存于私有 `.local/backups/20260927-110819-before-beta1`，包含 MongoDB archive、PostgreSQL custom dump、四个数据卷归档、实例配置和 SHA-256 清单。MongoDB 归档 dry run、PostgreSQL 归档列表、数据卷归档及配置校验通过。回退镜像 `boyankb:rollback-alpha4-20260927-110819` 保留。本次无预期数据库结构迁移；自动定时备份、完整恢复和失败回退演练尚未交付或完成。
 
 ## 部署边界
 
-基础部署包含应用与 MongoDB 副本集；启用同步后增加 Worker、模型初始化、RAG 与向量库。alpha.4 提供关键词与语义检索、企业知识问答、版本引用和生成期间访问控制，最终镜像隔离验收通过，范围见[验收清单](acceptance.md#9-alpha4-验证记录)。
+基础部署包含应用与 MongoDB 副本集；启用同步后增加 Worker、模型初始化、RAG 与向量库，远程入口使用独立网络的命名 Tunnel。
 
-正式应用与 Worker 已升级至 `boyankb:0.1.0-alpha.4-3a7a125781f6`，应用、Worker、MongoDB、PostgreSQL 和 RAG 健康，无源码覆盖挂载。升级前后资料状态、授权代次、已发布版本和索引关联一致：18 份资料、12 份已发布、12 个原生文件、12 个 RAG 文件标识。此次数据核对只读取元信息，未调用正式资料的问答模型。其余 6 份的未发布原因见[资料覆盖清单](source-coverage.md)。
+正式应用与 Worker 于 `2026-09-27T11:08:58Z` 升级至 `boyankb:0.1.0-beta.1-95e34fbb1c1c`，镜像 ID 为 `sha256:a5e587edef4739d16bbb3ff04e4c038546d8f4b076c6f3901a3fd43b06bd528b`。应用、Worker、MongoDB、PostgreSQL、RAG 和正式 Tunnel 均健康，无源码覆盖挂载。隔离实例全部停止并保留数据卷，公网入口仅连接正式实例。
 
-`boyankb:0.1.0-beta.1-32a4e3683a2b` 为已完成并发验证的隔离候选，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`，尚未替换正式实例。应用检查 1060 项、Linux CI Tunnel 配置检查 27 项及构建通过；Windows 配置检查含私有目录 ACL，共 28 项通过。该镜像综合场景 100/100、应用冷启动真实模型问答 10/10（P95 为 5903 ms）和默认网络公网流式权限 5 组通过，部署预检通过。
+升级前、新应用启动后及 Worker 恢复后的资料、授权代次和索引摘要均为 `5cc98d7a8c4f246ac9d7880dfd5614256d012bb85907b407337bcb0a9c1d2e9a`：18 份资料、12 份已发布、12 个原生文件和 12 个 RAG 文件标识。核对只读取元信息；其余 6 份的原因见[资料覆盖清单](source-coverage.md)。
 
-前端候选 `boyankb:0.1.0-beta.1-d987bb1e31a7` 的镜像 ID 为 `sha256:466321d23c887df713e18592cd908d59eba615d040a082fdee57a6c5b3986c7f`。提示消息自然关闭、默认网络公网浏览器 6 组、Mermaid 及 390 px Service Worker 验证通过；完整移动流程仅前 5/7 组通过，768 px 导航与搜索入口缺陷未通过。该断点已在源码修复，仍须完成后续新镜像的移动端、公网与 Service Worker 完整验收，再执行正式备份和切换。beta.1 保持未发布，正式实例仍为 alpha.4；各镜像指标见[验收清单](acceptance.md#10-beta1-候选验证记录)。
+正式 HTTPS 入口通过默认 DNS 与 TLS 1.3 验证，HTTP 301 跳转 HTTPS 200。临时无 VIEW 账号的原生登录、真实重载后的自然会话刷新、Secure/HttpOnly/SameSite=Strict Cookie、匿名 401、无 VIEW 403、退出和账号清理均通过；未读取正式正文、调用模型或改变原有用户权限。9 条邮箱 DNS 记录与迁移前一致。
 
-正式切换前停用隔离实例的 Tunnel 连接器，备份后升级应用与 Worker，核对健康和资料、授权、索引元信息，再启用正式连接器。正式访问验收限 HTTPS 登录、自然会话刷新、安全 Cookie、匿名与未授予 VIEW 的账号拒绝访问，不读取实际正文或执行正式业务问答；授权阅读与流式问答使用同镜像的公网隔离资料验收。
+`95e34fbb1c1c` 镜像的隔离移动端 7 组、公网浏览器 6 组、Mermaid 与 Service Worker 验证通过。并发与公网 SSE 数据单独来自 `32a4e3683a2b` 镜像，后端源码及既有依赖版本保持一致，未将旧指标作为新镜像重新实测。完整环境、指标与 CI 记录见[验收清单](acceptance.md#10-beta1-验证记录)。
 
-伙伴目标网络、真实企业题集和完整格式覆盖仍须验收；自动备份恢复、自动物理清理和云端迁移未交付。
+真实企业题集和公司模型网关计费暂缓，完整格式、实际设备网络性能、PC 重启、备份恢复及失败回退仍须验收；自动物理清理和云端迁移未交付。
 
-伙伴远程访问使用自有子域名与 Cloudflare 命名 Tunnel，配置与停用操作见[伙伴远程访问](partner-access.md)。隔离实例的默认网络公网流式权限验证通过，正式实例尚未启用该入口。云端部署沿用相同源码与配置契约，数据库与秘密材料独立迁移。
+伙伴入口为 [https://kb.boyantech.xyz](https://kb.boyantech.xyz)，配置与停用操作见[伙伴远程访问](partner-access.md)。云端部署沿用相同源码与配置契约，数据库与秘密材料独立迁移。

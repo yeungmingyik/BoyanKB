@@ -2,7 +2,7 @@
 
 ## 版本来源
 
-BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前源码为 `0.1.0-beta.1` 开发候选，交付目标为 HTTPS 伙伴入口、移动端流程与 10 人并发；完成验收前不创建发布标签。当前部署为 `0.1.0-alpha.4`，范围见[验收清单](acceptance.md#9-alpha4-验证记录)。实际 18 份资料中 12 份已发布、6 份保持未发布，具体范围见[资料覆盖清单](source-coverage.md)。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
+BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前部署为 `0.1.0-beta.1` 伙伴试点版，完成 HTTPS 伙伴入口、移动端流程与 10 人并发的既定验证，范围见[验收清单](acceptance.md#10-beta1-验证记录)。实际 18 份资料中 12 份已发布、6 份保持未发布，具体范围见[资料覆盖清单](source-coverage.md)。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
 
 | 版本类型        | 使用范围                         |
 | --------------- | -------------------------------- |
@@ -49,11 +49,11 @@ chore(release): prepare 0.1.0-beta.1
 
 `0.1.0-alpha.4` 的应用提交为 `3a7a125781f627c287bc30d1a7a9aea6766c6126`，验证镜像为 `boyankb:0.1.0-alpha.4-3a7a125781f6`，镜像 ID 为 `sha256:8984d119d48e29208cc27c9dbba1ebf9058a2813b3fc4a0f148575f8ffa0cfa2`。最终隔离验收无源码覆盖挂载；报告保留应用镜像、测试脚本和题集摘要。
 
-`0.1.0-beta.1` 的并发验证提交为 `32a4e3683a2b9822a013cfd4d974c31b2b39de88`，镜像为 `boyankb:0.1.0-beta.1-32a4e3683a2b`，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`。[应用检查 1060 项、Linux Tunnel 配置检查 27 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36308285620)通过；Windows 配置检查另含私有目录 ACL，共 28 项通过。该无源码覆盖挂载的镜像完成综合场景 100/100、应用冷启动真实模型问答 10/10（P95 为 5903 ms）及默认网络公网流式权限 5 组验证。
+`0.1.0-beta.1` 的应用提交为 `95e34fbb1c1c9bd869bc7bf42245336c36b26ff7`，部署镜像为 `boyankb:0.1.0-beta.1-95e34fbb1c1c`，镜像 ID 为 `sha256:a5e587edef4739d16bbb3ff04e4c038546d8f4b076c6f3901a3fd43b06bd528b`。[应用检查 1098 项、63 套件、Linux Tunnel 配置检查 27 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36313776241)通过；Windows 配置检查另含私有目录 ACL，既有 28 项检查通过。该镜像完成移动端 7 组、公网浏览器 6 组、Mermaid 与 Service Worker 验证，并于 `2026-09-27T11:08:58Z` 部署至正式实例；正式 HTTPS 登录、会话及拒绝访问检查通过。
 
-前端候选提交为 `d987bb1e31a7621174e9c1b8962ed4af13f91e72`，镜像为 `boyankb:0.1.0-beta.1-d987bb1e31a7`，镜像 ID 为 `sha256:466321d23c887df713e18592cd908d59eba615d040a082fdee57a6c5b3986c7f`。[应用检查 1079 项、61 套件、Linux Tunnel 配置检查 27 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36311779313)通过。提示消息自然关闭为 3018.8 ms；默认网络公网浏览器 6 组与 Mermaid 验证通过，TLS 有效且模型调用为 0。390 px Service Worker 场景登录表单可操作为 5547 ms，缓存 57 项，总观测 24154 ms；响应字节统计包含缓存，不代表网络传输量。完整移动流程仅前 5/7 组通过，768 px 导航与搜索入口缺陷使后续验证停止。
+并发与公网流式权限验证单独归属于提交 `32a4e3683a2b9822a013cfd4d974c31b2b39de88`，镜像 `boyankb:0.1.0-beta.1-32a4e3683a2b`，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`。综合场景 100/100、应用冷启动真实 DeepSeek 问答 10/10（P95 为 5903 ms）及默认网络公网流式权限 5 组通过。其后的前端修复未改变后端源码及既有依赖的版本、来源与完整性；未重复付费真实模型并发测试，旧指标不作为 `95e34fbb1c1c` 镜像的新实测记录。
 
-768 px 断点已在源码修复，6 套件、61 项相关测试通过，仍待后续新镜像的移动端、公网与 Service Worker 完整验收。真实模型并发证据仅归属于上述 `32a4e3683a2b` 镜像。beta.1 保持未发布，正式实例仍使用 alpha.4；详细结果见[候选验收记录](acceptance.md#10-beta1-候选验证记录)。
+升级前备份为 `.local/backups/20260927-110819-before-beta1`，回退镜像为 `boyankb:rollback-alpha4-20260927-110819`。无预期数据库结构迁移，升级前后资料与索引摘要一致；备份校验不等于恢复演练。镜像源码提交与后续纯文档发布提交分别记录，详细范围见[验收记录](acceptance.md#10-beta1-验证记录)。
 
 应用开发后，构建读取 `VERSION` 显示产品版本，构建产物标记源码提交；不要求手动修改所有上游 npm 包版本。交付记录包含镜像 digest、数据迁移、配置兼容性、验证结果和回滚版本。
 
