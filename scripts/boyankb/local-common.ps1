@@ -96,13 +96,19 @@ function Invoke-BoyanCompose {
 
     $null = Get-Command docker -ErrorAction Stop
     $version = (Get-Content -LiteralPath (Join-Path $Context.Repository 'VERSION') -Raw).Trim()
-    $commit = (& git -C $Context.Repository rev-parse HEAD).Trim()
+    $commit = & git -C $Context.Repository rev-parse HEAD
     if ($LASTEXITCODE -ne 0) {
         throw 'Git revision unavailable.'
     }
-    $branch = (& git -C $Context.Repository branch --show-current).Trim()
+    $commit = $commit.Trim()
+    $branch = & git -C $Context.Repository branch --show-current
     if ($LASTEXITCODE -ne 0) {
         throw 'Git branch unavailable.'
+    }
+    if ([string]::IsNullOrWhiteSpace($branch)) {
+        $branch = 'detached'
+    } else {
+        $branch = $branch.Trim()
     }
     if (-not $ImageTag) {
         $ImageTag = Get-BoyanImageTag -Context $Context

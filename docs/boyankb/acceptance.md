@@ -310,3 +310,11 @@ Edge `153.0.4234.48`，桌面 `1440×1000` 与移动 `390×844`。关键词结�
 | 部署与备份 | `.local/backups/20260927-110819-before-beta1/deployment.json`、`manifest.json`、`before.json`、`after-app.json`、`after-worker.json` |
 
 失败报告与诊断记录保留在私有目录，不替换为成功报告；有源码覆盖挂载的诊断结果不作为发布验收依据。
+
+## 11. beta.2 验证记录
+
+状态：开发候选，未发布。变更范围为 PowerShell 部署脚本读取 Git 构建信息；前后端业务源码与 beta.1 最终应用提交 `95e34fbb1c1c` 一致。正式实例继续使用已验收的 beta.1 镜像。
+
+beta.1 的版本标签检查因 detached HEAD 无分支名而失败；原标签保留，未创建 GitHub Release。beta.2 在 Git 命令成功且分支输出为空时使用 `detached` 标识，真实 Git 命令失败继续拒绝部署。新镜像、标签检出回归与正式最小访问验收待完成；beta.1 的浏览器、性能和资料覆盖结果保持各自镜像归属。
+
+部署构建信息回归 5 项通过，覆盖正常分支、detached HEAD、两类 Git 命令失败、Docker 命令失败与环境变量恢复。原逻辑的 detached HEAD 和两类 Git 失败共 3 项对照失败。Windows Tunnel 配置检查 28 项通过，生命周期操作使用替身，只执行真实 Compose 配置解析，未启动服务。

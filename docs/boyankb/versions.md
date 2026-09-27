@@ -2,7 +2,7 @@
 
 ## 版本来源
 
-BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前部署为 `0.1.0-beta.1` 伙伴试点版，完成 HTTPS 伙伴入口、移动端流程与 10 人并发的既定验证，范围见[验收清单](acceptance.md#10-beta1-验证记录)。实际 18 份资料中 12 份已发布、6 份保持未发布，具体范围见[资料覆盖清单](source-coverage.md)。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
+BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前源码为 `0.1.0-beta.2` 开发候选，修复标签检出部署兼容；线上仍部署 `0.1.0-beta.1` 伙伴试点版，完成 HTTPS 伙伴入口、移动端流程与 10 人并发的既定验证，范围见[验收清单](acceptance.md#10-beta1-验证记录)。实际 18 份资料中 12 份已发布、6 份保持未发布，具体范围见[资料覆盖清单](source-coverage.md)。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
 
 | 版本类型        | 使用范围                         |
 | --------------- | -------------------------------- |
@@ -54,6 +54,8 @@ chore(release): prepare 0.1.0-beta.1
 并发与公网流式权限验证单独归属于提交 `32a4e3683a2b9822a013cfd4d974c31b2b39de88`，镜像 `boyankb:0.1.0-beta.1-32a4e3683a2b`，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`。综合场景 100/100、应用冷启动真实 DeepSeek 问答 10/10（P95 为 5903 ms）及默认网络公网流式权限 5 组通过。其后的前端修复未改变后端源码及既有依赖的版本、来源与完整性；未重复付费真实模型并发测试，旧指标不作为 `95e34fbb1c1c` 镜像的新实测记录。
 
 升级前备份为 `.local/backups/20260927-110819-before-beta1`，回退镜像为 `boyankb:rollback-alpha4-20260927-110819`。无预期数据库结构迁移，升级前后资料与索引摘要一致；备份校验不等于恢复演练。镜像源码提交与后续纯文档发布提交分别记录，详细范围见[验收记录](acceptance.md#10-beta1-验证记录)。
+
+最终文档提交为 `08360f2e7d7924252f6ec4d3912251b0c4dad6c7`，标签 `v0.1.0-beta.1` 已创建并保留。[标签 CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369867) 在 detached HEAD 下的部署配置检查失败；同提交的 [main CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369674) 与[功能分支 CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369816) 通过，GitHub Release 尚未创建。`0.1.0-beta.2` 修复标签检出部署兼容，待新镜像构建、CI 与正式最小访问验证，不覆盖 beta.1 标签。
 
 应用开发后，构建读取 `VERSION` 显示产品版本，构建产物标记源码提交；不要求手动修改所有上游 npm 包版本。交付记录包含镜像 digest、数据迁移、配置兼容性、验证结果和回滚版本。
 

@@ -205,6 +205,8 @@ pwsh -NoProfile -File scripts/boyankb/test-knowledge-performance.ps1 -Users 10 -
 
 ## 部署边界
 
+当前源码为 `0.1.0-beta.2` 开发候选，修复标签检出时的部署脚本兼容问题，尚待新镜像构建与验收；正式实例继续使用下述 beta.1 镜像。beta.1 标签的配置 CI 失败不改变已部署镜像的运行验收记录。
+
 基础部署包含应用与 MongoDB 副本集；启用同步后增加 Worker、模型初始化、RAG 与向量库，远程入口使用独立网络的命名 Tunnel。
 
 正式应用与 Worker 于 `2026-09-27T11:08:58Z` 升级至 `boyankb:0.1.0-beta.1-95e34fbb1c1c`，镜像 ID 为 `sha256:a5e587edef4739d16bbb3ff04e4c038546d8f4b076c6f3901a3fd43b06bd528b`。应用、Worker、MongoDB、PostgreSQL、RAG 和正式 Tunnel 均健康，无源码覆盖挂载。隔离实例全部停止并保留数据卷，公网入口仅连接正式实例。
