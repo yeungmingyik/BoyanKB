@@ -2,7 +2,7 @@
 
 ## 版本来源
 
-BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前源码为 `0.1.0-beta.2` 开发候选，修复标签检出部署兼容；线上仍部署 `0.1.0-beta.1` 伙伴试点版，完成 HTTPS 伙伴入口、移动端流程与 10 人并发的既定验证，范围见[验收清单](acceptance.md#10-beta1-验证记录)。实际 18 份资料中 12 份已发布、6 份保持未发布，具体范围见[资料覆盖清单](source-coverage.md)。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
+BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前部署为 `0.1.0-beta.2` 伙伴试点版，完成标签检出部署兼容与正式最小访问验证；既有浏览器、并发和流式权限证据保持原镜像归属，范围见[验收清单](acceptance.md#11-beta2-验证记录)。实际 18 份资料中 12 份已发布、6 份保持未发布，具体范围见[资料覆盖清单](source-coverage.md)。上游包版本保留在各 `package.json`，不与产品版本混写；固定源提交记录于 `upstream.lock.json`。
 
 | 版本类型        | 使用范围                         |
 | --------------- | -------------------------------- |
@@ -20,7 +20,7 @@ BoyanKB 产品版本以根目录 `VERSION` 为准，采用 SemVer。当前源码
 | origin       | `https://github.com/yeungmingyik/BoyanKB.git`                                               |
 | upstream     | `https://github.com/danny-avila/LibreChat.git`                                              |
 | 稳定分支     | `main`                                                                                      |
-| 当前开发分支 | `partner-access`                                                                           |
+| 当前开发分支 | `tag-deployment`                                                                           |
 | 后续功能分支 | `local-deployment`、`account-access`、`feishu-sync`、`knowledge-reader`、`knowledge-search` |
 | 版本标签     | `v` + VERSION，例如 `v0.1.0-alpha.1`                                                        |
 | 提交规范     | Conventional Commits；无表情或非标准前缀                                                    |
@@ -55,7 +55,11 @@ chore(release): prepare 0.1.0-beta.1
 
 升级前备份为 `.local/backups/20260927-110819-before-beta1`，回退镜像为 `boyankb:rollback-alpha4-20260927-110819`。无预期数据库结构迁移，升级前后资料与索引摘要一致；备份校验不等于恢复演练。镜像源码提交与后续纯文档发布提交分别记录，详细范围见[验收记录](acceptance.md#10-beta1-验证记录)。
 
-最终文档提交为 `08360f2e7d7924252f6ec4d3912251b0c4dad6c7`，标签 `v0.1.0-beta.1` 已创建并保留。[标签 CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369867) 在 detached HEAD 下的部署配置检查失败；同提交的 [main CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369674) 与[功能分支 CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369816) 通过，GitHub Release 尚未创建。`0.1.0-beta.2` 修复标签检出部署兼容，待新镜像构建、CI 与正式最小访问验证，不覆盖 beta.1 标签。
+beta.1 最终文档提交为 `08360f2e7d7924252f6ec4d3912251b0c4dad6c7`，标签 `v0.1.0-beta.1` 已创建并保留。[标签 CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369867) 在 detached HEAD 下的部署配置检查失败；同提交的 [main CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369674) 与[功能分支 CI](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315369816) 通过。beta.1 未创建 GitHub Release，不覆盖其标签。
+
+`0.1.0-beta.2` 的应用提交为 `fd00898563104229461bcef35571ffae6446a2b5`，部署镜像为 `boyankb:0.1.0-beta.2-fd0089856310`，镜像 ID 为 `sha256:4f4f00deb14a0f4e63e95cd184013ecbe3ee554fb797a005934320cdb2f54e03`。[应用检查 1098 项、63 套件、PowerShell 回归 5 项、Linux Tunnel 配置检查 27 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36315788085)通过。本机真实 detached HEAD 检出下的 5 项回归与 Windows 28 项配置检查通过。正式升级于 `2026-09-27T11:42:04Z` 完成，HTTPS 登录、自然刷新、授权拒绝与清理验证通过。
+
+beta.2 升级前备份为 `.local/backups/20260927-114115-before-beta2`，回退镜像为 `boyankb:rollback-beta1-20260927-114115`。16 个备份文件共 412941 字节，SHA-256 校验一致，包含接入恢复配置 `access/restore.json`。相对 `95e34fbb1c1c`，仅产品版本、运维脚本、CI 和文档改变，前后端业务源码、依赖与应用 Dockerfile 无差异；未重复业务浏览器或付费模型验收。详情见[beta.2 验证记录](acceptance.md#11-beta2-验证记录)。
 
 应用开发后，构建读取 `VERSION` 显示产品版本，构建产物标记源码提交；不要求手动修改所有上游 npm 包版本。交付记录包含镜像 digest、数据迁移、配置兼容性、验证结果和回滚版本。
 

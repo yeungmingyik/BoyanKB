@@ -201,21 +201,21 @@ pwsh -NoProfile -File scripts/boyankb/test-knowledge-performance.ps1 -Users 10 -
 
 快照默认保留策略为 30 天，任务与审计为 90 天；自动物理清理未提供。已下线内容保留在卷中时仍受授权与版本限制，不对伙伴提供读取。
 
-2026-09-27 的 beta.1 升级前备份保存于私有 `.local/backups/20260927-110819-before-beta1`，包含 MongoDB archive、PostgreSQL custom dump、四个数据卷归档、实例配置和 SHA-256 清单。MongoDB 归档 dry run、PostgreSQL 归档列表、数据卷归档及配置校验通过。回退镜像 `boyankb:rollback-alpha4-20260927-110819` 保留。本次无预期数据库结构迁移；自动定时备份、完整恢复和失败回退演练尚未交付或完成。
+2026-09-27 的 beta.2 升级前备份保存于私有 `.local/backups/20260927-114115-before-beta2`，包含 MongoDB archive、PostgreSQL custom dump、四个数据卷归档、实例配置、`access/restore.json` 和 SHA-256 清单。16 个文件共 412941 字节，SHA-256 校验一致；MongoDB 归档 dry run、PostgreSQL 归档列表与数据卷归档检查通过。回退镜像 `boyankb:rollback-beta1-20260927-114115` 保留。本次无预期数据库结构迁移；自动定时备份、完整恢复和失败回退演练尚未交付或完成。
 
 ## 部署边界
 
-当前源码为 `0.1.0-beta.2` 开发候选，修复标签检出时的部署脚本兼容问题，尚待新镜像构建与验收；正式实例继续使用下述 beta.1 镜像。beta.1 标签的配置 CI 失败不改变已部署镜像的运行验收记录。
+当前部署为 `0.1.0-beta.2`，支持分支与 detached HEAD 检出后的部署。PowerShell 回归 5 项与 Linux Tunnel 配置检查 27 项通过，本机真实 detached HEAD 检出下的 5 项回归与 Windows 28 项配置检查通过。
 
 基础部署包含应用与 MongoDB 副本集；启用同步后增加 Worker、模型初始化、RAG 与向量库，远程入口使用独立网络的命名 Tunnel。
 
-正式应用与 Worker 于 `2026-09-27T11:08:58Z` 升级至 `boyankb:0.1.0-beta.1-95e34fbb1c1c`，镜像 ID 为 `sha256:a5e587edef4739d16bbb3ff04e4c038546d8f4b076c6f3901a3fd43b06bd528b`。应用、Worker、MongoDB、PostgreSQL、RAG 和正式 Tunnel 均健康，无源码覆盖挂载。隔离实例全部停止并保留数据卷，公网入口仅连接正式实例。
+正式应用与 Worker 于 `2026-09-27T11:42:04Z` 升级至 `boyankb:0.1.0-beta.2-fd0089856310`，镜像 ID 为 `sha256:4f4f00deb14a0f4e63e95cd184013ecbe3ee554fb797a005934320cdb2f54e03`。应用、Worker、MongoDB、PostgreSQL、RAG 和正式 Tunnel 均健康，无源码覆盖挂载。隔离实例全部停止并保留数据卷，公网入口仅连接正式实例。
 
 升级前、新应用启动后及 Worker 恢复后的资料、授权代次和索引摘要均为 `5cc98d7a8c4f246ac9d7880dfd5614256d012bb85907b407337bcb0a9c1d2e9a`：18 份资料、12 份已发布、12 个原生文件和 12 个 RAG 文件标识。核对只读取元信息；其余 6 份的原因见[资料覆盖清单](source-coverage.md)。
 
 正式 HTTPS 入口通过默认 DNS 与 TLS 1.3 验证，HTTP 301 跳转 HTTPS 200。临时无 VIEW 账号的原生登录、真实重载后的自然会话刷新、Secure/HttpOnly/SameSite=Strict Cookie、匿名 401、无 VIEW 403、退出和账号清理均通过；未读取正式正文、调用模型或改变原有用户权限。9 条邮箱 DNS 记录与迁移前一致。
 
-`95e34fbb1c1c` 镜像的隔离移动端 7 组、公网浏览器 6 组、Mermaid 与 Service Worker 验证通过。并发与公网 SSE 数据单独来自 `32a4e3683a2b` 镜像，后端源码及既有依赖版本保持一致，未将旧指标作为新镜像重新实测。完整环境、指标与 CI 记录见[验收清单](acceptance.md#10-beta1-验证记录)。
+相对 `95e34fbb1c1c`，beta.2 仅修改产品版本、运维脚本、CI 和文档，前后端业务源码、依赖与应用 Dockerfile 无差异，未重复业务浏览器或付费模型测试。隔离移动端 7 组、公网浏览器 6 组、Mermaid 与 Service Worker 证据归属于 `95e34fbb1c1c`；并发与公网 SSE 数据单独来自 `32a4e3683a2b`。完整环境、指标与 CI 记录见[验收清单](acceptance.md#11-beta2-验证记录)。
 
 真实企业题集和公司模型网关计费暂缓，完整格式、实际设备网络性能、PC 重启、备份恢复及失败回退仍须验收；自动物理清理和云端迁移未交付。
 
