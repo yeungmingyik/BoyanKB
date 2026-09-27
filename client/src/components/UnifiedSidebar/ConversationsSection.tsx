@@ -31,7 +31,7 @@ const chatsHeaderTrailing = <ChatFilterMenu />;
 
 const ConversationsSection = memo(() => {
   const localize = useLocalize();
-  const isSmallScreen = useMediaQuery('(max-width: 768px)');
+  const isSmallScreen = !useMediaQuery('(min-width: 768px)');
   const { setSidebarOpen } = useSidebarToggle();
   const { isAuthenticated, user } = useAuthContext();
   const { data: startupConfig } = useGetStartupConfig();

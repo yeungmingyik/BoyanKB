@@ -209,7 +209,9 @@ pwsh -NoProfile -File scripts/boyankb/test-knowledge-performance.ps1 -Users 10 -
 
 正式应用与 Worker 已升级至 `boyankb:0.1.0-alpha.4-3a7a125781f6`，应用、Worker、MongoDB、PostgreSQL 和 RAG 健康，无源码覆盖挂载。升级前后资料状态、授权代次、已发布版本和索引关联一致：18 份资料、12 份已发布、12 个原生文件、12 个 RAG 文件标识。此次数据核对只读取元信息，未调用正式资料的问答模型。其余 6 份的未发布原因见[资料覆盖清单](source-coverage.md)。
 
-`boyankb:0.1.0-beta.1-32a4e3683a2b` 为已完成并发验证的隔离候选，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`，尚未替换正式实例。应用检查 1060 项、Linux CI Tunnel 配置检查 27 项及构建通过；Windows 配置检查含私有目录 ACL，共 28 项通过。该镜像综合场景 100/100、应用冷启动真实模型问答 10/10（P95 为 5903 ms）和默认网络公网流式权限 5 组通过，部署预检通过。提示消息计时问题已在源码修复，新镜像的移动端、公网与 Service Worker 完整验收通过后再执行正式备份和切换；beta.1 保持未发布。候选状态见[验收清单](acceptance.md#10-beta1-候选验证记录)。
+`boyankb:0.1.0-beta.1-32a4e3683a2b` 为已完成并发验证的隔离候选，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`，尚未替换正式实例。应用检查 1060 项、Linux CI Tunnel 配置检查 27 项及构建通过；Windows 配置检查含私有目录 ACL，共 28 项通过。该镜像综合场景 100/100、应用冷启动真实模型问答 10/10（P95 为 5903 ms）和默认网络公网流式权限 5 组通过，部署预检通过。
+
+前端候选 `boyankb:0.1.0-beta.1-d987bb1e31a7` 的镜像 ID 为 `sha256:466321d23c887df713e18592cd908d59eba615d040a082fdee57a6c5b3986c7f`。提示消息自然关闭、默认网络公网浏览器 6 组、Mermaid 及 390 px Service Worker 验证通过；完整移动流程仅前 5/7 组通过，768 px 导航与搜索入口缺陷未通过。该断点已在源码修复，仍须完成后续新镜像的移动端、公网与 Service Worker 完整验收，再执行正式备份和切换。beta.1 保持未发布，正式实例仍为 alpha.4；各镜像指标见[验收清单](acceptance.md#10-beta1-候选验证记录)。
 
 正式切换前停用隔离实例的 Tunnel 连接器，备份后升级应用与 Worker，核对健康和资料、授权、索引元信息，再启用正式连接器。正式访问验收限 HTTPS 登录、自然会话刷新、安全 Cookie、匿名与未授予 VIEW 的账号拒绝访问，不读取实际正文或执行正式业务问答；授权阅读与流式问答使用同镜像的公网隔离资料验收。
 

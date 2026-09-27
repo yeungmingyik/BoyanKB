@@ -1,17 +1,22 @@
 const KEY = 'unifiedSidebarExpanded';
 
 /** The shared setup defines `matchMedia` as writable, so assign over it. */
-const setViewport = (isSmall: boolean) => {
-  window.matchMedia = ((query: string) => ({
-    matches: isSmall && query === '(max-width: 768px)',
-    media: query,
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    onchange: null,
-    dispatchEvent: jest.fn(),
-  })) as unknown as typeof window.matchMedia;
+const setViewport = (width: number) => {
+  window.matchMedia = ((query: string) => {
+    const condition = /\((min|max)-width:\s*(\d+(?:\.\d+)?)px\)/.exec(query);
+    return {
+      matches:
+        !!condition &&
+        (condition[1] === 'min' ? width >= Number(condition[2]) : width <= Number(condition[2])),
+      media: query,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      onchange: null,
+      dispatchEvent: jest.fn(),
+    };
+  }) as unknown as typeof window.matchMedia;
 };
 
 /**
@@ -31,7 +36,7 @@ describe('sidebarExpanded', () => {
   });
 
   it('ignores a persisted open drawer on a small viewport', async () => {
-    setViewport(true);
+    setViewport(390);
     localStorage.setItem(KEY, JSON.stringify(true));
 
     /**
@@ -43,21 +48,21 @@ describe('sidebarExpanded', () => {
   });
 
   it('honours a persisted collapsed sidebar on a wide viewport', async () => {
-    setViewport(false);
+    setViewport(1280);
     localStorage.setItem(KEY, JSON.stringify(false));
 
     expect(await readInitialValue()).toBe(false);
   });
 
   it('honours a persisted open sidebar on a wide viewport', async () => {
-    setViewport(false);
+    setViewport(1280);
     localStorage.setItem(KEY, JSON.stringify(true));
 
     expect(await readInitialValue()).toBe(true);
   });
 
   it('starts closed on a small viewport with nothing persisted', async () => {
-    setViewport(true);
+    setViewport(390);
 
     expect(await readInitialValue()).toBe(false);
   });
@@ -69,11 +74,11 @@ describe('sidebarExpanded', () => {
    * otherwise leave the drawer covering the first authenticated screen.
    */
   it('rechecks the viewport when no value was ever persisted', async () => {
-    setViewport(false);
+    setViewport(1280);
     const { snapshot_UNSTABLE } = await import('recoil');
     const settings = await import('../settings');
 
-    setViewport(true);
+    setViewport(390);
 
     expect(snapshot_UNSTABLE().getLoadable(settings.default.sidebarExpanded).valueOrThrow()).toBe(
       false,
@@ -81,8 +86,19 @@ describe('sidebarExpanded', () => {
   });
 
   it('starts open on a wide viewport with nothing persisted', async () => {
-    setViewport(false);
+    setViewport(1280);
 
     expect(await readInitialValue()).toBe(true);
+  });
+
+  it.each<[number, boolean]>([
+    [767, false],
+    [767.5, false],
+    [768, true],
+    [769, true],
+  ])('normalizes the saved sidebar state at %s pixels', async (width, expanded) => {
+    setViewport(width);
+    localStorage.setItem(KEY, JSON.stringify(true));
+    expect(await readInitialValue()).toBe(expanded);
   });
 });

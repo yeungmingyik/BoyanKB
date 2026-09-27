@@ -49,7 +49,11 @@ chore(release): prepare 0.1.0-beta.1
 
 `0.1.0-alpha.4` 的应用提交为 `3a7a125781f627c287bc30d1a7a9aea6766c6126`，验证镜像为 `boyankb:0.1.0-alpha.4-3a7a125781f6`，镜像 ID 为 `sha256:8984d119d48e29208cc27c9dbba1ebf9058a2813b3fc4a0f148575f8ffa0cfa2`。最终隔离验收无源码覆盖挂载；报告保留应用镜像、测试脚本和题集摘要。
 
-`0.1.0-beta.1` 已验证的候选应用提交为 `32a4e3683a2b9822a013cfd4d974c31b2b39de88`，镜像为 `boyankb:0.1.0-beta.1-32a4e3683a2b`，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`。[应用检查 1060 项、Linux Tunnel 配置检查 27 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36308285620)通过；Windows 配置检查另含私有目录 ACL，共 28 项通过。无源码覆盖挂载的镜像完成综合场景 100/100、应用冷启动真实模型问答 10/10（P95 为 5903 ms）及默认网络公网流式权限 5 组验证。提示消息计时问题已在源码修复，仍待新镜像的移动端、公网与 Service Worker 完整验收；新提交、镜像及验收结果单独记录。beta.1 保持未发布，正式实例仍使用 alpha.4；详细结果见[候选验收记录](acceptance.md#10-beta1-候选验证记录)。
+`0.1.0-beta.1` 的并发验证提交为 `32a4e3683a2b9822a013cfd4d974c31b2b39de88`，镜像为 `boyankb:0.1.0-beta.1-32a4e3683a2b`，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`。[应用检查 1060 项、Linux Tunnel 配置检查 27 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36308285620)通过；Windows 配置检查另含私有目录 ACL，共 28 项通过。该无源码覆盖挂载的镜像完成综合场景 100/100、应用冷启动真实模型问答 10/10（P95 为 5903 ms）及默认网络公网流式权限 5 组验证。
+
+前端候选提交为 `d987bb1e31a7621174e9c1b8962ed4af13f91e72`，镜像为 `boyankb:0.1.0-beta.1-d987bb1e31a7`，镜像 ID 为 `sha256:466321d23c887df713e18592cd908d59eba615d040a082fdee57a6c5b3986c7f`。[应用检查 1079 项、61 套件、Linux Tunnel 配置检查 27 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36311779313)通过。提示消息自然关闭为 3018.8 ms；默认网络公网浏览器 6 组与 Mermaid 验证通过，TLS 有效且模型调用为 0。390 px Service Worker 场景登录表单可操作为 5547 ms，缓存 57 项，总观测 24154 ms；响应字节统计包含缓存，不代表网络传输量。完整移动流程仅前 5/7 组通过，768 px 导航与搜索入口缺陷使后续验证停止。
+
+768 px 断点已在源码修复，6 套件、61 项相关测试通过，仍待后续新镜像的移动端、公网与 Service Worker 完整验收。真实模型并发证据仅归属于上述 `32a4e3683a2b` 镜像。beta.1 保持未发布，正式实例仍使用 alpha.4；详细结果见[候选验收记录](acceptance.md#10-beta1-候选验证记录)。
 
 应用开发后，构建读取 `VERSION` 显示产品版本，构建产物标记源码提交；不要求手动修改所有上游 npm 包版本。交付记录包含镜像 digest、数据迁移、配置兼容性、验证结果和回滚版本。
 

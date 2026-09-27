@@ -36,7 +36,7 @@ const staticAtoms = {
 
 /** Read synchronously: `useMediaQuery` only resolves after the first paint. */
 function isSmallViewport(): boolean {
-  return typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+  return typeof window !== 'undefined' && !window.matchMedia('(min-width: 768px)').matches;
 }
 
 const localStorageAtoms = {

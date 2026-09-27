@@ -27,7 +27,7 @@ export type SidebarState = {
  * here so they can never disagree about that frame.
  */
 export default function useSidebarState(): SidebarState {
-  const isSmallScreen = useMediaQuery('(max-width: 768px)');
+  const isSmallScreen = !useMediaQuery('(min-width: 768px)');
   const [expanded, setExpanded] = useRecoilState(store.sidebarExpanded);
   const wasSmallScreen = useRef(isSmallScreen);
 

@@ -174,10 +174,16 @@ const settleRenders = async () => {
   }
 };
 
-const renderSection = () =>
+const renderSection = (searchEnabled = false) =>
   render(
     <QueryClientProvider client={createQueryClient()}>
-      <RecoilRoot>
+      <RecoilRoot
+        initializeState={({ set }) => {
+          if (searchEnabled) {
+            set(store.search, { query: '', debouncedQuery: '', enabled: true, isTyping: false });
+          }
+        }}
+      >
         <BrowserRouter>
           <DndProvider backend={HTML5Backend}>
             <TickController />
@@ -187,6 +193,39 @@ const renderSection = () =>
       </RecoilRoot>
     </QueryClientProvider>,
   );
+
+describe('ConversationsSection navigation breakpoint', () => {
+  it.each<[number, boolean]>([
+    [767, false],
+    [767.5, false],
+    [768, true],
+    [769, true],
+  ])(
+    'shows desktop search at %s pixels only when the desktop rail is present',
+    (width, visible) => {
+      jest.spyOn(window, 'matchMedia').mockImplementation((query) => {
+        const condition = /\((min|max)-width:\s*(\d+(?:\.\d+)?)px\)/.exec(query);
+        return {
+          matches:
+            !!condition &&
+            (condition[1] === 'min'
+              ? width >= Number(condition[2])
+              : width <= Number(condition[2])),
+          media: query,
+          addEventListener: jest.fn(),
+          removeEventListener: jest.fn(),
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          onchange: null,
+          dispatchEvent: jest.fn(),
+        } as MediaQueryList;
+      });
+      const view = renderSection(true);
+      if (visible) expect(view.getByTestId('searchbar-stub')).toBeInTheDocument();
+      else expect(view.queryByTestId('searchbar-stub')).not.toBeInTheDocument();
+    },
+  );
+});
 
 describe('ConversationsSection section order', () => {
   it('renders Pinned between Projects and Chats', async () => {
