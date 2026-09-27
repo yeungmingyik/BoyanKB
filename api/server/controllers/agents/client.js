@@ -188,6 +188,7 @@ const {
   knowledgeAnswerMetadata,
   knowledgeCompletionText,
   knowledgeQuestionHistory,
+  createKnowledgeStreamCallback,
 } = require('@librechat/api');
 const {
   Run,
@@ -2041,6 +2042,13 @@ class AgentClient extends BaseClient {
         onContentRejected: persistence?.cancel,
       },
     );
+  }
+
+  createModelCallbacks(...callbacks) {
+    if (this.options.knowledgeAnswer) {
+      callbacks.push(createKnowledgeStreamCallback());
+    }
+    return callbacks;
   }
 
   createInitialModelBoundAdmissionCallback(startingAgentIds) {
@@ -4960,11 +4968,12 @@ class AgentClient extends BaseClient {
           messages,
           discoveredToolNames:
             this.eventActorContinuation === 'warm' ? this.eventActorDiscoveredToolNames : undefined,
-          modelCallbacks: [
+          modelCallbacks: AgentClient.prototype.createModelCallbacks.call(
+            this,
             modelBoundCallback,
             createAgentMemoryCallback(this.attachmentMemoryContext ?? {}),
             terminalRunError.modelCallback,
-          ],
+          ),
           // This controller implements the full HITL pause/resume lifecycle (handleRunInterrupt
           // persists the pending action; the /resume route rebuilds + continues the run), so it
           // opts into the tool-approval wiring. Non-resumable callers (OpenAI-compat, Responses)
@@ -5738,11 +5747,12 @@ class AgentClient extends BaseClient {
       run = await createRun({
         agents,
         conversationId: this.conversationId,
-        modelCallbacks: [
+        modelCallbacks: AgentClient.prototype.createModelCallbacks.call(
+          this,
           modelBoundCallback,
           attachmentMemoryCallback,
           terminalRunError.modelCallback,
-        ],
+        ),
         // State (messages, tool calls) is rehydrated from the checkpoint by
         // run.resume; createRun only needs the agents to rebuild the graph.
         messages: [],

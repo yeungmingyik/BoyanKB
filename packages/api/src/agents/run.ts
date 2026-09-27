@@ -47,8 +47,8 @@ import type {
   ReasoningResponseKey,
   SummarizationConfig,
 } from 'librechat-data-provider';
+import type { BaseCallbackHandler, CallbackHandlerMethods } from '@langchain/core/callbacks/base';
 import type { AppConfig, IAgentFadingTier, IUser } from '@librechat/data-schemas';
-import type { CallbackHandlerMethods } from '@langchain/core/callbacks/base';
 import type { BaseMessage } from '@librechat/agents/langchain/messages';
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import type { ModelBoundChatModelCallback } from '~/middleware/modelBoundContent';
@@ -1512,7 +1512,10 @@ type CallbackClientOptions = {
   fallbacks?: FallbackConfig[];
 };
 
-type RunModelCallback = ModelBoundChatModelCallback | ModelErrorTrackerCallback;
+type RunModelCallback =
+  | ModelBoundChatModelCallback
+  | ModelErrorTrackerCallback
+  | BaseCallbackHandler;
 
 /**
  * Installs run-stable callbacks on the model client itself. Subagent child

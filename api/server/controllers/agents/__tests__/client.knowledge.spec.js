@@ -1,4 +1,9 @@
-const { createKnowledgeAnswerContext } = require('@librechat/api');
+jest.mock('@librechat/api', () => ({
+  ...jest.requireActual('@librechat/api'),
+  createKnowledgeStreamCallback: jest.fn(() => ({ name: 'synthetic-knowledge-scheduler' })),
+}));
+
+const { createKnowledgeAnswerContext, createKnowledgeStreamCallback } = require('@librechat/api');
 const AgentClient = require('../client');
 
 const hit = {
@@ -74,5 +79,34 @@ describe('knowledge completion wiring', () => {
     const result = await AgentClient.prototype.sendCompletion.call(target, []);
     expect(result.completion[0].type).toBe('error');
     expect(result.metadata.knowledge).toBeUndefined();
+  });
+});
+
+describe('knowledge model callback wiring', () => {
+  it('preserves the native callbacks without creating a scheduler for ordinary chat', () => {
+    const callbacks = [{ name: 'content' }, { name: 'memory' }, { name: 'terminal' }];
+    const result = AgentClient.prototype.createModelCallbacks.call({ options: {} }, ...callbacks);
+
+    expect(result).toEqual(callbacks);
+    callbacks.forEach((callback, index) => expect(result[index]).toBe(callback));
+    expect(createKnowledgeStreamCallback).not.toHaveBeenCalled();
+  });
+
+  it('appends an independent knowledge scheduler after all native callbacks for each run', () => {
+    const callbacks = [{ name: 'content' }, { name: 'memory' }, { name: 'terminal' }];
+    const target = client([]);
+    const first = AgentClient.prototype.createModelCallbacks.call(target, ...callbacks);
+    const second = AgentClient.prototype.createModelCallbacks.call(target, ...callbacks);
+
+    expect(first).toHaveLength(4);
+    callbacks.forEach((callback, index) => {
+      expect(first[index]).toBe(callback);
+      expect(second[index]).toBe(callback);
+    });
+    expect(createKnowledgeStreamCallback).toHaveBeenCalledTimes(2);
+    expect(first[3]).toBe(createKnowledgeStreamCallback.mock.results[0].value);
+    expect(second[3]).toBe(createKnowledgeStreamCallback.mock.results[1].value);
+    expect(first[3]).not.toBe(second[3]);
+    expect(callbacks).toHaveLength(3);
   });
 });

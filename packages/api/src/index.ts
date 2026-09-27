@@ -3,6 +3,7 @@ export * from './knowledge/access';
 export * from './knowledge/answer';
 export * from './knowledge/stream';
 export * from './knowledge/runtime';
+export * from './knowledge/scheduling';
 export * from './knowledge/streamAccess';
 export * from './knowledge/streamOutput';
 export * from './knowledge/routes';
