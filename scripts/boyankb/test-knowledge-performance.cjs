@@ -654,7 +654,9 @@ async function main() {
       retriesPerRequest: 0,
       maxOutputTokensPerRequest: 256,
       maximumOutputTokens: users * 256,
-      maximumKnowledgeContextChars: knowledge.search.maxContextChars,
+      maximumKnowledgeContextChars:
+        require('librechat-data-provider').knowledgeSearchConfigSchema.parse(knowledge.search ?? {})
+          .maxContextChars,
       model,
       personalKeys: true,
     };
