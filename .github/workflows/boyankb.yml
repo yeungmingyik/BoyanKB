@@ -28,6 +28,7 @@ jobs:
       - run: npm install --global npm@11.13.0
       - run: npm ci --no-audit --no-fund
       - run: npm run frontend
+      - run: npm run test:ci --workspace=@librechat/client -- --runInBand --coverage=false --testPathPatterns='Toast.spec|dialogToastEscape.spec'
       - run: npm run test:ci --workspace=@librechat/api -- --runInBand --coverage=false --testPathPatterns='knowledge/|app/permissions|images/authorization|endpoints/config/models|endpoints/custom/config'
       - run: npm run test:ci --workspace=@librechat/backend -- --runInBand --testPathPatterns='checkBan|convoAccess|loadConfigModels|fileSearch|KnowledgeStream|KnowledgeChat|streamKnowledge|streamTenant|request.resumeMetadata|request.partialDisconnect|agents/initialize.spec|client.knowledge.spec'
       - run: npx jest --config config/jest.config.js --runInBand --runTestsByPath config/__tests__/ban-user.spec.js

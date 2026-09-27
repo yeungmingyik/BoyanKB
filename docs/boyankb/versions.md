@@ -49,7 +49,7 @@ chore(release): prepare 0.1.0-beta.1
 
 `0.1.0-alpha.4` 的应用提交为 `3a7a125781f627c287bc30d1a7a9aea6766c6126`，验证镜像为 `boyankb:0.1.0-alpha.4-3a7a125781f6`，镜像 ID 为 `sha256:8984d119d48e29208cc27c9dbba1ebf9058a2813b3fc4a0f148575f8ffa0cfa2`。最终隔离验收无源码覆盖挂载；报告保留应用镜像、测试脚本和题集摘要。
 
-`0.1.0-beta.1` 候选应用提交为 `46fc9308fea3fdc28c3fbfe02b6a97c1cf7801dd`，镜像为 `boyankb:0.1.0-beta.1-46fc9308fea3`，镜像 ID 为 `sha256:ac40e9ba17ccaa1bfb5d51ada2ac779628d25c955aa4f78eecb9af815b2492aa`。[应用检查 1016 项、Tunnel 配置检查 28 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36304158295)通过。干净镜像模拟并发通过，冷启动真实模型问答为 0/10；移动端完整流程与公网 SSE 验收未完成。该候选不创建发布标签，正式实例仍使用 alpha.4；详细结果见[候选验收记录](acceptance.md#10-beta1-候选验证记录)。
+`0.1.0-beta.1` 已验证的候选应用提交为 `32a4e3683a2b9822a013cfd4d974c31b2b39de88`，镜像为 `boyankb:0.1.0-beta.1-32a4e3683a2b`，镜像 ID 为 `sha256:b13f256caacaa949c1f4a41af92e9da196e7c17554e80a1a831a8740dc8bbfd0`。[应用检查 1060 项、Linux Tunnel 配置检查 27 项及构建](https://github.com/yeungmingyik/BoyanKB/actions/runs/36308285620)通过；Windows 配置检查另含私有目录 ACL，共 28 项通过。无源码覆盖挂载的镜像完成综合场景 100/100、应用冷启动真实模型问答 10/10（P95 为 5903 ms）及默认网络公网流式权限 5 组验证。提示消息计时问题已在源码修复，仍待新镜像的移动端、公网与 Service Worker 完整验收；新提交、镜像及验收结果单独记录。beta.1 保持未发布，正式实例仍使用 alpha.4；详细结果见[候选验收记录](acceptance.md#10-beta1-候选验证记录)。
 
 应用开发后，构建读取 `VERSION` 显示产品版本，构建产物标记源码提交；不要求手动修改所有上游 npm 包版本。交付记录包含镜像 digest、数据迁移、配置兼容性、验证结果和回滚版本。
 

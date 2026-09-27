@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Provider } from 'jotai';
 import * as RadixToast from '@radix-ui/react-toast';
-import { render, act, fireEvent } from '@testing-library/react';
+import { render, act, fireEvent, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { useToast } from '~/hooks';
 import { Toast } from '../Toast';
@@ -140,6 +140,114 @@ describe('Toast duration', () => {
     expect(state()).toBe('open');
 
     advance(2000);
+    expect(state()).not.toBe('open');
+  });
+
+  test('keeps the default deadline after a bubbling element blur', () => {
+    renderToast(
+      <>
+        <ShowOnMount />
+        <button type="button">Model option</button>
+      </>,
+    );
+    advance(0);
+    advance(1000);
+
+    fireEvent(
+      screen.getByRole('button', { name: 'Model option' }),
+      new FocusEvent('blur', { bubbles: true }),
+    );
+
+    advance(1900);
+    expect(state()).toBe('open');
+    advance(200);
+    expect(state()).not.toBe('open');
+  });
+
+  test('does not resume a window-paused toast for a bubbling element focus', () => {
+    renderToast(
+      <>
+        <ShowOnMount />
+        <button type="button">Model option</button>
+      </>,
+    );
+    advance(0);
+    advance(1000);
+    fireEvent(window, new FocusEvent('blur'));
+    advance(5000);
+    expect(state()).toBe('open');
+
+    fireEvent(
+      screen.getByRole('button', { name: 'Model option' }),
+      new FocusEvent('focus', { bubbles: true }),
+    );
+    advance(5000);
+    expect(state()).toBe('open');
+
+    fireEvent(window, new FocusEvent('focus'));
+    advance(1900);
+    expect(state()).toBe('open');
+    advance(200);
+    expect(state()).not.toBe('open');
+  });
+
+  test('pauses on window blur and resumes the remaining duration on window focus', () => {
+    setup();
+    advance(0);
+    advance(1000);
+    fireEvent(window, new FocusEvent('blur'));
+
+    advance(5000);
+    expect(state()).toBe('open');
+
+    fireEvent(window, new FocusEvent('focus'));
+    advance(1900);
+    expect(state()).toBe('open');
+    advance(200);
+    expect(state()).not.toBe('open');
+  });
+
+  test('pauses while hovered and resumes the remaining duration on pointer leave', () => {
+    setup();
+    advance(0);
+    advance(1000);
+    const region = screen.getByRole('region', { name: 'Notifications (F8)' });
+    fireEvent.pointerMove(region);
+
+    advance(5000);
+    expect(state()).toBe('open');
+
+    fireEvent.pointerLeave(region);
+    advance(1900);
+    expect(state()).toBe('open');
+    advance(200);
+    expect(state()).not.toBe('open');
+  });
+
+  test('keeps a focused toast paused after pointer leave until focus moves outside', () => {
+    renderToast(
+      <>
+        <ShowOnMount />
+        <button type="button">Outside toast</button>
+      </>,
+    );
+    advance(0);
+    advance(1000);
+    const toast = document.querySelector<HTMLElement>('.toast-root');
+    expect(toast).not.toBeNull();
+    act(() => toast?.focus());
+    expect(document.activeElement).toBe(toast);
+
+    advance(5000);
+    expect(state()).toBe('open');
+    fireEvent.pointerLeave(screen.getByRole('region', { name: 'Notifications (F8)' }));
+    advance(5000);
+    expect(state()).toBe('open');
+
+    act(() => screen.getByRole('button', { name: 'Outside toast' }).focus());
+    advance(1900);
+    expect(state()).toBe('open');
+    advance(200);
     expect(state()).not.toBe('open');
   });
 });

@@ -12,6 +12,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "patch-package --error-on-fail",
     "prepare": "node -e \"import('husky').then((h) => h.default()).catch(() => {})\"",
     "update": "node config/update.js",
     "add-balance": "node config/add-balance.js",
@@ -198,6 +199,7 @@
     "typescript-eslint": "^8.60.1"
   },
   "overrides": {
+    "@radix-ui/react-toast": "1.2.23",
     "minimatch@3": {
       "brace-expansion": "^1.1.16"
     },
@@ -269,5 +271,8 @@
       "admin/",
       "packages/"
     ]
+  },
+  "dependencies": {
+    "patch-package": "8.0.1"
   }
 }

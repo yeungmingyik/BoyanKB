@@ -1,0 +1,68 @@
+diff --git a/node_modules/@radix-ui/react-toast/dist/index.js b/node_modules/@radix-ui/react-toast/dist/index.js
+index c70ff01..c1defd1 100644
+--- a/node_modules/@radix-ui/react-toast/dist/index.js
++++ b/node_modules/@radix-ui/react-toast/dist/index.js
+@@ -162,19 +162,25 @@ var ToastViewport = /* @__PURE__ */ React.forwardRef(
+           const isFocusInside = wrapper.contains(document.activeElement);
+           if (!isFocusInside) handleResume();
+         }, "handlePointerLeaveResume");
++        const handleWindowBlur = (event) => {
++          if (event.target === window) handlePause();
++        };
++        const handleWindowFocus = (event) => {
++          if (event.target === window) handleResume();
++        };
+         wrapper.addEventListener("focusin", handlePause);
+         wrapper.addEventListener("focusout", handleFocusOutResume);
+         wrapper.addEventListener("pointermove", handlePause);
+         wrapper.addEventListener("pointerleave", handlePointerLeaveResume);
+-        window.addEventListener("blur", handlePause);
+-        window.addEventListener("focus", handleResume);
++        window.addEventListener("blur", handleWindowBlur);
++        window.addEventListener("focus", handleWindowFocus);
+         return () => {
+           wrapper.removeEventListener("focusin", handlePause);
+           wrapper.removeEventListener("focusout", handleFocusOutResume);
+           wrapper.removeEventListener("pointermove", handlePause);
+           wrapper.removeEventListener("pointerleave", handlePointerLeaveResume);
+-          window.removeEventListener("blur", handlePause);
+-          window.removeEventListener("focus", handleResume);
++          window.removeEventListener("blur", handleWindowBlur);
++          window.removeEventListener("focus", handleWindowFocus);
+         };
+       }
+     }, [hasToasts, context.isClosePausedRef]);
+diff --git a/node_modules/@radix-ui/react-toast/dist/index.mjs b/node_modules/@radix-ui/react-toast/dist/index.mjs
+index 608afba..3474a79 100644
+--- a/node_modules/@radix-ui/react-toast/dist/index.mjs
++++ b/node_modules/@radix-ui/react-toast/dist/index.mjs
+@@ -114,19 +114,25 @@ var ToastViewport = /* @__PURE__ */ React.forwardRef(
+           const isFocusInside = wrapper.contains(document.activeElement);
+           if (!isFocusInside) handleResume();
+         }, "handlePointerLeaveResume");
++        const handleWindowBlur = (event) => {
++          if (event.target === window) handlePause();
++        };
++        const handleWindowFocus = (event) => {
++          if (event.target === window) handleResume();
++        };
+         wrapper.addEventListener("focusin", handlePause);
+         wrapper.addEventListener("focusout", handleFocusOutResume);
+         wrapper.addEventListener("pointermove", handlePause);
+         wrapper.addEventListener("pointerleave", handlePointerLeaveResume);
+-        window.addEventListener("blur", handlePause);
+-        window.addEventListener("focus", handleResume);
++        window.addEventListener("blur", handleWindowBlur);
++        window.addEventListener("focus", handleWindowFocus);
+         return () => {
+           wrapper.removeEventListener("focusin", handlePause);
+           wrapper.removeEventListener("focusout", handleFocusOutResume);
+           wrapper.removeEventListener("pointermove", handlePause);
+           wrapper.removeEventListener("pointerleave", handlePointerLeaveResume);
+-          window.removeEventListener("blur", handlePause);
+-          window.removeEventListener("focus", handleResume);
++          window.removeEventListener("blur", handleWindowBlur);
++          window.removeEventListener("focus", handleWindowFocus);
+         };
+       }
+     }, [hasToasts, context.isClosePausedRef]);
