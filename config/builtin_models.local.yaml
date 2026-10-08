@@ -1,0 +1,26 @@
+builtin_models:
+  - id: local-deepseek-chat
+    name: ${DEEPSEEK_MODEL_NAME}
+    type: KnowledgeQA
+    source: remote
+    is_default: true
+    parameters:
+      provider: deepseek
+      base_url: ${DEEPSEEK_BASE_URL}
+      api_key: ${DEEPSEEK_API_KEY}
+      spec:
+        api: openai-completions
+        compat:
+          max_tokens_field: max_tokens
+          thinking_format: thinking-type
+          thinking_always_send: true
+          thinking_disable_on_non_stream: true
+  - id: local-embedding
+    name: ${EMBEDDING_MODEL_NAME}
+    type: Embedding
+    source: local
+    is_default: true
+    parameters:
+      embedding_parameters:
+        dimension: 1024
+        truncate_prompt_tokens: 8192
