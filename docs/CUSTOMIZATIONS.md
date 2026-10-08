@@ -39,7 +39,7 @@
 
 | 文件 | 原因 | 改动 |
 | --- | --- | --- |
-| `branding/brand.json`、`branding/logo.svg` | 单一品牌配置和用户素材 | 集中名称、slug、浅蓝色、资源路径、空帮助链接和显示开关；原始 Logo 保持原文件 |
+| `branding/brand.json`、`branding/logo.svg` | 单一品牌配置和用户素材 | 集中名称、slug、浅蓝色、资源路径、空帮助链接和显示开关；Logo 后续按下节替换为 VIS 矢量版本 |
 | `internal/branding/brand.go`、`internal/branding/swagger.go` | 后端产品文案无法通过前端镜像覆盖 | 读取同一 JSON，验证配置；仅替换产品文字、Swagger 元数据，保留真实第三方与协议标识 |
 | `internal/branding/brand_test.go`、`internal/branding/swagger_test.go` | 避免替换污染协议或第三方身份 | 覆盖配置验证、默认兼容、身份句、真实 Swagger 文档与 schema 保留 |
 | `internal/config/config.go`、`internal/config/branding.go`、`internal/config/branding_test.go` | 默认助手仍自称上游产品 | 配置加载时处理四类内置提示词，保留 YAML 原文件、模板 ID 与用户显式提示词 |
@@ -120,3 +120,18 @@
 | `scripts/smoke-test.sh` | 原测试标记带旧品牌且刷新环境会恢复旧镜像 | 读取品牌名称与 slug；检查现有 app 品牌标签，包含停止容器，刷新时保留品牌 Compose 覆盖 |
 | `scripts/verify-branding.mjs` | 实际页面验收 | 隔离浏览器、五语言与主题、厂商隐藏、widget 和测试嵌入截图；只在准备模式修正经严格范围验证的测试渠道推荐开关 |
 | `docs/01-deploy-local.md`、`docs/03-branding.md`、`docs/CUSTOMIZATIONS.md` | 避免后续部署遗漏品牌层 | 记录三层 Compose、配置入口、例外、重放升级及实际验证证据 |
+
+## Logo 透明矢量版
+
+日期：2026-10-08。分支：`feat/logo-vector`。来源：用户提供的 VIS PDF，保留第 2 页标志曲线，第 5 页用于结构参考。配色按用户授权简化为网页纯色。详情与验证见 [04-logo-vector.md](04-logo-vector.md)。
+
+| 文件 | 原因 | 改动 |
+| --- | --- | --- |
+| `branding/logo.svg` | 原 SVG 内嵌截图，含白底且小尺寸模糊 | 换为 PDF 原始曲线组成的 8 个纯色 path，透明背景与紧凑边距 |
+| `branding/logo.png` | 兼容 PNG 场景与触屏图标 | 从同一 SVG 渲染透明 RGBA 素材 |
+| `frontend/branding-plugin.ts` | 原构建要求 SVG 内嵌 PNG | 分别读取 SVG、PNG，仍按共享配置分发 |
+| `docker/Dockerfile.frontend-boyankb.dockerignore` | 前端构建原先未放行独立 PNG | 精确加入 `branding/logo.png` |
+| `scripts/check-branding.mjs`、`scripts/check-branding.test.mjs` | 素材检查原先依赖内嵌 PNG | 改为读取独立 PNG，保留实际 HTTP 资源字节一致性校验 |
+| `docs/03-branding.md`、`docs/04-logo-vector.md`、`docs/CUSTOMIZATIONS.md` | 保持素材维护说明与实际状态一致 | 记录来源、配色、透明通道、构建部署与验证方法 |
+
+升级上游时一起保留两种 Logo 素材及上述四处构建/检查接入；无需保留原 PDF 或安装 PDF 提取库才能正常构建。LICENSE 与上游版权声明不变。

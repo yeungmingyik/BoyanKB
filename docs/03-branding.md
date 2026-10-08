@@ -8,7 +8,7 @@
 
 浅蓝主色 `#60B9E8`，按钮和链接 `#2D64B0`，背景 `#EAF6FD`。颜色由同一 JSON 经 Vite 注入覆盖样式，保留成功、警告和错误的语义颜色。
 
-`branding/logo.svg` 保留用户原始文件。该 SVG 内嵌 PNG，构建时原样复制 SVG，并提取未修改的 PNG 供触屏图标使用。favicon 使用真实 SVG 地址，不将 SVG 伪装成 ICO。旧登录宣传图默认隐藏。
+`branding/logo.svg` 现为从用户 VIS 原稿提取的 8 个矢量色块，使用透明背景和网页纯色配色，不再内嵌截图。`branding/logo.png` 由同一 SVG 渲染为透明 PNG，供触屏图标和不支持 SVG 的场景使用；构建分别复制两种素材。favicon 使用真实 SVG 地址，不将 SVG 伪装成 ICO。素材来源和验证见 [04-logo-vector.md](04-logo-vector.md)。旧登录宣传图默认隐藏。
 
 ## 第三方入口用途
 
@@ -78,7 +78,7 @@ bash scripts/smoke-test.sh
 
 冒烟脚本会先检查现有 app 的品牌镜像标签，保留第三层 Compose 配置后再刷新环境，已停止的容器也参与检测。首次部署或容器完全不存在时，先执行本页三层 Compose 启动命令，再运行冒烟脚本。
 
-上游升级时先在新的 `feat/` 分支应用既有飞书安全修复，再重放品牌分支的提交。`git log --reverse --oneline ae660ff4..feat/branding-boyankb` 列出本次品牌提交，按顺序 cherry-pick。保留 `branding/`、定制 Dockerfile、Compose 覆盖文件与检查脚本，核对 `docs/CUSTOMIZATIONS.md` 中的接入位置，重新构建并运行上述检查。新增字符串不能自动加入例外清单；应先确认是版权、兼容标识还是漏改的产品文案。
+上游升级时先在新的 `feat/` 分支应用既有飞书安全修复，再重放品牌分支的提交。`git log --reverse --oneline ae660ff4..feat/branding-boyankb` 列出品牌提交，随后用 `git log --reverse --oneline feat/branding-boyankb..feat/logo-vector` 列出透明矢量 Logo 提交，分别按顺序 cherry-pick。保留 `branding/`、定制 Dockerfile、Compose 覆盖文件与检查脚本，核对 `docs/CUSTOMIZATIONS.md` 中的接入位置，重新构建并运行上述检查。新增字符串不能自动加入例外清单；应先确认是版权、兼容标识还是漏改的产品文案。
 
 仅回退界面与应用镜像时，确认原发布前端和飞书定制 app 镜像仍在本机，再使用基础与本机两层 Compose 重新创建 app/frontend。回退不会还原数据，也不会自动改回三个测试记录的 description。保留数据库、文件与模型卷，不使用 `down -v`。
 
