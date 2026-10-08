@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Tencent/WeKnora/internal/application/service/memory"
+	"github.com/Tencent/WeKnora/internal/branding"
 	apperrors "github.com/Tencent/WeKnora/internal/errors"
 	"github.com/Tencent/WeKnora/internal/logger"
 	"github.com/Tencent/WeKnora/internal/types"
@@ -415,7 +416,7 @@ func (h *MemoryHandler) Export(c *gin.Context) {
 			break
 		}
 	}
-	c.Header("Content-Disposition", `attachment; filename="weknora-memories.json"`)
+	c.Header("Content-Disposition", `attachment; filename="`+branding.Slug()+`-memories.json"`)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"total":   total,

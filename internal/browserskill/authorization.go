@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tencent/WeKnora/internal/branding"
 	"github.com/gorilla/websocket"
 )
 
@@ -118,7 +119,7 @@ func (m *Manager) AuthorizeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).
 		Encode(map[string]any{
-			"device_id": record.ID, "service_name": "WeKnora",
+			"device_id": record.ID, "service_name": branding.Name(),
 			"expires_at": record.ExpiresAt, "renew_after": record.RenewAfter,
 		})
 }

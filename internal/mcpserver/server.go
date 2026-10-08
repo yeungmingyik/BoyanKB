@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tencent/WeKnora/internal/branding"
 	"github.com/Tencent/WeKnora/internal/config"
 	"github.com/Tencent/WeKnora/internal/logger"
 	"github.com/Tencent/WeKnora/internal/ratelimit"
@@ -30,7 +31,6 @@ import (
 )
 
 const (
-	serverName    = "weknora"
 	serverVersion = "1.0.0"
 
 	rateLimitKeyPrefix = "mcp:endpoint:ratelimit:"
@@ -106,13 +106,13 @@ func NewServer(
 	// lives for the whole process so the cleanup goroutine never stops.
 	go s.limiter.StartCleanup(make(chan struct{}))
 	s.mcp = server.NewMCPServer(
-		serverName,
+		branding.Slug(),
 		serverVersion,
 		server.WithToolCapabilities(false),
 		server.WithRecovery(),
 		server.WithToolFilter(s.filterTools),
 		server.WithToolHandlerMiddleware(s.guardTool),
-		server.WithInstructions(serverInstructions),
+		server.WithInstructions(branding.ProductText(serverInstructions)),
 	)
 	s.mcp.AddTools(s.toolCatalog()...)
 	s.handler = server.NewStreamableHTTPServer(

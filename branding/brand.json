@@ -1,0 +1,30 @@
+{
+  "productName": "BoyanKB",
+  "productSlug": "boyankb",
+  "description": "企业知识库与智能问答平台",
+  "logoUrl": "/branding/logo.svg",
+  "faviconUrl": "/branding/logo.svg",
+  "appleTouchIconUrl": "/branding/logo.png",
+  "colors": {
+    "primary": "#60B9E8",
+    "action": "#2D64B0",
+    "actionHover": "#24569B",
+    "actionActive": "#1F4884",
+    "background": "#EAF6FD",
+    "darkAction": "#83C9F2"
+  },
+  "links": {
+    "home": "",
+    "help": "",
+    "repository": "",
+    "feedback": ""
+  },
+  "footer": "hidden",
+  "hiddenProviders": ["weknoracloud", "hunyuan", "lkeap", "cos", "ima", "tencent_vectordb"],
+  "features": {
+    "showcase": false,
+    "upstreamCli": false,
+    "upstreamSkill": false,
+    "browserExtension": false
+  }
+}

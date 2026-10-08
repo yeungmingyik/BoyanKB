@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Tencent/WeKnora/internal/branding"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/Tencent/WeKnora/internal/utils"
 )
@@ -156,8 +157,10 @@ type PlanStep struct {
 
 // NewTodoWriteTool creates a new todo_write tool instance
 func NewTodoWriteTool() *TodoWriteTool {
+	base := todoWriteTool
+	base.description = branding.ProductText(base.description)
 	return &TodoWriteTool{
-		BaseTool: todoWriteTool,
+		BaseTool: base,
 	}
 }
 

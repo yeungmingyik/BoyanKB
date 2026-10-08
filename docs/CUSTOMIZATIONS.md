@@ -32,3 +32,21 @@
 最终使用同一 tenant 应用的原生 auth 接口只读遍历目标 19 篇 docx，view、export、edit 三项均为 19 true，无同步权限拒绝。当前目标资源 ACL 实际允许编辑，按用户选择保留，不自动撤销；`audit-documents` CLI 本身仍只检查 view/export。可见 Wiki 空间仍只有目标 1 个，不据此推断其他 Drive、单篇外链或外部资源均不可访问。
 
 验证命令、镜像 config ID、同步记录和后续实测状态见 [02-feishu.md](02-feishu.md)。不以模拟测试替代真实授权、数量和增量验收。
+
+## BoyanKB 品牌定制
+
+日期：2026-10-08。基线：v0.8.2，继承飞书安全修复。分支：`feat/branding-boyankb`。用户选择不显示 Powered by、隐藏官方帮助链接、隐藏未使用第三方入口。完整部署、兼容边界和升级步骤见 [03-branding.md](03-branding.md)。
+
+| 文件 | 原因 | 改动 |
+| --- | --- | --- |
+| `branding/brand.json`、`branding/logo.svg` | 单一品牌配置和用户素材 | 集中名称、slug、浅蓝色、资源路径、空帮助链接和显示开关；原始 Logo 保持原文件 |
+| `internal/branding/brand.go`、`internal/branding/swagger.go` | 后端产品文案无法通过前端镜像覆盖 | 读取同一 JSON，验证配置；仅替换产品文字、Swagger 元数据，保留真实第三方与协议标识 |
+| `internal/branding/brand_test.go`、`internal/branding/swagger_test.go` | 避免替换污染协议或第三方身份 | 覆盖配置验证、默认兼容、身份句、真实 Swagger 文档与 schema 保留 |
+| `internal/config/config.go`、`internal/config/branding.go`、`internal/config/branding_test.go` | 默认助手仍自称上游产品 | 配置加载时处理四类内置提示词，保留 YAML 原文件、模板 ID 与用户显式提示词 |
+| `internal/router/router.go`、`internal/router/swagger_branding.go` | Swagger 编译嵌入信息含上游品牌 | 在原有非 release 文档路由输出品牌化规范，空链接移除上游联系信息 |
+| `internal/handler/memory.go`、`internal/handler/sandbox_check.go` | 导出文件名与自检文字包含旧产品名 | 使用统一品牌名称与 slug |
+| `internal/mcp/client.go`、`internal/mcp/oauth_manager.go`、`internal/mcpserver/server.go`、`internal/mcpserver/tools_ask.go` | MCP 握手、介绍与注册展示名可见 | 从品牌配置生成名称和说明，保留授权协议及持久标识 |
+| `internal/im/service.go`、`internal/im/feishu/adapter.go` | 消息卡片和授权提示含旧名称 | 默认产品名称读取品牌配置 |
+| `internal/agent/tools/todo_write.go`、`internal/application/service/tenant_skill_install.go`、`internal/application/service/workspace_reset.go`、`internal/browserskill/authorization.go` | 工具、安装、重置与浏览器授权说明含旧名称 | 使用品牌化说明；保留功能、第三方包与兼容目录 |
+
+后端镜像构建已通过 `internal/branding`、`internal/config`、`internal/middleware`、飞书 `core` 与 `wiki` 五包测试，包含实际四类 YAML 和 Swagger 文档的品牌边界测试。前端五语言检查首轮 13 项通过；镜像和浏览器最终验证进行中，完成后追加记录。

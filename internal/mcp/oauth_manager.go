@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tencent/WeKnora/internal/branding"
 	"github.com/Tencent/WeKnora/internal/logger"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/Tencent/WeKnora/internal/types/interfaces"
@@ -15,10 +16,6 @@ import (
 	"github.com/mark3labs/mcp-go/client/transport"
 	"github.com/redis/go-redis/v9"
 )
-
-// clientRegistrationName is sent as client_name during dynamic client
-// registration (RFC 7591).
-const clientRegistrationName = "WeKnora"
 
 // oauthCallbackTimeout bounds token exchange after the browser lands on the
 // public callback route. The Gin request context is canceled once the client
@@ -111,7 +108,7 @@ func (m *OAuthManager) StartAuthorization(
 	// Register a client dynamically if we don't have one yet for this service.
 	existing, _ := m.repo.GetClient(ctx, tenantID, service.ID)
 	if existing == nil {
-		if err := h.RegisterClient(ctx, clientRegistrationName); err != nil {
+		if err := h.RegisterClient(ctx, branding.Name()); err != nil {
 			return "", "", fmt.Errorf("dynamic client registration failed: %w", err)
 		}
 		clientID := h.GetClientID()

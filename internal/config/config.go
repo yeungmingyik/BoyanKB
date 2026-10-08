@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tencent/WeKnora/internal/branding"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/viper"
@@ -499,6 +500,9 @@ func ConfigDir() string {
 
 // LoadConfig 从配置文件加载配置
 func LoadConfig() (*Config, error) {
+	if err := branding.LoadFromEnv(); err != nil {
+		return nil, err
+	}
 	// 设置配置文件名和路径
 	viper.SetConfigName("config")         // 配置文件名称(不带扩展名)
 	viper.SetConfigType("yaml")           // 配置文件类型
@@ -556,6 +560,7 @@ func LoadConfig() (*Config, error) {
 	} else if promptTemplates != nil {
 		cfg.PromptTemplates = promptTemplates
 	}
+	applyPromptBranding(cfg.PromptTemplates, branding.Current())
 
 	// Back-fill conversation config from prompt templates defaults
 	// (so config.yaml can omit large prompt blocks and rely on template files)
