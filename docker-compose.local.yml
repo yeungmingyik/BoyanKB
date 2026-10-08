@@ -12,6 +12,10 @@ services:
       start_period: 20s
 
   app:
+    image: weknora-local/app:feishu-v0.8.2
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.feishu-local
     ports: !override
       - "127.0.0.1:${APP_PORT:-8080}:8080"
     volumes:
@@ -20,6 +24,8 @@ services:
       BUILTIN_MODELS_CONFIG: /app/config/builtin_models.local.yaml
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
       LOG_FORMAT: "%d %level [%traceId] %msg"
+      FEISHU_DOCX_PARSE_MODE: export
+      SSRF_WHITELIST_EXTRA: "${SSRF_WHITELIST_EXTRA:-ollama,api.deepseek.com},open.feishu.cn"
     depends_on:
       redis:
         condition: service_healthy
