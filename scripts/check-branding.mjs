@@ -132,9 +132,7 @@ export async function checkDeployment(base, brand, { embedChannelId } = {}) {
   const denied = await get('/embed/branding-check', [401, 403, 404, 500])
   requireValue(!/id\s*=\s*["']embed-app["']/.test(denied.data.toString('utf8')), 'Invalid embed entry returned the embed application')
   const logo = await readFile(join(root, 'branding/logo.svg'))
-  const embedded = logo.toString('utf8').match(/data:image\/png;base64,([^"']+)/)
-  requireValue(Boolean(embedded), 'Brand SVG has no embedded PNG')
-  const png = Buffer.from(embedded[1].replace(/\s/g, ''), 'base64')
+  const png = await readFile(join(root, 'branding/logo.png'))
   for (const path of new Set([brand.logoUrl, brand.faviconUrl, brand.appleTouchIconUrl])) {
     const { data, type } = await get(path)
     const expected = path.endsWith('.svg') ? logo : png

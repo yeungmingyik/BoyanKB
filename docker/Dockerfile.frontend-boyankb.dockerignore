@@ -4,6 +4,7 @@
 !branding/
 !branding/brand.json
 !branding/logo.svg
+!branding/logo.png
 !LICENSE
 **/node_modules
 **/dist

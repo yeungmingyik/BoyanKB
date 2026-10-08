@@ -19,12 +19,11 @@ export function brandingPlugin(): Plugin {
   if (!/^\/branding\/[A-Za-z0-9._-]+\.png$/.test(brand.appleTouchIconUrl)) throw new Error('Invalid brand PNG URL')
   const assets = () => {
     const logo = readFileSync(`${root}/branding/logo.svg`)
-    const match = logo.toString('utf8').match(/data:image\/png;base64,([^"']+)/)
-    if (!match) throw new Error('Expected embedded PNG in branding/logo.svg')
+    const png = readFileSync(`${root}/branding/logo.png`)
     return new Map<string, string | Buffer>([
       [brand.logoUrl.slice(1), logo],
       [brand.faviconUrl.slice(1), logo],
-      [brand.appleTouchIconUrl.slice(1), Buffer.from(match[1].replace(/\s/g, ''), 'base64')],
+      [brand.appleTouchIconUrl.slice(1), png],
       ['licenses/LICENSE', readFileSync(`${root}/LICENSE`)],
     ])
   }
