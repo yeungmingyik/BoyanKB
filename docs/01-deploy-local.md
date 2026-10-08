@@ -4,6 +4,8 @@
 
 本文记录基础栈首次部署。后续飞书接入增加了应用日志脱敏和指定空间保护，本地 app 已改为从源码构建的镜像；该分支重建时先按 [飞书部署步骤](02-feishu.md) 构建 app，不再对 app 执行下文的发布镜像拉取命令。其他五个服务仍使用本文镜像，DeepSeek 冒烟脚本的使用方式不变。
 
+当前本机还部署了 BoyanKB 品牌镜像。重建、升级或重新创建 app/frontend 时，以 [品牌部署步骤](03-branding.md) 为准，必须同时加载 `docker-compose.yml`、`docker-compose.local.yml`、`docker-compose.branding.yml`。只用本文两层文件重新 `up` 会恢复旧镜像。`scripts/smoke-test.sh` 会检查现有 app 的品牌标签并保留第三层覆盖文件，包含已停止的 app 容器。
+
 ## 1. 部署文件与服务
 
 | 文件 | 用途 |

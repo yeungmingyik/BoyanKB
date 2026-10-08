@@ -49,7 +49,7 @@
 | `internal/im/service.go`、`internal/im/feishu/adapter.go` | 消息卡片和授权提示含旧名称 | 默认产品名称读取品牌配置 |
 | `internal/agent/tools/todo_write.go`、`internal/application/service/tenant_skill_install.go`、`internal/application/service/workspace_reset.go`、`internal/browserskill/authorization.go` | 工具、安装、重置与浏览器授权说明含旧名称 | 使用品牌化说明；保留功能、第三方包与兼容目录 |
 
-后端镜像构建已通过 `internal/branding`、`internal/config`、`internal/middleware`、飞书 `core` 与 `wiki` 五包测试，包含实际四类 YAML 和 Swagger 文档的品牌边界测试。前端五语言检查首轮 13 项通过；镜像和浏览器最终验证进行中，完成后追加记录。
+后端镜像构建已通过 `internal/branding`、`internal/config`、`internal/middleware`、飞书 `core` 与 `wiki` 五包测试，包含实际四类 YAML 和 Swagger 文档的品牌边界测试。前端五语言检查 13 项、定向 TS 检查 23 项、agent 编辑器检查 15 项、widget 检查 6 项、品牌检查器测试 8 项均通过。最终部署、真实问答与浏览器证据见 [03-branding.md](03-branding.md)。
 
 前端、构建与验收文件登记：
 
@@ -86,7 +86,7 @@
 | `frontend/src/i18n/locales/zh-CN.ts` | 多语言产品文字分散 | 引用统一名称和 slug，保留原翻译 key 与真实协议 |
 | `frontend/src/main.ts` | 两入口加载品牌样式 | 加入颜色覆盖；主入口诊断前缀读取配置 |
 | `frontend/src/views/agent/AgentEditorModal.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
-| `frontend/src/views/auth/Login.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/auth/Login.vue` | 登录产品身份与明暗主题可读性 | 接入共享 Logo/名称、隐藏宣传页；提示、注册按钮与链接使用适配明暗主题的文字颜色 |
 | `frontend/src/views/embed/EmbedPage.vue` | 嵌入展示与 SDK 兼容 | 品牌默认值、新代码示例和旧协议兼容 |
 | `frontend/src/views/integrations/ApiIntegrationSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
 | `frontend/src/views/integrations/CliIntegrationLanding.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
@@ -105,7 +105,8 @@
 | `frontend/src/views/settings/ModelSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
 | `frontend/src/views/settings/ParserEngineSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
 | `frontend/src/views/settings/SandboxSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
-| `frontend/src/views/settings/Settings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/Settings.vue` | 隐藏未用服务时必须保留已有凭据维护路径 | 按当前租户凭据/模型状态放行 Cloud 管理页；保留管理员门槛，拒绝晚到的跨租户响应 |
+| `frontend/src/views/settings/settingsNavigation.test.ts` | 防止隐藏服务后无法恢复已有配置或跨空间误放行 | 覆盖未配置、已有/失效凭据、已有模型、查询失败及切空间竞态 |
 | `frontend/src/views/settings/StorageBackendSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
 | `frontend/src/views/settings/SystemInfo.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
 | `frontend/src/views/settings/TenantMembers.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
@@ -116,5 +117,6 @@
 | `scripts/check-branding.mjs` | 防止漏改与不受控例外 | 精确例外清单、源码检查与真实 HTTP 资源校验 |
 | `scripts/check-branding.test.mjs` | 防止漏改与不受控例外 | 精确例外清单、源码检查与真实 HTTP 资源校验 |
 | `scripts/migrate-branding-smoke.mjs` | 原测试记录带旧品牌 | 读取品牌配置；只迁移固定测试名称且精确匹配旧描述的记录 |
-| `scripts/smoke-test.sh` | 原测试记录带旧品牌 | 读取品牌配置；只迁移固定测试名称且精确匹配旧描述的记录 |
-| `scripts/verify-branding.mjs` | 实际页面验收 | 隔离浏览器、五语言与主题、厂商隐藏、widget 和测试嵌入截图 |
+| `scripts/smoke-test.sh` | 原测试标记带旧品牌且刷新环境会恢复旧镜像 | 读取品牌名称与 slug；检查现有 app 品牌标签，包含停止容器，刷新时保留品牌 Compose 覆盖 |
+| `scripts/verify-branding.mjs` | 实际页面验收 | 隔离浏览器、五语言与主题、厂商隐藏、widget 和测试嵌入截图；只在准备模式修正经严格范围验证的测试渠道推荐开关 |
+| `docs/01-deploy-local.md`、`docs/03-branding.md`、`docs/CUSTOMIZATIONS.md` | 避免后续部署遗漏品牌层 | 记录三层 Compose、配置入口、例外、重放升级及实际验证证据 |
