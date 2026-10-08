@@ -20,8 +20,7 @@
               <t-tooltip :content="canManageOrg ? $t('organization.createOrg') : noPermissionTip" placement="bottom">
                 <t-button variant="text" theme="default" size="small" class="header-action-btn"
                   style="--wails-draggable: no-drag" :disabled="!canManageOrg" @click="handleCreateOrganization">
-                  <template #icon><img src="@/assets/img/organization-green.svg" class="org-create-icon" alt=""
-                      aria-hidden="true" /></template>
+                  <template #icon><ResourceIcon type="organization" :size="16" class="org-create-icon" /></template>
                 {{ $t('organization.createOrg') }}
                 </t-button>
               </t-tooltip>
@@ -146,7 +145,7 @@
                   </t-tooltip>
                   <t-tooltip :content="$t('organization.invite.agents')" placement="top">
                     <div class="feature-badge stat-agent">
-                      <img src="@/assets/img/agent-green.svg" class="stat-agent-icon" alt="" aria-hidden="true" />
+                      <ResourceIcon type="agent" :size="14" class="stat-agent-icon" />
                       <span class="badge-count">{{ org.agent_share_count ?? 0 }}</span>
                     </div>
                   </t-tooltip>
@@ -183,8 +182,7 @@
           </t-tooltip>
           <t-tooltip :content="noPermissionTip" placement="top" :disabled="canManageOrg">
             <t-button theme="primary" class="org-create-btn" :disabled="!canManageOrg" @click="handleCreateOrganization">
-              <template #icon><img src="@/assets/img/organization-green.svg" class="org-create-icon" alt=""
-                  aria-hidden="true" /></template>
+              <template #icon><ResourceIcon type="organization" :size="16" class="org-create-icon" /></template>
               {{ $t('organization.createOrg') }}
             </t-button>
           </t-tooltip>
@@ -358,7 +356,7 @@
                       </t-tooltip>
                       <t-tooltip :content="$t('organization.invite.agents')" placement="top">
                         <div class="feature-badge stat-agent">
-                          <img src="@/assets/img/agent-green.svg" class="stat-agent-icon" alt="" aria-hidden="true" />
+                          <ResourceIcon type="agent" :size="14" class="stat-agent-icon" />
                           <span class="badge-count">{{ invitePreviewData.agent_share_count ?? 0 }}</span>
                         </div>
                       </t-tooltip>
@@ -1159,7 +1157,6 @@ watch(keyword, () => { collapsedOrgSections.value = new Set() })
 .org-create-btn .org-create-icon {
   width: 16px;
   height: 16px;
-  filter: brightness(0) invert(1);
 }
 
 .header-subtitle {
@@ -1196,7 +1193,7 @@ watch(keyword, () => { collapsedOrgSections.value = new Set() })
   :deep(.t-icon),
   :deep(.btn-icon-wrapper),
   :deep(.org-create-icon) {
-    color: var(--td-brand-color);
+    color: var(--td-text-color-brand);
   }
 
   :deep(.org-create-icon) {
@@ -1283,8 +1280,6 @@ watch(keyword, () => { collapsedOrgSections.value = new Set() })
       width: 14px;
       height: 14px;
       flex-shrink: 0;
-      /* 将绿色 icon 着色为紫色，与标签统一 */
-      filter: brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(236deg);
     }
 
     &:hover {

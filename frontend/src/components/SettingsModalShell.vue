@@ -267,7 +267,7 @@ function showBadge(item: SettingsModalNavItem): boolean {
 
     &.active {
       background-color: var(--td-bg-color-secondarycontainer);
-      color: var(--td-brand-color);
+      color: var(--td-text-color-brand);
       font-weight: 500;
     }
   }

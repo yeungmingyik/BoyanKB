@@ -11,9 +11,10 @@ import organizationIcon from '@/assets/img/organization.svg'
 import toolboxIcon from '@/assets/img/toolbox.svg'
 
 const props = withDefaults(defineProps<{
-  type: 'knowledge' | 'agent' | 'artifact' | 'organization' | 'toolbox'
+  type?: 'knowledge' | 'agent' | 'artifact' | 'organization' | 'toolbox'
+  src?: string
   size?: number
-}>(), { size: 20 })
+}>(), { type: 'knowledge', size: 20 })
 
 // Reuse the navigation assets while inheriting the surrounding theme color.
 const icons = {
@@ -26,7 +27,7 @@ const icons = {
 const iconStyle = computed(() => ({
   width: `${props.size}px`,
   height: `${props.size}px`,
-  maskImage: `url("${icons[props.type]}")`,
+  maskImage: `url(${JSON.stringify(props.src || icons[props.type])})`,
 }))
 </script>
 

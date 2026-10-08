@@ -1234,7 +1234,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     pointer-events: none;
-    box-shadow: 0 0 0 0.5px var(--td-success-color-light);
+    box-shadow: 0 0 0 0.5px var(--app-selection-border);
   }
 
   .tenant-submenu-empty {

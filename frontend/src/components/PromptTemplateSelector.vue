@@ -359,8 +359,8 @@ onMounted(() => {
   }
   
   &.web-tag {
-    background: var(--td-success-color-light);
-    color: var(--td-brand-color);
+    background: var(--app-selection-bg);
+    color: var(--td-text-color-brand);
   }
 
   &.default-tag {

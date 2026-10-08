@@ -327,8 +327,7 @@
                 <div class="bottom-right">
                   <t-tooltip :content="kb.org_name" placement="top">
                     <div class="org-source">
-                      <img src="@/assets/img/organization-green.svg" class="org-source-icon" alt=""
-                        aria-hidden="true" />
+                      <ResourceIcon type="organization" :size="14" class="org-source-icon" />
                       <span>{{ kb.org_name }}</span>
                     </div>
                   </t-tooltip>
@@ -664,8 +663,7 @@
                 <span class="shared-detail-label">{{ currentSharedKbForDetail.source_from_agent ?
                   $t('knowledgeList.detail.sourceFromAgent') : $t('knowledgeList.detail.sourceOrg') }}</span>
                 <span class="shared-detail-value shared-detail-org">
-                  <img src="@/assets/img/organization-green.svg" class="shared-detail-org-icon" alt=""
-                    aria-hidden="true" />
+                  <ResourceIcon type="organization" :size="14" class="shared-detail-org-icon" />
                   {{ currentSharedKbForDetail.source_from_agent ? currentSharedKbForDetail.source_from_agent.agent_name
                     :
                     currentSharedKbForDetail.org_name }}

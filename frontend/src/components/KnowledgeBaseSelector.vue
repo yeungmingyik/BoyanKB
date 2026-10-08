@@ -397,7 +397,7 @@ watch(() => props.visible, async (v) => {
   transition: border var(--app-motion-instant);
 }
 .kb-search-input:focus {
-  border-color: var(--td-success-color);
+  border-color: var(--app-focus-border);
   background: var(--td-bg-color-container);
 }
 
@@ -445,8 +445,8 @@ watch(() => props.visible, async (v) => {
   flex-shrink: 0;
 }
 .checkbox.checked {
-  background: var(--td-success-color);
-  border-color: var(--td-success-color);
+  background: var(--td-brand-color);
+  border-color: var(--td-brand-color);
 }
 .checkbox.checked svg {
   width: 10px;
@@ -490,8 +490,8 @@ watch(() => props.visible, async (v) => {
   transition: all var(--app-motion-instant);
 }
 .kb-btn:hover {
-  border-color: var(--td-success-color);
-  color: var(--td-success-color);
+  border-color: var(--app-focus-border);
+  color: var(--td-text-color-brand);
   background: var(--td-brand-color-light);
 }
 

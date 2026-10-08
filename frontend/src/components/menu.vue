@@ -87,9 +87,9 @@
                         :class="['menu_item', item.childrenPath && item.childrenPath == currentpath ? 'menu_item_c_active' : isMenuItemActive(item.path) ? 'menu_item_active' : '']">
                         <div class="menu_item-box">
                             <div class="menu_icon">
-                                <img class="icon"
+                                <ResourceIcon class="icon" :size="18"
                                     :src="getImgSrc(item.icon == 'zhishiku' ? knowledgeIcon : item.icon == 'agent' ? agentIcon : item.icon == 'artifact' ? artifactIcon : item.icon == 'toolbox' ? toolboxIcon : item.icon == 'organization' ? organizationIcon : item.icon == 'logout' ? logoutIcon : item.icon == 'setting' ? settingIcon : prefixIcon)"
-                                    alt="">
+                                    />
                             </div>
                             <template v-if="!uiStore.sidebarCollapsed">
                                 <span class="menu_title" :title="item.title">{{ item.title }}</span>
@@ -214,6 +214,7 @@
 </template>
 
 <script setup lang="ts">
+import ResourceIcon from '@/components/icons/ResourceIcon.vue';
 import { brand, productName } from '@/config/branding'
 import { storeToRefs } from 'pinia';
 import { onMounted, onUnmounted, watch, computed, ref, h, nextTick } from 'vue';
@@ -1455,7 +1456,7 @@ const resizeSidebar = (delta: number, keyboard: boolean) => {
 
         .menu_icon,
         .menu_title {
-            color: var(--td-brand-color) !important;
+            color: var(--td-text-color-brand) !important;
         }
     }
 

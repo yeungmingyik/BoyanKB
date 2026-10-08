@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ResourceIcon from '@/components/icons/ResourceIcon.vue';
 import { ref, onMounted, onBeforeUnmount, onUnmounted, computed, watch, nextTick, h, type PropType } from "vue";
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
@@ -2737,8 +2738,7 @@ defineExpose({
               <t-icon v-else :name="getMentionIcon(item)" />
             </span>
             <span v-if="item.org_name" class="mention-chip__org-badge">
-              <img :src="getImgSrc(item.type === 'file' ? 'organization-grey.svg' : 'organization-green.svg')"
-                class="mention-chip__org-img" alt="" aria-hidden="true" />
+              <ResourceIcon type="organization" :size="5" class="mention-chip__org-img" />
             </span>
           </span>
           <span class="mention-chip__name" :title="item.name">{{ item.name }}</span>
@@ -3014,11 +3014,6 @@ defineExpose({
     </Teleport>
   </div>
 </template>
-<script lang="ts">
-const getImgSrc = (url: string) => {
-  return new URL(`/src/assets/img/${url}`, import.meta.url).href;
-}
-</script>
 <style scoped lang="less">
 @import './css/chat-resource-chips.less';
 
@@ -3786,7 +3781,7 @@ const getImgSrc = (url: string) => {
   }
 
   &.disabled {
-    background-color: var(--td-success-color-light);
+    background-color: var(--td-brand-color-disabled);
   }
 
   img {
@@ -4153,7 +4148,7 @@ const getImgSrc = (url: string) => {
     background: var(--td-brand-color-light);
 
     .agent-mode-option-name {
-      color: var(--td-success-color);
+      color: var(--td-text-color-brand);
       font-weight: 700;
     }
   }
@@ -4184,7 +4179,7 @@ const getImgSrc = (url: string) => {
 .check-icon {
   width: 14px;
   height: 14px;
-  color: var(--td-success-color);
+  color: var(--td-text-color-brand);
   flex-shrink: 0;
   margin-left: 6px;
 }
@@ -4208,7 +4203,7 @@ const getImgSrc = (url: string) => {
 }
 
 .agent-mode-link {
-  color: var(--td-success-color);
+  color: var(--td-text-color-link);
   text-decoration: none;
   font-size: var(--app-text-xs);
   font-weight: 500;
@@ -4218,7 +4213,7 @@ const getImgSrc = (url: string) => {
   transition: all var(--app-motion-instant);
 
   &:hover {
-    color: var(--td-brand-color-active);
+    color: var(--td-text-color-link);
     text-decoration: underline;
   }
 }

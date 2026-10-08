@@ -2836,7 +2836,7 @@ watch(() => entries.value.map(e => ({
     transition: all var(--app-motion-instant) ease;
 
     &:hover:not(:disabled) {
-      color: var(--td-success-color);
+      color: var(--td-text-color-brand);
       background: var(--td-bg-color-container);
     }
 
@@ -2903,7 +2903,7 @@ watch(() => entries.value.map(e => ({
     background: transparent;
     padding: 2px;
     margin: 0;
-    color: var(--td-success-color);
+    color: var(--td-text-color-brand);
     cursor: pointer;
     line-height: 1;
     transition: opacity var(--app-motion-fast) ease;
@@ -3107,8 +3107,8 @@ watch(() => entries.value.map(e => ({
   padding: 0;
 
   &:hover:not(:disabled) {
-    background: var(--td-success-color-light);
-    color: var(--td-brand-color);
+    background: var(--app-selection-bg);
+    color: var(--td-text-color-brand);
   }
 
   &:disabled {
@@ -3386,8 +3386,8 @@ watch(() => entries.value.map(e => ({
 
     &:hover {
       border-color: var(--td-brand-color);
-      color: var(--td-brand-color-active);
-      background: var(--td-success-color-light);
+      color: var(--td-text-color-brand);
+      background: var(--app-selection-bg);
     }
   }
 }
@@ -3814,12 +3814,12 @@ watch(() => entries.value.map(e => ({
 
   &:hover {
     border-color: var(--td-brand-color);
-    color: var(--td-brand-color);
-    background: var(--td-success-color-light);
+    color: var(--td-text-color-brand);
+    background: var(--app-selection-bg);
   }
 
   &:active {
-    background: var(--td-success-color-light);
+    background: var(--app-selection-bg);
   }
 
   :deep(.t-icon) {
@@ -3877,12 +3877,12 @@ watch(() => entries.value.map(e => ({
 
   &:hover {
     border-color: var(--td-brand-color);
-    background: var(--td-success-color-light);
+    background: var(--app-selection-bg);
   }
 
   &.has-file {
     border-color: var(--td-brand-color);
-    background: var(--td-success-color-light);
+    background: var(--app-selection-bg);
     border-style: solid;
   }
 }

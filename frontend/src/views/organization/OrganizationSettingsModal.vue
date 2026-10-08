@@ -2,9 +2,9 @@
   <SettingsModalShell :visible="visible" :title="modalTitle" v-model="currentSection" :nav-groups="navGroups"
     :overlay-class="isCreateMode ? 'organization-create-overlay' : ''"
     :z-index="2000" @close="modalShell.requestClose">
-    <template #nav-icon="{ item, active }">
-      <img v-if="item.key === 'sharedAgents'" :src="active ? agentIconActiveSrc : agentIconSrc"
-        class="nav-icon nav-icon-img" alt="" aria-hidden="true" />
+    <template #nav-icon="{ item }">
+      <ResourceIcon v-if="item.key === 'sharedAgents'" type="agent" :size="16"
+        class="nav-icon nav-icon-img" />
       <t-icon v-else :name="item.icon" class="nav-icon" />
     </template>
     <div ref="contentWrapperRef" class="content-wrapper" :class="{ 'is-create': isCreateMode }">
@@ -771,8 +771,7 @@ import {
 import { useOrganizationStore } from '@/stores/organization'
 import { useAuthStore } from '@/stores/auth'
 import SpaceAvatar from '@/components/SpaceAvatar.vue'
-import agentIconSrc from '@/assets/img/agent.svg'
-import agentIconActiveSrc from '@/assets/img/agent-green.svg'
+import ResourceIcon from '@/components/icons/ResourceIcon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

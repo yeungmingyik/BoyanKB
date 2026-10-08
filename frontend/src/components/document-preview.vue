@@ -629,10 +629,10 @@ onUnmounted(() => {
 @text-secondary: var(--td-text-color-secondary);
 @text-tertiary: var(--td-text-color-placeholder);
 @text-disabled: var(--td-text-color-disabled);
-@accent: var(--td-brand-color);
-@accent-hover: var(--td-brand-color-active);
-@accent-bg: var(--td-success-color-light);
-@accent-bg-hover: var(--td-success-color-light);
+@accent: var(--td-text-color-brand);
+@accent-hover: var(--td-text-color-brand);
+@accent-bg: var(--app-selection-bg);
+@accent-bg-hover: var(--app-selection-bg);
 @error-color: var(--td-error-color);
 @table-border: var(--td-component-stroke);
 @preview-max-h: calc(100vh - 200px);

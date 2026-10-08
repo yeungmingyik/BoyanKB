@@ -165,7 +165,7 @@
           <div v-if="activeDetail.sharedMeta?.org_name || activeDetail.sharedMeta?.shared_by_username"
             class="detail-meta">
             <div v-if="activeDetail.sharedMeta.org_name" class="detail-meta-row">
-              <img src="@/assets/img/organization-green.svg" class="detail-meta-icon" alt="" aria-hidden="true" />
+              <ResourceIcon type="organization" :size="14" class="detail-meta-icon" />
               <span>{{ activeDetail.sharedMeta.org_name }}</span>
             </div>
             <div v-if="activeDetail.sharedMeta.shared_by_username" class="detail-meta-row">
@@ -180,6 +180,7 @@
 </template>
 
 <script setup lang="ts">
+import ResourceIcon from '@/components/icons/ResourceIcon.vue';
 import { ref, computed, watch, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';

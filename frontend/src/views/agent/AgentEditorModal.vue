@@ -5543,10 +5543,10 @@ const handleSave = async () => {
   display: flex;
   align-items: center;
   padding: 10px 14px;
-  background: var(--td-success-color-light);
+  background: var(--app-selection-bg);
   border-radius: var(--app-radius-sm);
-  border: 1px solid var(--td-success-color-focus);
-  color: var(--td-brand-color);
+  border: 1px solid var(--app-selection-border);
+  color: var(--td-text-color-brand);
   font-size: var(--app-text-md);
   line-height: 1.5;
 }

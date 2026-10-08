@@ -842,7 +842,6 @@ onMounted(async () => {
   display: flex;
   width: 100%;
   min-height: 100%;
-  overflow: hidden;
   position: relative;
   background: linear-gradient(135deg, var(--bk-background), color-mix(in srgb, var(--td-brand-color) 20%, white));
 
@@ -1194,11 +1193,73 @@ onMounted(async () => {
 .login-layout--compact .form-section {
   flex: 1;
   align-items: center;
-  padding: 108px 24px 40px;
+  padding: 80px 24px 24px;
 }
 
 .login-layout--compact .form-panel {
   margin-bottom: 0;
+}
+
+.login-layout--compact {
+  .form-card {
+    padding: 24px 32px;
+  }
+
+  .form-header {
+    margin-bottom: 16px;
+  }
+
+  .form-hint {
+    margin-top: 8px;
+    padding: 6px 10px;
+  }
+
+  .form-content :deep(.t-form__item) {
+    margin-bottom: 8px;
+  }
+
+  .form-content :deep(.t-form__label--top) {
+    min-height: 20px;
+    line-height: 20px;
+    margin-bottom: 4px;
+  }
+
+  .submit-button {
+    margin: 8px 0 12px;
+  }
+
+  .register-cta {
+    margin-top: 0;
+  }
+
+  .register-cta__divider {
+    margin-bottom: 10px;
+  }
+
+  .form-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    .link-button {
+      display: inline-block;
+      margin-left: 0;
+      white-space: nowrap;
+    }
+  }
+
+  .login-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-top: 16px;
+  }
+
+  .login-features .feature-item {
+    margin-bottom: 0;
+  }
 }
 
 .form-panel {
@@ -1288,8 +1349,14 @@ onMounted(async () => {
     }
 
     &:hover {
-      background: rgba(255, 255, 255, 0.3);
-      border-color: rgba(255, 255, 255, 0.4);
+      background: var(--app-selection-bg);
+      border-color: var(--app-selection-border);
+      color: var(--app-selection-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--app-focus-border);
+      outline-offset: 2px;
     }
 
     svg:last-child {
@@ -1332,19 +1399,20 @@ onMounted(async () => {
   }
 
   .check-icon {
-    color: var(--td-success-color);
+    color: var(--td-text-color-brand);
     font-weight: 700;
     font-size: var(--app-text-base);
     flex-shrink: 0;
   }
 
   &:hover {
-    background: var(--td-bg-color-secondarycontainer);
+    background: var(--app-selection-bg);
+    color: var(--app-selection-text);
   }
 
   &.active {
-    background: var(--td-success-color-light);
-    color: var(--td-brand-color-active);
+    background: var(--app-selection-bg);
+    color: var(--app-selection-text);
   }
 }
 
@@ -1642,8 +1710,8 @@ onMounted(async () => {
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: var(--td-success-color-light);
-      color: var(--td-brand-color-active);
+      background: var(--td-brand-color-light);
+      color: var(--td-text-color-brand);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1773,6 +1841,14 @@ onMounted(async () => {
 }
 
 @media (max-width: 480px) {
+  .login-layout--compact .form-section {
+    padding: 80px 16px 24px;
+  }
+
+  .login-layout--compact .form-card {
+    padding: 24px 20px;
+  }
+
   .animated-bg {
     display: none;
   }
@@ -1868,7 +1944,7 @@ html[theme-mode="dark"] {
     border-color: rgba(255, 255, 255, 0.15);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
+      background: var(--app-selection-bg);
     }
   }
 
@@ -1909,7 +1985,7 @@ html[theme-mode="dark"] {
   }
 
   .login-features .feature-icon {
-    background: color-mix(in srgb, var(--td-brand-color) 15%, transparent);
+    background: var(--td-brand-color-light);
   }
 }
 </style>
