@@ -19,10 +19,16 @@
 
 未开启 `allowed_space_id` 的其他数据源继续使用原连接器路径。该开关约束本连接器的同步流程，不会撤销飞书应用原有权限，也不限制拥有数据源管理权限的 WeKnora 管理员另建数据源。飞书端 ACL 仍须单独收窄。
 
-新增文档权限诊断后的完整 19 项 helper 模拟测试通过；定制镜像构建中的 middleware、飞书 core、wiki 三包 Go 测试全部通过，包含最新官方 origin 修复。镜像已部署，6 个容器均 healthy。首次同步创建 14 篇，用户补充阅读授权后第二次新增 1 篇，第三次仍有 4 篇导出失败；累计 15 篇解析完成，V1 probe 局部关键词检索通过。`audit-documents` 全 19 篇实测为 view 19 true、export 15 true 和 4 false，退出码 1 符合预期。用户已确认界面允许阅读者导出，当前正在定位四篇的界面与 API 差异，尚未完成 19/19、完整快照与增量验收。原冒烟脚本使用 testdata 的独立知识库运行成功，不涉及飞书正文的远程模型问答。
+新增文档权限诊断后的完整 19 项 helper 模拟测试通过；定制镜像构建中的 middleware、飞书 core、wiki 三包 Go 测试全部通过，包含最新官方 origin 修复。镜像已部署，6 个容器均 healthy。用户调整导出选项并明确选择应用可编辑授权后，原失败四篇均可阅读、可导出；累计 19 篇解析完成，external ID 完整覆盖，完整 V1 验证退出 0，`temp/feishu-before.json` 已保存 19 篇基线。用户实际修改 probe 为 V2 后，增量同步 success、updated 1、failed 0，带 V1 基线的完整 V2 验证退出 0，内容哈希与源更新时间均变化，真实关键词命中 V2。无变化重复同步也已通过，`temp/feishu-after.json` 已保存，前后 19 篇仅 probe 的知识 ID、哈希和源更新时间变化，其余 18 篇不变。真实新建文档、删除和外部拒绝样本仍未验证。原冒烟脚本使用 testdata 的独立知识库运行成功，不涉及飞书正文的远程模型问答。
 
-核心安全修复的六个源码及测试文件已提交为 `5af368ad`；脚本、部署配置和文档的提交状态另行记录。
+补齐目录的同步 `7f02e8fe-b7b2-4d69-86e8-49df6b04b701` 为 success、total 3、created 3、updated 0、failed 0。旧失败日志 `f1c50627-38a4-4ba4-9636-cb84ec41538a` 经队列自动重试，04:42:55 UTC 变为 partial、total 4、created 1、failed 3，而 `started_at` 仍为 04:31:23 UTC。因此该次手动同步只新增 3 篇，总数仍达到 19；日志不是不可变事件。空 schedule 和 paused 不取消已入队任务的 Asynq `MaxRetry(5)` 重试。之后 V2 更新日志 `1df478b1-0e73-4a77-8af8-7dd84f82d338` 为 success、total 1、created 0、updated 1、failed 0。
 
-进一步只读诊断确认四篇失败文档均有当前应用的只读协作者记录；历史 v1 public 接口在 docx、wiki 两种查询中均返回 `security_entity=anyone_can_edit`，probe 为 `anyone_can_view`。v2 public 对四篇及 probe 均返回 HTTP 403、`1063002`，`copy_entity` 与 `lock_switch` 未验证，不能据此确定现代继承或企业策略。当前仅等待《01.1项目产品手册》设置选项全文及继承、锁定、待保存状态，不重复添加应用或阅读授权。诊断未输出 AppID、成员 ID 或凭据。
+无变化重复同步 `6a005d74-f6b9-4e74-bd34-8e6e29f45ce2` 为 success，total、created、updated、failed 均为 0；19 篇仍解析完成，数量与 ID 不变，前后快照的 external ID 集合一致。
+
+核心安全修复的六个源码及测试文件已提交为 `5af368ad`；同步工具、部署配置及对应文档初版已提交为 `16be84d5`。
+
+权限调整前的只读诊断曾确认四篇有应用的只读协作者记录，历史 v1 public 返回 `security_entity=anyone_can_edit`，probe 为 `anyone_can_view`；这些记录不代表用户调整后的当前 ACL。v2 public 当时均返回 HTTP 403、`1063002`，`copy_entity` 与 `lock_switch` 仍未验证，不据此推断现代继承或企业策略。当前沿用用户已选择的可编辑授权；可阅读身份加允许阅读者导出仅作为更小权限的可选方案，不要求改回。诊断未输出 AppID、成员 ID 或凭据。
+
+最终使用同一 tenant 应用的原生 auth 接口只读遍历目标 19 篇 docx，view、export、edit 三项均为 19 true，无同步权限拒绝。当前目标资源 ACL 实际允许编辑，按用户选择保留，不自动撤销；`audit-documents` CLI 本身仍只检查 view/export。可见 Wiki 空间仍只有目标 1 个，不据此推断其他 Drive、单篇外链或外部资源均不可访问。
 
 验证命令、镜像 config ID、同步记录和后续实测状态见 [02-feishu.md](02-feishu.md)。不以模拟测试替代真实授权、数量和增量验收。

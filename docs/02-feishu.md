@@ -10,25 +10,25 @@
 | --- | --- | --- |
 | 目标空间 | 用户指定合作伙伴专用空间 `7610776951925509072`，管理员已确认总数 19 | 沿用已指定范围，无需重复确认 |
 | 所需 tenant 权限 | `wiki:wiki:readonly`、`drive:export:readonly`、`drive:file:download` 三项均已 `grant_status=1`；用户已确认版本审核上线 | 权限检查已通过，无需重复申请 |
-| 现有应用是否只读 | 不是；tenant `wiki:wiki` 读写权限也已获批，user `wiki:wiki` 仍在，另有 IM、文档写入等能力 | 不应把本次只读同步描述为整个应用只读；其他授权的清理需单独确认 |
-| 目标目录与 ACL | 目录阅读已获授权；完整递归取得 19 个节点，全部为目标空间内 `docx`、`origin`，没有 shortcut；管理员已确认空间总数也是 19 | 当前剩余 4 篇均实测 `view=true`、`export=false`；用户已确认界面允许阅读者导出，界面与 API 差异仍待定位 |
-| 已指定 probe | 节点 `JJ0zw4wfjiSGwSkypq3csTVJnCc` 的 V1 真实关键词检索已通过；尚未修改或删除 | 这是局部 probe 验收；完整快照尚未生成，V2 待用户修改后验证 |
+| 现有应用是否只读 | 不是；已有 tenant `wiki:wiki` 等写能力，用户也明确选择应用可编辑身份；目标 19 篇资源均实测 `edit=true` | 沿用用户选择，不自动撤销；连接器本次只读取飞书，不代表应用身份本身只读 |
+| 目标目录与 ACL | 最终逐篇权限检查为 `view=true` 19、`export=true` 19、`edit=true` 19，无同步权限拒绝；管理员确认源总数 19，本地 external ID 全覆盖 | 只证明目标 19 篇，不代表其他 Drive、外链或全部资源的权限范围 |
+| 已指定 probe | 节点 `JJ0zw4wfjiSGwSkypq3csTVJnCc` 的 V1、V2 完整验证均退出 0；V2 真实检索命中且内容哈希、源更新时间相对基线均变化 | 前后快照均已保存；只有 probe 的记录发生变化，其他 18 篇不变；未删除 probe |
 | Wiki 可见性审计 | `audit-access` 实测可见 Wiki 空间仅 1 个，即 `7610776951925509072` | 不证明 Drive 或单篇文档的全部 ACL；外部对照样本仍未验证 |
-| helper 实测与测试 | 完整 19 个模拟测试通过；`audit-documents` 已真实检查全部 19 篇，view 全为 true，export 为 15 true、4 false，退出码 1 符合预期 | 权限元数据诊断不能替代正文同步验收 |
+| helper 实测与测试 | 完整 19 个模拟测试通过；原失败节点的 `audit-documents` 已通过，最终原生 auth 遍历另确认目标 19 篇阅读、导出、编辑均允许 | helper CLI 检查 view/export；最终 edit 结果来自只读原生元数据查询 |
 | 定制镜像与服务 | 最终镜像已构建并部署；middleware、core、wiki 三包 Go 测试全部通过，包含最新 origin 修复；6 个容器均 healthy，8088、8080 健康检查均 HTTP 200 | 健康检查不替代正文同步与检索验收 |
 | 日志安全修复 | 定制镜像已运行；本次 app 日志窗口经内存扫描，真实 AppID、AppSecret 均未出现 | 只证明该检查窗口，不构成所有历史及未来日志均安全的保证 |
 | 凭据静态存储 | 数据库只读布尔检查确认两项凭据均符合 `enc:v1` 密文格式 | 检查仅输出布尔结果，不输出凭据或密文 |
 | 空间范围校验 | 全树预检查、官方 API origin 锁定和显式空配置拒绝已部署，模拟测试通过；目标空间真实同步已运行 | 真实外部空间拒绝样本仍未验证 |
-| WeKnora 真实同步、数量、解析、检索 | 三次同步后累计创建并解析完成 15 篇；第二次新增 1 篇，第三次仍有 4 篇导出失败；V1 probe 检索通过 | 正在定位 4 篇导出权限的界面与 API 差异；尚未达到 19/19，V2 未验证 |
+| WeKnora 真实同步、数量、解析、检索 | 19 篇解析完成且 external ID 全覆盖；V2 增量更新 1 篇并通过真实检索；无变化重复同步 total、created、updated、failed 均 0 | 数量和 ID 均保持不变，已通过本次现有文档导入、更新及无变化增量验收 |
 | 独立冒烟测试 | 新镜像下 `scripts/smoke-test.sh` 退出码 0，真实 DeepSeek 回答、引用及三种检索通过 | 仅使用 testdata 的独立 KB，不是飞书正文问答，也不替代飞书完整对账 |
-| 真实新增、更新与删除 | 未验证 | 使用空间所有者指定的测试文档验收；删除当前保持禁用 |
+| 真实新增、更新与删除 | 指定 probe 的 V1 到 V2 更新已验证；飞书新建文档与删除尚未验证 | 已导入的 19 篇属于现有文档；删除保持禁用 |
 | 外部空间拒绝访问 | 未验证；用户确认目前没有可提供的外部对照空间 | 不自行寻找或创建样本，不把可见空间只有 1 个当作负向测试通过 |
 
 权限查询成功只能说明应用 token 可用，不能说明目标 Wiki 可读。`POST /api/v1/datasource/{id}/validate` 同样只验证 token 获取，不能替代目标目录访问和正文导出验收。
 
-所需 scope 和目标空间目录 ACL 已通过，定制镜像已部署。用户补充五篇文档的阅读授权后，第二次同步新增 1 篇，累计 15 篇均已解析完成；等待权限传播后的第三次复试仍有 4 篇失败。全 19 篇的只读权限检查确认阅读均允许，导出允许 15 篇、拒绝 4 篇。用户已确认界面允许应用所属阅读者导出，当前正在定位界面与 API 结果的差异；不据此认定用户未修改，也不重复要求阅读授权。19/19 对账、完整快照和增量验收尚未完成。
+定制镜像已部署，目标空间现有 19 篇均已导入并解析完成，本地 external ID 与源节点完整对应。用户先将《01.1项目产品手册》的相关选项设为可阅读用户，随后为满足部分文档仅允许编辑者导出的限制，明确选择将应用设为可编辑用户。最终用同一 tenant 应用逐篇只读查询 auth，目标 19 篇的阅读、导出、编辑均允许，无同步权限拒绝。当前保留用户选择的授权配置，不自动撤销编辑权限。
 
-进一步只读检查已确认四篇均有当前应用的 `perm=view` 协作者记录。历史 v1 权限接口在四篇上返回 `security_entity=anyone_can_edit`，probe 返回 `anyone_can_view`；现代 v2 接口因权限错误未能读取，不能据此断定具体复制设置或企业策略。当前只等待《01.1项目产品手册》该选项的完整文字及是否继承、锁定或待保存的文本反馈，不再重复添加应用。
+完整 V1 验证退出 0 后，`snapshot --output temp/feishu-before.json` 成功保存 19 篇基线。用户已将指定 probe 改为 V2，增量同步更新 1 篇，完整 V2 验证退出 0，真实检索命中 V2，内容哈希与源更新时间均较基线变化。随后无变化增量同步成功、处理数为 0，数量与 ID 均不变；`temp/feishu-after.json` 已保存，比对确认只有 probe 变化，其余 18 篇不变。新建文档、删除与外部拒绝样本仍未验证。复查 `audit-access` 仍只列出目标空间，6 个容器均 healthy。
 
 本次部署的镜像 config ID 为 `sha256:5f47174e719deceec745be8ebc1ba56df15a035f6980036bfae81cec4c3547dc`。已创建专用 KB `d9285ed1-0760-474b-ba82-a13347598176` 和数据源 `c32b43f4-41b3-4060-9820-9371bdafed8b`；首次同步日志为 `6f02d11b-cd2d-47c3-9352-3396e577d197`。
 
@@ -52,15 +52,15 @@
 
 原版数据源界面列出 `wiki:wiki:readonly`、`drive:drive:readonly`、`drive:export:readonly`、`docx:document:readonly` 四项。本机强制 `FEISHU_DOCX_PARSE_MODE=export`，无需为了 blocks 解析新增 `docx:document:readonly`，也无需为本次同步新增覆盖更广的 `drive:drive:readonly`。已有获批的 `drive:drive:readonly` 或 `drive:file:readonly` 可以满足文件下载接口，但脚本会提示已有较宽授权；这不是本方案要求新增的权限。
 
-飞书实际访问取决于 **API 能力权限与文档、节点 ACL 的交集**。仅配置 scope 不能获得所有知识库内容；应用可用范围也不是云文档访问范围。由目标空间所有者将应用对应身份添加到合作伙伴专用空间，仅授予阅读权限，检查子节点继承和单独授权。不要为了同步启用组织公开分享，也不要混用个人 `user_access_token` 扩大可见范围。节点列表要求调用身份有父节点阅读权限，且可能受权限过滤返回空页但仍有后续分页，必须继续分页。[官方节点列表说明](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/list.md)
+飞书实际访问取决于 **API 能力权限与文档、节点 ACL 的交集**。仅配置 scope 不能获得所有知识库内容；应用可用范围也不是云文档访问范围。由目标空间所有者将应用对应身份添加到合作伙伴专用空间，检查子节点继承和单独授权。可阅读身份配合允许阅读者导出，是权限更小的可选配置；本次用户明确选择可编辑身份，以满足部分文档的导出限制，后续沿用该选择。不要为了同步启用组织公开分享，也不要混用个人 `user_access_token` 扩大可见范围。节点列表要求调用身份有父节点阅读权限，且可能受权限过滤返回空页但仍有后续分页，必须继续分页。[官方节点列表说明](https://open.feishu.cn/document/server-docs/docs/wiki-v2/space-node/list.md)
 
-本次目标空间 ACL 已获授权并通过目录递归验证。重复部署时沿用**包含应用机器人的专用群**在 `7610776951925509072` 中的**可阅读**成员关系，只处理该空间，不添加为管理员，不扩展到其他空间。成员关系或继承权限变化后重新运行 `inventory`；资源拒权不能靠新增写权限解决。
+本次目标空间 ACL 已获授权并通过目录递归验证。空间统一授权使用**包含应用机器人的专用群**；当前还须保留用户已配置的应用可编辑授权，只处理 `7610776951925509072`，不自动添加管理员或扩展到其他空间。成员关系或继承权限变化后重新运行 `inventory` 和 `audit-documents`，以阅读、导出及实际同步结果验收。
 
-可以在空间层统一授予阅读权限。将已发布应用作为机器人加入专用群，再由知识库管理员在目标空间的“知识库设置 → 成员设置”中将该群添加为“可阅读的成员”；不要选择管理员或可编辑成员。使用应用机器人，不使用自定义机器人。若搜索不到应用，检查已发布版本的可用范围是否包含资源所有者。[知识库 API 常见问题](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/wiki-v2/wiki-qa)
+可以在空间层统一授予阅读权限。将已发布应用作为机器人加入专用群，再由知识库管理员在目标空间的“知识库设置 → 成员设置”中将该群添加为“可阅读的成员”。这是更小权限的可选起点；本次已由用户选择可编辑授权，不要求为采用该建议而改回。使用应用机器人，不使用自定义机器人。若搜索不到应用，检查已发布版本的可用范围是否包含资源所有者。[知识库 API 常见问题](https://open.feishu.cn/document/ukTMukTMukTM/uUDN04SN0QjL1QDN/wiki-v2/wiki-qa)
 
-默认情况下，知识库成员可访问既有页面，新增子页面继承父级权限；页面也可以在“管理协作者”中把“当前知识库成员”设为无权限，使该页面及其子页面不再沿用空间成员访问权。因此，空间统一授权不能覆盖所有页面例外，也不等于所有页面都允许导出。当前四篇是否存在特殊继承设置为**未验证**，不能仅根据失败推断继承被关闭。[设置当前知识库管理员和成员](https://www.feishu.cn/hc/zh-CN/articles/530997871518)、[快速了解知识库权限](https://www.feishu.cn/hc/zh-CN/articles/821998241087)
+默认情况下，知识库成员可访问既有页面，新增子页面继承父级权限；页面也可以在“管理协作者”中把“当前知识库成员”设为无权限，使该页面及其子页面不再沿用空间成员访问权。因此，空间统一授权不能覆盖所有页面例外，也不等于所有页面都允许导出。原先四篇是否曾存在特殊继承设置为**未验证**，不能仅根据历史失败推断继承被关闭。[设置当前知识库管理员和成员](https://www.feishu.cn/hc/zh-CN/articles/530997871518)、[快速了解知识库权限](https://www.feishu.cn/hc/zh-CN/articles/821998241087)
 
-空间成员关系属于资源 ACL；应用身份 scope 是另一层能力授权。本次所需三个 scope 已生效，不需要为统一空间阅读再申请权限，也不需要个人 OAuth。用户已确认“分享 → 权限设置”中允许应用所属阅读者创建副本、打印、下载等导出操作，但四篇的 API 诊断仍为 `export=false`。尚不能确认差异来自哪一层设置或继承关系，需要继续检查权限元数据；不再重复要求阅读授权。后续处理保留只读身份，不提升为编辑者，不启用组织或外部公开分享，最终以权限检查与真实导出同步结果验收。
+空间成员关系属于资源 ACL；应用身份 scope 是另一层能力授权。本次所需三个 scope 已生效，不需要为统一空间授权再申请权限，也不需要个人 OAuth。此前四篇虽可读但不能导出；用户调整选项并选择应用可编辑身份后，最终 19 篇 auth 结果均为 `view=true/export=true/edit=true`。这证明目标资源 ACL 也允许编辑，不只是应用拥有额外写 scope；本次连接器仍仅执行读取。未启用组织或外部公开分享。若用户日后主动选择收窄，可将应用降为可阅读身份并使相应文档允许阅读者导出，再逐篇验证；本次不自动撤销已授权的编辑权限。
 
 管理员授权流程：
 
@@ -204,7 +204,7 @@ python scripts/feishu-space-sync.py verify --timeout 7200
 }
 ```
 
-空间 ID 必须是字符串，无 `space:` 前缀。`paused` 禁止定时触发，但允许人工同步；空 schedule 避免自动抓取。若将来启用 schedule，该版本使用包含秒的六字段 cron。首次 incremental 无游标，仍会遍历所选空间的完整可见目录；后续使用游标保存的节点编辑时间跳过未变化内容。此实现通过轮询比较更新时间，不是飞书事件推送。
+空间 ID 必须是字符串，无 `space:` 前缀。当前空 schedule 不创建 cron，`paused` 禁止定时触发但允许人工同步；这两项不会取消已入队失败任务的自动重试，不能把它们理解为后台不会再访问飞书。任务使用 Asynq `MaxRetry(5)`，重试可继续处理并更新原同步日志。若将来启用 schedule，该版本使用包含秒的六字段 cron。首次 incremental 无游标，仍会遍历所选空间的完整可见目录；后续使用游标保存的节点编辑时间跳过未变化内容。此实现通过轮询比较更新时间，不是飞书事件推送。
 
 | 操作 | 本机 API | 响应形状或用途 |
 | --- | --- | --- |
@@ -237,7 +237,7 @@ strict 模式已锁定对应地区的官方 HTTPS API origin，并拒绝显式�
 
 预检查失败或超时后不降级到无保护抓取。预检查会保存整棵目录树元数据，期间没有正文处理 checkpoint；大型空间或持续限流可能反复超时。当前任务超时为两小时，发生失败后还可能由任务队列重试；脚本超时不意味着后台任务已停止，先查询原同步日志再决定下一步。
 
-这些检查不证明飞书节点在预检查后永远不移动，检查与导出之间存在并发变更窗口；也不约束管理员修改配置、其他数据源或应用已有的额外权限。必须同时维护飞书侧只读 ACL 和专用空间边界。官方 API 可能按权限过滤节点，成功返回也不能证明看到了空间所有内容。
+这些检查不证明飞书节点在预检查后永远不移动，检查与导出之间存在并发变更窗口；也不约束管理员修改配置、其他数据源或应用已有的额外权限。必须同时维护飞书侧经用户选择的 ACL 和专用空间边界。官方 API 可能按权限过滤节点，成功返回也不能证明看到了空间所有内容。
 
 ## 7. 数量、解析与增量验收
 
@@ -254,17 +254,21 @@ strict 模式已锁定对应地区的官方 HTTPS API origin，并拒绝显式�
 | 完成数 | 每篇 `parse_status=completed`；解析状态 pending、processing、finalizing 继续等待；`parse_status` 为 failed 或 cancelled 不通过；空摘要模型导致的 `summary_status=failed` 单独记录 |
 | 实际可检索性 | 用指定 probe 的唯一文本查询 hybrid-search，确认命中该文档对应 `knowledge_id` |
 
-本次已验证飞书侧 `N=19`、`M=19`，全部为目标空间中的 docx origin 节点，且包含指定 probe。管理员已独立确认空间总数为 19，与应用递归数量一致。三次真实同步记录如下：
+本次已验证飞书侧 `N=19`、`M=19`，全部为目标空间中的 docx origin 节点，且包含指定 probe。管理员已独立确认空间总数为 19，与应用递归数量一致。同步日志会被队列重试更新，以下区分当时观测与后续查询，不把每条日志当作不可变事件：
 
 | 次数 | 同步日志 ID | total / created / failed | 结果 |
 | --- | --- | --- | --- |
-| 首次 | `6f02d11b-cd2d-47c3-9352-3396e577d197` | 19 / 14 / 5 | partial；五篇创建导出任务返回 HTTP 403、`1069902` |
-| 第二次 | `3e4c249b-aa4c-4237-9ca6-6741e14090f1` | 5 / 1 / 4 | 用户补充阅读授权后，“第三部分成果与荣誉交付”成功导入 |
-| 第三次 | `f1c50627-38a4-4ba4-9636-cb84ec41538a` | 4 / 0 / 4 | 等待权限传播后复试，四篇仍返回相同 `1069902` |
+| 首次，当时观测 | `6f02d11b-cd2d-47c3-9352-3396e577d197` | 19 / 14 / 5 | partial；五篇创建导出任务返回 HTTP 403、`1069902` |
+| 第二次，当时观测 | `3e4c249b-aa4c-4237-9ca6-6741e14090f1` | 5 / 1 / 4 | 用户补充阅读授权后，“第三部分成果与荣誉交付”成功导入 |
+| 第三次，当时观测 | `f1c50627-38a4-4ba4-9636-cb84ec41538a` | 4 / 0 / 4 | failed；当时四篇均返回 `1069902`，任务随后被自动重试 |
+| 第三次日志，后续查询 | 同上 | 4 / 1 / 3 | 04:42:55 UTC 已变为 partial，另补入 1 篇；`started_at` 仍为 04:31:23 UTC |
+| 补齐目录的手动同步 | `7f02e8fe-b7b2-4d69-86e8-49df6b04b701` | 3 / 3 / 0 | success，`items_updated=0`；其余文档由此前同步及重试导入 |
+| 用户修改 V2 后的增量同步 | `1df478b1-0e73-4a77-8af8-7dd84f82d338` | 1 / 0 / 0 | success，`items_updated=1`，仍为 19 篇解析完成 |
+| 不再修改正文的重复同步 | `6a005d74-f6b9-4e74-bd34-8e6e29f45ce2` | 0 / 0 / 0 | success，`items_updated=0`；19 篇完成，数量与 ID 均不变 |
 
-当前累计 15 篇均 `parse_status=completed`，仍有 4 篇未导入，不能描述为 19/19 验收通过。首次导入的 14 篇均观察到 `summary_status=failed`，符合空摘要模型跳过远程摘要的预期，不能据此判定正文解析失败。
+当前累计 19 篇均 `parse_status=completed`，本地 external ID 完整覆盖源 19 节点，完整 V1 和 V2 验证均退出 0。补齐目录的手动同步只新增 3 篇仍可达到总数 19，是因为旧失败任务已自动重试补入 1 篇；不能只累计某次打印的创建数判断缺失。源码 `internal/application/service/datasource_service.go:494` 配置 `MaxRetry(5)`，1117 附近的错误处理会保存状态并返回错误交由队列重试。当前未配置 cron 且数据源 paused，也不阻止这些已入队任务重试。首次导入的 14 篇均观察到 `summary_status=failed`，符合空摘要模型跳过远程摘要的预期，不能据此判定正文解析失败。
 
-针对仍失败的四篇，使用当前已授予的 tenant `wiki:wiki` 调用 `GET /drive/v1/permissions/{obj_token}/members/auth?type=docx&action=view` 和同一路径的 `action=export`，只读取权限元数据，没有新增 scope；接口的 `data.auth_result` 区分阅读与导出权限。[判断当前应用是否有云文档权限](https://open.feishu.cn/document/server-docs/docs/permission/permission-member/auth.md)
+排查此前失败的四篇时，使用已授予的 tenant `wiki:wiki` 调用 `GET /drive/v1/permissions/{obj_token}/members/auth?type=docx&action=view` 和同一路径的 `action=export`，只读取权限元数据，没有新增 scope；接口的 `data.auth_result` 区分阅读与导出权限。[判断当前应用是否有云文档权限](https://open.feishu.cn/document/server-docs/docs/permission/permission-member/auth.md)
 
 现已封装为可复用的 `audit-documents` 命令。默认检查目标空间全部 docx；也可以重复传入 `--node-token`，仅检查指定节点。以下是默认检查和本次四篇的定向检查，按需选择：
 
@@ -273,37 +277,39 @@ python scripts/feishu-space-sync.py audit-documents
 python scripts/feishu-space-sync.py audit-documents --node-token EqrtwEBRKiZyqZkH7s6cMIB0nQh --node-token BeXAwQI4niJSkOki6nycZhQhnob --node-token NL4TwzQsNi8GR1kJThzcHeQsnJb --node-token LBDgw64aPiAmUikWXSgcQdEBnse
 ```
 
-该命令先完成目录范围预检，再用 `get_node` 复核所有选中节点属于目标空间、为 origin docx；全部通过后才逐篇查询 `view`、`export`。它不取正文，不输出对象 token、标题或凭据，也不申请 scope。当前应用已有 tenant `wiki:wiki`，满足此诊断接口的能力要求；只有三个最小同步 scope 的另一应用未必能调用该诊断接口，不能把接口无权调用误判为文档不可读。结果仅输出节点 ID、动作和布尔 `auth_result`；接口错误输出 `check_error` 及数值错误码，响应缺少有效布尔值则标记未验证。全部为 true 才退出 0，有 false 或未验证则退出 1。本次新 CLI 已真实检查全 19 篇：`view` 为 19 true，`export` 为 15 true、4 false，退出码为 1，符合当前权限状态。
+该命令先完成目录范围预检，再用 `get_node` 复核所有选中节点属于目标空间、为 origin docx；全部通过后才逐篇查询 `view`、`export`。它不取正文，不输出对象 token、标题或凭据，也不申请 scope。当前应用已有 tenant `wiki:wiki`，满足此诊断接口的能力要求；只有三个最小同步 scope 的另一应用未必能调用该诊断接口，不能把接口无权调用误判为文档不可读。结果仅输出节点 ID、动作和布尔 `auth_result`；接口错误输出 `check_error` 及数值错误码，响应缺少有效布尔值则标记未验证。全部为 true 才退出 0，有 false 或未验证则退出 1。调整前全 19 篇诊断为 view 19 true、export 15 true 和 4 false，退出 1；调整后 Eqrt 节点先变为阅读与导出均 true，其余 BeXA、LBDg、NL4T 三节点随后均为 true，最后三篇定向诊断退出 0。结合已通过的其余 15 篇及完整导入验收，当前 19 篇均可导出。
+
+最终又用同一 tenant 应用的原生 auth 接口遍历目标 19 篇 docx，分别查询 `action=view`、`action=export`、`action=edit`，只读元数据，结果为 `view_true=19`、`export_true=19`、`edit_true=19`，无 `sync_permission_denied`。这项 edit 检查是单独的原生查询，不能误称 `audit-documents` CLI 已内置 edit 检查。复查可见 Wiki 空间仍只有目标 1 个；上述结果不覆盖其他 Drive 文件、单篇外链或外部拒绝样本。
 
 | 文档 | Wiki 节点 token | 当前验证结果 |
 | --- | --- | --- |
-| 01.1项目产品手册 | `EqrtwEBRKiZyqZkH7s6cMIB0nQh` | `view=true`、`export=false`，尚未导入 |
+| 01.1项目产品手册 | `EqrtwEBRKiZyqZkH7s6cMIB0nQh` | 调整为可阅读用户导出后 `view=true/export=true`，已导入并解析完成 |
 | 第三部分成果与荣誉交付 | `QuHwwFjIkipT8xkC9dscklXnnJd` | 第二次同步成功，已解析完成 |
-| 01.3管理标准化 | `BeXAwQI4niJSkOki6nycZhQhnob` | `view=true`、`export=false`，尚未导入 |
-| 学校荣誉申请申报指南 | `NL4TwzQsNi8GR1kJThzcHeQsnJb` | `view=true`、`export=false`，尚未导入 |
-| 白名单赛事带赛手册 | `LBDgw64aPiAmUikWXSgcQdEBnse` | `view=true`、`export=false`，尚未导入 |
-| 指定 probe | `JJ0zw4wfjiSGwSkypq3csTVJnCc` | `view=true`、`export=true`，V1 检索通过 |
+| 01.3管理标准化 | `BeXAwQI4niJSkOki6nycZhQhnob` | 用户选择应用可编辑身份后 `view=true/export=true`，已导入并解析完成 |
+| 学校荣誉申请申报指南 | `NL4TwzQsNi8GR1kJThzcHeQsnJb` | 用户选择应用可编辑身份后 `view=true/export=true`，已导入并解析完成 |
+| 白名单赛事带赛手册 | `LBDgw64aPiAmUikWXSgcQdEBnse` | 用户选择应用可编辑身份后 `view=true/export=true`，已导入并解析完成 |
+| 指定 probe | `JJ0zw4wfjiSGwSkypq3csTVJnCc` | `view=true`、`export=true`，V1 与 V2 真实检索均通过 |
 
-创建导出任务的官方错误说明把 `1069902` 描述为缺少文档阅读权限，因此首次按阅读授权排查；后续独立权限检查已经确认剩余四篇可读但不可导出，不能继续以该泛化错误说明认定当前缺少阅读权限。[创建导出任务错误码](https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/create.md) 用户已反馈界面允许阅读者导出，当前应继续定位界面与 API 的差异，不能猜测用户未改设置或页面继承的具体原因。后续不增加 scope、不提升编辑权限；先复查 `view`、`export`，再复跑 `sync`、`verify`，重新核对本地来源集合、解析完成数和指定 probe 的检索结果。
+创建导出任务的官方错误说明把 `1069902` 描述为缺少文档阅读权限，因此首次按阅读授权排查；独立检查随后发现四篇可读但不可导出，说明不能仅凭该错误码判定缺少阅读权限。[创建导出任务错误码](https://open.feishu.cn/document/server-docs/docs/drive-v1/export_task/create.md) 用户调整导出选项并选择应用可编辑身份后，四篇权限、真实导入及完整 V1 验收均已通过；本次没有新增 scope。
 
-为区分界面设置、有效权限和协作者身份，进一步完成以下只读诊断，未修改飞书权限，也未新增 scope：
+以下是用户最后调整前的只读诊断历史，不代表当前 ACL；诊断请求本身未修改飞书权限，也未新增 scope：
 
-| 检查 | 四篇失败文档 | probe 对照 | 结论边界 |
+| 检查 | 当时失败的四篇文档 | probe 对照 | 结论边界 |
 | --- | --- | --- | --- |
 | `GET /drive/v1/permissions/{obj_token}/public?type=docx` | 均为 `security_entity=anyone_can_edit` | `security_entity=anyone_can_view` | v1 是官方历史接口，字段差异不能完整证明现代权限继承或企业策略 |
 | 同一 v1 public 接口，改用 Wiki 节点 token 与 `type=wiki` | 与 docx 查询结果一致 | 与 docx 查询结果一致 | 已排除本次这两种 token/type 查询结果不同的情况，不能推出所有权限来源一致 |
 | `GET /drive/v2/permissions/{obj_token}/public?type=docx` | 均为 HTTP 403、`1063002` | 同为 HTTP 403、`1063002` | `copy_entity`、`lock_switch` 均**未验证**；不能把接口拒绝解释为这些字段的值 |
 | `GET /drive/v1/permissions/{obj_token}/members?type=docx&fields=type` | 均有当前应用记录：`perm=view`、`perm_type=container`、`type=app` | 未见直接应用协作者记录，已有空间授权且实测可阅读、可导出 | 当前 AppID 只在内存中匹配，未输出 AppID 或 member ID；不需要再次逐篇添加应用 |
 
-这些证据确认有效导出权限仍有差异，但尚不能确定界面中“谁可复制”的具体取值、继承来源、企业策略或锁定状态。当前仅请用户提供节点 `EqrtwEBRKiZyqZkH7s6cMIB0nQh`《01.1项目产品手册》中该选项的完整文字，以及界面是否显示继承、锁定或待保存，等待文本反馈后继续定位；不据此认定用户未修改或要求再次授予阅读权限。
+这些历史证据用于说明当时的有效权限差异，不能完整确定现代继承、企业策略或锁定状态。用户随后已调整导出选项并明确选择可编辑授权，当前导入阻塞已解除，不再等待该选项文字或重复添加应用。v2 的 `copy_entity`、`lock_switch` 未重新取得，仍保留未验证。
 
 `metadata.datasource_id` 与同步日志中的 `data_source_id` 拼写不同。文档列表没有按 datasource ID 的独立查询参数，应分页后按 metadata 检查。附件可能展开为带 `#file#` 或 `#image#` 的 external ID；不能把文档总数直接等同于 Wiki 节点数。内容哈希去重、不支持类型、无权看到的子节点、解析失败都要单独解释，不能因总数接近就宣称完全一致。
 
 当前 helper 会严格检查支持节点覆盖、来源集合、重复项及解析完成状态；缺失项不会自动忽略。本次应用递归数量已与管理员确认的 19 项一致，但总数相同本身不能替代本地 external ID 集合及正文解析验收。后续目录或 ACL 变化后，应重新核对空间总数与目录集合。
 
-用户已指定目标空间内的 probe 节点 `JJ0zw4wfjiSGwSkypq3csTVJnCc`，其空间链接使用同一 `leboshiedu` 租户。本次对已入库 probe 单独调用 helper 的 `verify_marker` 并执行真实关键词检索，V1 标记验证通过：`knowledge_id=b6053950-898c-4a90-8f18-c38628189af7`，命中分块 `9a4de8e5-8eae-4dbf-b59f-eee9d41b0c5e`。这是局部 probe 验收，不代表完整 `verify` 命令已对 19 篇通过；完整 `snapshot` 尚未生成，当前没有修改或删除该节点。后续新增与更新验收使用该指定文档，不另行操作其他文档：
+用户已指定目标空间内的 probe 节点 `JJ0zw4wfjiSGwSkypq3csTVJnCc`，其空间链接使用同一 `leboshiedu` 租户。完整 V1 验证退出 0，确认 19 篇覆盖与解析完成，并真实检索命中 probe；V1 的 `knowledge_id` 为 `b6053950-898c-4a90-8f18-c38628189af7`，分块为 `9a4de8e5-8eae-4dbf-b59f-eee9d41b0c5e`。随后 `snapshot --output temp/feishu-before.json` 成功保存 19 篇基线。用户已修改为 V2 并完成增量验收，未删除该节点。
 
-先确认指定 probe 的 V1 正文包含 `WEKNORA_FEISHU_PROBE_V1`。完成首次导入后，验证 V1 的索引内容并保存基线：
+重复部署时，先确认指定 probe 的 V1 正文包含 `WEKNORA_FEISHU_PROBE_V1`。完成首次导入后，验证 V1 的索引内容并保存基线。以下流程本次已经完成，现有快照不会被覆盖：
 
 ```powershell
 python scripts/feishu-space-sync.py sync --timeout 7200
@@ -322,7 +328,27 @@ python scripts/feishu-space-sync.py verify --node-token JJ0zw4wfjiSGwSkypq3csTVJ
 
 该验证要求 probe 已解析完成、关键词检索命中该文档的真实分块且包含 V2 标记，并要求相对基线的 `file_hash` 或 `source_updated_at` 至少一项变化。仅 knowledge ID 改变不能通过；节点或对象编辑时间另作记录。更新实现可能删除并重建本地 knowledge，ID 变化本身也不是失败。
 
+本次用户修改后的 V2 同步日志为 `1df478b1-0e73-4a77-8af8-7dd84f82d338`，`items_total=1`、`items_created=0`、`items_updated=1`、`items_failed=0`，状态 success。上述带 V1 基线的完整 `verify` 命令退出 0，19 篇均解析完成，真实关键词检索命中 V2。验收证据如下：
+
+| 字段 | V2 验收结果 |
+| --- | --- |
+| `hash_changed` | true |
+| `source_updated_at_changed` | true |
+| `object_edit_time_changed` | true |
+| `node_edit_time_changed` | false；不能仅用 Wiki 节点时间判断正文是否变化 |
+| 更新前 knowledge ID | `b6053950-898c-4a90-8f18-c38628189af7` |
+| 更新后 knowledge ID | `9e5b0d17-1622-4e29-85d6-3645a773fdae` |
+| V2 命中分块 ID | `77a343a1-9462-4522-8fd2-4fca1b656a5c` |
+
 不修改飞书内容，再次执行 `sync`、`verify`。无变化增量的 `items_total=0`、`items_skipped=0` 都合法，因为未变化节点在连接器中直接跳过；文档数量和 ID 集合应保持不变。
+
+本次重复同步日志 `6a005d74-f6b9-4e74-bd34-8e6e29f45ce2` 为 success，`items_total=0`、`items_created=0`、`items_updated=0`、`items_failed=0`；19 篇仍解析完成，`incremental_noop` 检查确认 count 与 IDs 均不变。随后执行以下命令并成功保存更新后快照：
+
+```powershell
+python scripts/feishu-space-sync.py snapshot --output temp/feishu-after.json
+```
+
+两份 JSON 快照比较为 19 → 19，external ID 集合相同；只有 probe `JJ0zw4wfjiSGwSkypq3csTVJnCc` 的 `knowledge_id`、哈希和 `source_updated_at` 变化，其他 18 个节点的这三项值均不变。快照与真实 V2 检索共同支持本次更新只影响指定文档，重复同步未额外重建其余文档。
 
 helper 的 probe 验证仅执行关键词检索，不调用聊天模型或远程 embedding。等效请求如下：
 
@@ -337,7 +363,7 @@ helper 的 probe 验证仅执行关键词检索，不调用聊天模型或远程
 }
 ```
 
-V1 局部检索已通过；完整 19 篇对账、完整快照、真实新增、V1 到 V2 更新及无变化重复仍未验证。V1 检索成功不能代替用户实际修改 probe 后的更新测试。
+完整 19 篇对账、解析、V1 与 V2 真实检索、前后快照、用户实际修改后的增量更新及无变化重复同步均已通过。飞书中新建文档仍未验证；导入现有文档不等于已验证飞书端的新建事件。
 
 此外，原 `scripts/smoke-test.sh` 在新镜像下退出码为 0，真实 DeepSeek 回答、引用与三种检索通过。这项测试仅使用 testdata 创建的独立知识库，没有用飞书正文进行远程模型问答，不能替代上述飞书专用知识库验收。
 
@@ -359,16 +385,18 @@ python scripts/feishu-space-sync.py audit-access --deny-space '<用户指定的�
 
 该命令先验证目标空间可访问，仅请求外部空间的节点元数据；只有 HTTP 403 或已识别的飞书资源拒权码 `131006` 才记为样本被拒绝，随后再次确认目标空间仍可访问。404、空列表、网络失败或未知错误不能自动视为通过，成功列出外部空间则失败并要求检查 ACL。不导出或下载外部正文，不自行遍历其他空间寻找样本；一个样本被拒绝也不能证明应用对所有外部文档都无权访问。此项仍为**未验证**。
 
-定制镜像已部署，累计 15 篇已解析完成，V1 probe 局部检索通过。后续先定位四篇文档的界面与 API 导出权限差异，确认仍保持仅阅读身份且 `export=true`，再复跑同步及 19/19 对账、等待新增导入文档解析完成，运行完整验证并保存快照，之后才进行用户修改后的 V2 对照和无变化增量测试。probe 已指定，不再要求另建；未经确认不修改或删除。外部拒绝测试因没有对照样本而保留未验证，不自行寻找样本；完整数量、真实更新及删除验收仍未完成。
+定制镜像已部署，19 篇全部解析完成，完整 V1/V2 检索、前后快照、真实增量更新及无变化重复同步均已通过。沿用用户选择的应用可编辑授权。未经确认不修改或删除飞书文档。真实新建文档、删除及外部拒绝样本仍未验证，不因完成现有文档导入与更新而标记通过。
 
 ## 9. 常见问题
 
 | 现象 | 解释与处理 |
 | --- | --- |
-| 三项 scope 都已授权，目录也有 19 篇，仍有文档导出失败 | 阅读和导出是不同权限。当前四篇实测 `view=true`、`export=false`；用户已确认界面允许阅读者导出，正在检查界面与 API 差异，不再笼统归因为缺少阅读权限或认定用户未修改 |
-| 已添加应用且界面允许阅读者导出，还要重新添加应用吗 | 四篇已有当前应用的只读协作者记录，不重复添加。历史 v1 字段与 probe 不同，但 v2 设置读取失败；目前只等待《01.1项目产品手册》选项全文及继承、锁定、待保存状态，不能猜测具体设置原因 |
+| 三项 scope 都已授权，目录可见，为什么仍可能导出失败 | 阅读和导出是不同权限。本次曾出现 `view=true/export=false`，用户调整导出选项并选择应用可编辑身份后已解决；`audit-documents` 可分别验证两种权限 |
+| 已添加应用是否需要重新添加 | 不必反复添加。应核对有效阅读与导出权限；本次当前采用用户明确选择的可编辑授权，四篇原失败文档已经导入 |
+| 当前能否称为只读应用 | 不能。目标 19 篇均实测允许编辑，且应用已有额外写 scope；本次同步仅读取。只有用户以后主动选择收窄时，才调整为只读加允许阅读者导出并重新验收 |
 | 能否对整个空间一次授权，避免逐篇添加 | 可以将应用机器人所在专用群添加为目标空间可阅读成员。默认权限继承覆盖既有页面及新增子页，但页面可有继承例外，导出设置也需分别检查；不扩大到其他空间 |
-| 同步状态为 partial，但已有文档出现在知识库 | 抓取可以部分成功。首次创建 14、第二次新增 1，当前 15 篇解析完成；四篇仍导出失败，不能把 partial 当作完整同步通过 |
+| 同步状态为 partial，但已有文档出现在知识库 | 抓取可以部分成功，且旧 failed 任务重试会更新同一日志。本次最终已补齐 19 篇并完整验证，不能只凭某条旧日志判断当前总数 |
+| 没有 cron 且数据源 paused，为什么文档数量仍变化 | 已入队任务仍可能按 Asynq `MaxRetry(5)` 自动重试。paused 与空 schedule 不会取消这些任务；本次旧失败日志重试补入 1 篇，最新手动同步因此只新增 3 篇 |
 | 容器 healthy、健康接口 200，是否已经完成同步验收 | 仅证明服务健康。还需核对源与本地来源集合、`parse_status=completed` 及真实关键词检索 |
 | `summary_status=failed`，是否代表正文导入失败 | 本方案故意留空摘要模型，worker 会跳过摘要并设置该状态。独立检查 `parse_status` 与检索；真实解析失败仍不通过 |
 | 日志扫描没有发现凭据，是否保证从未泄漏 | 本次只对指定 app 日志窗口做内存匹配。已部署脱敏修复并通过相关测试，但不能由一次扫描推出全时段保证 |
