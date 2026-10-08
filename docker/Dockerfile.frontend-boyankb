@@ -11,7 +11,7 @@ COPY branding/ /workspace/branding/
 COPY LICENSE /workspace/LICENSE
 ARG VITE_FRONTEND_COMMIT=unknown
 ENV VITE_FRONTEND_COMMIT=${VITE_FRONTEND_COMMIT}
-RUN npm run check-i18n && npm test -- src/views/knowledge/settings/DataSourceEditorDialog.test.ts src/views/integrations/mcpServerIntegration.test.ts src/views/integrations/cliIntegration.test.ts && npm run build && rm -f /workspace/frontend/dist/favicon.ico
+RUN npm run check-i18n && npm test -- src/views/knowledge/settings/DataSourceEditorDialog.test.ts src/views/integrations/mcpServerIntegration.test.ts src/views/integrations/cliIntegration.test.ts src/views/settings/settingsNavigation.test.ts && npm run build && rm -f /workspace/frontend/dist/favicon.ico
 
 FROM nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1
 COPY --from=builder /workspace/frontend/dist /usr/share/nginx/html

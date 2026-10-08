@@ -1946,7 +1946,7 @@ export default {
       createSubtitle: 'Add a new storage instance for files and images.',
       basicSection: 'Basic information',
       nameLabel: 'Name',
-      namePlaceholder: 'e.g. Production COS, Archive COS',
+      namePlaceholder: 'e.g. Production storage, Archive storage',
       providerLabel: 'Storage type',
       modeLabel: 'Deployment mode',
       modeRemote: 'Remote instance',

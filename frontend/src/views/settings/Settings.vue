@@ -65,7 +65,10 @@
       <!-- 角色不允许访问当前 section（deep-link 进来 / 跨空间切换后角色降级）—— 优先于具体 section 渲染。
            正常导航走 navItems filter 不会到这里，但 watch(navItems) 的 fallback 会在角色降级
            的瞬间触发；这一段做兜底兼容旧 URL。 -->
-      <div v-if="!canSeeSection(currentSection)" class="section role-denied">
+      <div v-if="isSectionSupportPending(currentSection)" class="section">
+        <t-loading size="small" />
+      </div>
+      <div v-else-if="!canSeeSection(currentSection)" class="section role-denied">
         <div class="role-denied-icon">
           <t-icon name="lock-on" size="48px" />
         </div>
@@ -194,6 +197,7 @@ import type { LocationQueryRaw } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { useDeploymentCapabilitiesStore } from '@/stores/deploymentCapabilities'
+import { getWeKnoraCloudStatus, listModels } from '@/api/model'
 import { useI18n } from 'vue-i18n'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useModalShell } from '@/composables/useModalShell'
@@ -251,6 +255,37 @@ const { t } = useI18n()
 const currentSection = ref<string>('general')
 const currentSubSection = ref<string>('')
 const expandedMenus = ref<string[]>([])
+const wkcTenantKey = computed(() => String(authStore.selectedTenantId ?? authStore.currentTenantId ?? ''))
+const wkcAccess = ref({ tenant: '', ready: false, existing: false })
+let wkcAccessRequest = 0
+
+const hasExistingWkc = computed(() => wkcAccess.value.tenant === wkcTenantKey.value && wkcAccess.value.existing)
+
+const isProviderSectionHidden = (key: string): boolean =>
+  isProviderHidden(key) && !(key === 'weknoracloud' && hasExistingWkc.value)
+
+const isSectionSupportPending = (key: string): boolean =>
+  key === 'weknoracloud' && isProviderHidden(key) && !!wkcTenantKey.value
+  && (authStore.canAccessAllTenants || authStore.hasRole('admin'))
+  && (wkcAccess.value.tenant !== wkcTenantKey.value || !wkcAccess.value.ready)
+
+async function loadExistingWkcAccess() {
+  const request = ++wkcAccessRequest
+  const tenant = wkcTenantKey.value
+  wkcAccess.value = { tenant, ready: false, existing: false }
+  if (!visible.value || !tenant || !isProviderHidden('weknoracloud')
+    || !(authStore.canAccessAllTenants || authStore.hasRole('admin'))) {
+    wkcAccess.value = { tenant, ready: true, existing: false }
+    return
+  }
+  const [status, models] = await Promise.allSettled([getWeKnoraCloudStatus(), listModels()])
+  if (request !== wkcAccessRequest || tenant !== wkcTenantKey.value) return
+  const hasCredentials = status.status === 'fulfilled'
+    && (status.value?.has_models === true || status.value?.needs_reinit === true)
+  const hasModels = models.status === 'fulfilled'
+    && Array.isArray(models.value) && models.value.some(model => model?.parameters?.provider === 'weknoracloud')
+  wkcAccess.value = { tenant, ready: true, existing: hasCredentials || hasModels }
+}
 
 type NavItem = {
   key: string
@@ -298,7 +333,7 @@ const syncSettingsRoute = (sectionKey: string) => {
 }
 
 const isSectionSupported = (key: string): boolean => {
-  if (isProviderHidden(key)) return false
+  if (isProviderSectionHidden(key)) return false
   if (isIntegrationSection(key)) {
     if (!isIntegrationEnabled(integrationTabFromSection(key))) return false
     return deploymentCapabilities.isSupported(
@@ -309,7 +344,7 @@ const isSectionSupported = (key: string): boolean => {
 }
 
 const canSeeSection = (key: string): boolean => {
-  if (isProviderHidden(key)) return false
+  if (isProviderSectionHidden(key)) return false
   if (isIntegrationSection(key)) {
     if (!isIntegrationEnabled(integrationTabFromSection(key))) return false
     const min = INTEGRATION_TAB_MIN_ROLE[integrationTabFromSection(key)]
@@ -489,12 +524,18 @@ const redirectToToolbox = (section: string, subSection?: string | null) => {
   return true
 }
 
+watch(
+  [visible, wkcTenantKey, () => authStore.currentTenantRole, () => authStore.canAccessAllTenants],
+  () => { void loadExistingWkcAccess() },
+  { immediate: true, flush: 'sync' },
+)
+
 // 监听初始导航设置
 watch(() => uiStore.settingsInitialSection, (section) => {
   if (section && visible.value) {
     const normalizedSection = normalizeSettingsSection(section)
     if (redirectToToolbox(normalizedSection, uiStore.settingsInitialSubSection)) return
-    if (deploymentCapabilities.loaded && !isSectionSupported(normalizedSection)) {
+    if (deploymentCapabilities.loaded && !isSectionSupportPending(normalizedSection) && !isSectionSupported(normalizedSection)) {
       MessagePlugin.warning(t('settings.capabilityUnavailable'))
       currentSection.value = navItems.value[0]?.key || 'general'
       currentSubSection.value = ''
@@ -523,7 +564,7 @@ watch(() => uiStore.settingsInitialSection, (section) => {
 }, { immediate: true })
 
 watch(
-  () => [visible.value, route.path, route.query.section, deploymentCapabilities.loaded] as const,
+  () => [visible.value, route.path, route.query.section, deploymentCapabilities.loaded, wkcAccess.value.ready] as const,
   ([isVisible, path, section, capabilitiesLoaded]) => {
     if (!isVisible || path !== '/platform/settings') return
     if (typeof section !== 'string') {
@@ -534,7 +575,7 @@ watch(
       section,
       typeof route.query.tab === 'string' ? route.query.tab : undefined,
     )
-    if (capabilitiesLoaded && !isSectionSupported(normalizedSection)) {
+    if (capabilitiesLoaded && !isSectionSupportPending(normalizedSection) && !isSectionSupported(normalizedSection)) {
       MessagePlugin.warning(t('settings.capabilityUnavailable'))
       const fallback = navItems.value[0]?.key || 'general'
       currentSection.value = fallback
@@ -552,6 +593,7 @@ watch(
 // 切换空间后角色可能变化，原本可见的 admin-only 面板可能消失。
 // 如果 currentSection 落到了不再显示的 key 上，就回退到第一个可见项。
 watch(navItems, (items) => {
+  if (isSectionSupportPending(currentSection.value)) return
   if (!items.some((item) => item.key === currentSection.value)) {
     const fallback = items[0]?.key || 'general'
     currentSection.value = fallback
@@ -572,7 +614,7 @@ const handleSettingsNav = (e: CustomEvent) => {
   if (section) {
     const normalizedSection = normalizeSettingsSection(section)
     if (redirectToToolbox(normalizedSection, subsection)) return
-    if (deploymentCapabilities.loaded && !isSectionSupported(normalizedSection)) {
+    if (deploymentCapabilities.loaded && !isSectionSupportPending(normalizedSection) && !isSectionSupported(normalizedSection)) {
       MessagePlugin.warning(t('settings.capabilityUnavailable'))
       currentSection.value = navItems.value[0]?.key || 'general'
       currentSubSection.value = ''
@@ -603,6 +645,7 @@ watch(currentSection, () => {
 })
 
 onUnmounted(() => {
+  wkcAccessRequest += 1
   window.removeEventListener('settings-nav', handleSettingsNav as EventListener)
 })
 </script>

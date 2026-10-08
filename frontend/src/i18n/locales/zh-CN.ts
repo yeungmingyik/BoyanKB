@@ -6155,7 +6155,7 @@ export default {
       createSubtitle: '为文件与图片新增一个存储实例。',
       basicSection: '基本信息',
       nameLabel: '名称',
-      namePlaceholder: '例如：生产 COS、归档 COS',
+      namePlaceholder: '例如：生产存储、归档存储',
       providerLabel: '存储类型',
       modeLabel: '部署模式',
       modeRemote: '远程实例',

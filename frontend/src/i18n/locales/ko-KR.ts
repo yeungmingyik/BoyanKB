@@ -6153,7 +6153,7 @@ export default {
       createSubtitle: '파일과 이미지를 위한 새 스토리지 인스턴스를 추가합니다.',
       basicSection: '기본 정보',
       nameLabel: '이름',
-      namePlaceholder: '예: 프로덕션 COS, 아카이브 COS',
+      namePlaceholder: '예: 프로덕션 스토리지, 아카이브 스토리지',
       providerLabel: '스토리지 유형',
       modeLabel: '배포 모드',
       modeRemote: '원격 인스턴스',

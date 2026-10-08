@@ -150,7 +150,20 @@ def wait_healthy():
 
 
 def compose_app(arguments):
-    completed = subprocess.run(["docker", "compose", "-f", "docker-compose.yml", "-f", "docker-compose.local.yml", *arguments, "app"], cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    command = ["docker", "compose", "-f", "docker-compose.yml", "-f", "docker-compose.local.yml"]
+    current = subprocess.run([*command, "ps", "--all", "-q", "app"], cwd=root, capture_output=True, text=True, timeout=30)
+    if current.returncode != 0:
+        fail("Cannot inspect the current app deployment.")
+    container_id = current.stdout.strip()
+    if container_id:
+        branded = subprocess.run(["docker", "inspect", "--format", '{{ index .Config.Labels "io.boyankb.branding" }}', container_id], capture_output=True, text=True, timeout=30)
+        if branded.returncode != 0:
+            fail("Cannot inspect the current app branding configuration.")
+        if branded.stdout.strip() == "1":
+            if not (root / "docker-compose.branding.yml").is_file():
+                fail("The active brand deployment requires docker-compose.branding.yml.")
+            command.extend(["-f", "docker-compose.branding.yml"])
+    completed = subprocess.run([*command, *arguments, "app"], cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
     if completed.returncode:
         fail("App compose operation failed: " + safe(completed.stderr[-2000:]))
 

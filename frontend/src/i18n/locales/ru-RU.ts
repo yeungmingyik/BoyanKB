@@ -6153,7 +6153,7 @@ export default {
       createSubtitle: 'Добавьте новый экземпляр хранилища для файлов и изображений.',
       basicSection: 'Основная информация',
       nameLabel: 'Название',
-      namePlaceholder: 'напр. Production COS, Archive COS',
+      namePlaceholder: 'например: рабочее хранилище, архивное хранилище',
       providerLabel: 'Тип хранилища',
       modeLabel: 'Режим развёртывания',
       modeRemote: 'Удалённый экземпляр',

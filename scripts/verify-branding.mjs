@@ -130,13 +130,17 @@ async function navigate(route, selector) {
 }
 
 async function click(selector, code) {
-  const clicked = await evaluate(`(() => {
+  const position = await evaluate(`(() => {
     const element = [...document.querySelectorAll(${JSON.stringify(selector)})].find(el => el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden')
-    if (!element) return false
-    element.click()
-    return true
+    if (!element) return null
+    element.scrollIntoView({ block: 'center', inline: 'nearest' })
+    const bounds = element.getBoundingClientRect()
+    return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
   })()`)
-  requireCheck(clicked, code)
+  requireCheck(position, code)
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...position }, session)
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...position }, session)
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...position }, session)
   await delay(300)
 }
 
@@ -163,7 +167,7 @@ async function brandingCheck(name, brand, selector, { logo = false, title = fals
     const scope = document.querySelector(${JSON.stringify(selector)})
     if (!scope) return null
     const visible = el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
-    const text = scope.innerText || ''
+    const text = (scope.innerText || '').replace(/\\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\b/gi, '')
     const links = [...document.querySelectorAll('a[href]')].filter(visible)
     const logos = [...scope.querySelectorAll('img')].filter(el => visible(el) && new URL(el.src).pathname === ${JSON.stringify(brand.logoUrl)})
     return {
@@ -314,9 +318,9 @@ async function prepareEmbedChannel(brand) {
     const create = ${JSON.stringify(prepareEmbed)}
     const marker = 'managed-branding-verification-v1'
     const name = productName + ' Branding Verification'
-    const api = async (url, body) => {
+    const api = async (url, body, method) => {
       const response = await fetch('/api/v1' + url, {
-        method: body ? 'POST' : 'GET', redirect: 'error',
+        method: method || (body ? 'POST' : 'GET'), redirect: 'error',
         headers: { Authorization: 'Bearer ' + localStorage.getItem('weknora_token'), 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {}),
       })
@@ -364,13 +368,30 @@ async function prepareEmbedChannel(brand) {
           rate_limit_per_minute: 30, rate_limit_per_day: 100, default_locale: 'en-US',
         })
       }
-      if (channel?.name !== 'branding-verification-v1' || channel?.agent_id !== agent.id || !channel.enabled || channel.allowed_origins?.length !== 1 || channel.allowed_origins[0] !== location.origin || channel.page_title !== productName || channel.welcome_message !== productName + ' branding verification' || channel.show_suggested_questions !== false || channel.allow_web_search || channel.allow_file_upload || (channelId && channel.id !== channelId)) return { error: 'TEST_CHANNEL_SCOPE_MISMATCH' }
-      return { id: channel.id }
+      const validChannelScope = item => item?.name === 'branding-verification-v1' && item?.agent_id === agent.id && item.enabled && item.allowed_origins?.length === 1 && item.allowed_origins[0] === location.origin && item.page_title === productName && item.welcome_message === productName + ' branding verification' && item.primary_color === ${JSON.stringify(brand.colors.action)} && item.header_title_mode === 'channel' && item.rate_limit_per_minute === 30 && item.rate_limit_per_day === 100 && item.default_locale === 'en-US' && !item.allow_web_search && !item.allow_file_upload && !item.webhook_url && !item.has_webhook_secret && (!channelId || item.id === channelId)
+      if (!validChannelScope(channel)) return { error: 'TEST_CHANNEL_SCOPE_MISMATCH' }
+      let suggestionsRestored = false
+      if (channel.show_suggested_questions !== false) {
+        if (!create || channel.show_suggested_questions !== true) return { error: 'TEST_CHANNEL_SUGGESTIONS_NOT_DISABLED' }
+        await api('/embed-channels/' + encodeURIComponent(channel.id), {
+          name: channel.name, enabled: channel.enabled, allowed_origins: channel.allowed_origins,
+          welcome_message: channel.welcome_message, page_title: channel.page_title, primary_color: channel.primary_color,
+          header_title_mode: channel.header_title_mode, widget_position: channel.widget_position,
+          rate_limit_per_minute: channel.rate_limit_per_minute, rate_limit_per_day: channel.rate_limit_per_day,
+          default_locale: channel.default_locale, show_suggested_questions: false, allow_web_search: false, allow_file_upload: false,
+        }, 'PUT')
+        const reread = await api('/agents/' + encodeURIComponent(agent.id) + '/embed-channels')
+        channel = reread.find(item => item.id === channel.id)
+        suggestionsRestored = true
+      }
+      if (!validChannelScope(channel) || channel.show_suggested_questions !== false) return { error: 'TEST_CHANNEL_SCOPE_MISMATCH' }
+      return { id: channel.id, suggestionsRestored }
     } catch { return { error: 'TEST_ENTITY_API_FAILED' } }
   })()`)
   requireCheck(prepared?.id, prepared?.error || 'TEST_CHANNEL_PREPARATION_FAILED')
   channelId = prepared.id
-  result('isolated-embed-channel')
+  if (prepared.suggestionsRestored) result('test-channel-suggestions-setting', 'passed', 'RESTORED_USING_UPDATE_API')
+  result('isolated-embed-channel', 'passed', channelId)
 }
 
 async function validEmbedCheck(brand) {
@@ -500,6 +521,18 @@ async function run() {
   if (!publicOnly) {
     phase = 'ui-login'
     await login()
+    phase = 'memory-export-filename'
+    const exportBranded = await evaluate(`(async () => {
+      const response = await fetch('/api/v1/memory/export', {
+        headers: { Authorization: 'Bearer ' + localStorage.getItem('weknora_token') }, redirect: 'error',
+      })
+      const disposition = response.headers.get('content-disposition') || ''
+      const match = /(?:^|;)\\s*filename=(?:"([^"]+)"|([^;\\s]+))/i.exec(disposition)
+      if (response.body) await response.body.cancel()
+      return response.ok && (match?.[1] || match?.[2]) === ${JSON.stringify(brand.productSlug + '-memories.json')}
+    })()`)
+    requireCheck(exportBranded, 'MEMORY_EXPORT_FILENAME_NOT_BRANDED')
+    result('memory-export-filename')
     phase = 'user-menu-help-links'
     await click('[data-guide="user-menu"]', 'USER_MENU_CONTROL_MISSING')
     await waitFor(`!!document.querySelector('.user-dropdown')`, 'USER_MENU_TIMEOUT')

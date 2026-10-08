@@ -1433,8 +1433,8 @@ onMounted(async () => {
   margin: 10px 0 0;
   padding: 8px 12px;
   border-radius: var(--app-radius-md);
-  background: var(--td-success-color-light);
-  color: var(--td-brand-color-active);
+  background: var(--td-brand-color-light);
+  color: var(--td-text-color-brand);
   font-size: 12.5px;
   line-height: 1.5;
   font-family: var(--app-font-family);
@@ -1475,13 +1475,13 @@ onMounted(async () => {
     border-radius: var(--app-radius-md);
     font-size: var(--app-text-lg);
     font-weight: 500;
-    border-color: var(--td-brand-color);
-    color: var(--td-brand-color);
+    border-color: var(--td-text-color-brand);
+    color: var(--td-text-color-brand);
 
     &:hover {
-      border-color: var(--td-brand-color-active);
-      color: var(--td-brand-color-active);
-      background: var(--td-success-color-light);
+      border-color: var(--td-text-color-brand);
+      color: var(--td-text-color-brand);
+      background: var(--td-brand-color-light);
     }
   }
 }
@@ -1603,14 +1603,14 @@ onMounted(async () => {
   border-bottom: 1px solid var(--td-component-stroke);
 
   .link-button {
-    color: var(--td-brand-color);
+    color: var(--td-text-color-brand);
     text-decoration: none;
     margin-left: 4px;
     font-weight: 500;
     transition: all var(--app-motion-base);
 
     &:hover {
-      color: var(--td-brand-color);
+      color: var(--td-text-color-brand);
       text-decoration: underline;
     }
   }

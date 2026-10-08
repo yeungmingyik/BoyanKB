@@ -1946,7 +1946,7 @@ export default {
       createSubtitle: 'ファイルと画像用のストレージインスタンスを新しく追加します。',
       basicSection: '基本情報',
       nameLabel: '名前',
-      namePlaceholder: '例: 本番COS、アーカイブCOS',
+      namePlaceholder: '例: 本番用ストレージ、アーカイブ用ストレージ',
       providerLabel: 'ストレージの種類',
       modeLabel: 'デプロイモード',
       modeRemote: 'リモートインスタンス',

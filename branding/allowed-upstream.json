@@ -3426,6 +3426,42 @@
       "text": "WEKNORA_CLOUD_PROVIDER,",
       "category": "internal_symbol",
       "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "import { getWeKnoraCloudStatus, listModels } from '@/api/model'",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "isProviderHidden(key) && !(key === 'weknoracloud' && hasExistingWkc.value)",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "key === 'weknoracloud' && isProviderHidden(key) && !!wkcTenantKey.value",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "if (!visible.value || !tenant || !isProviderHidden('weknoracloud')",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "const [status, models] = await Promise.allSettled([getWeKnoraCloudStatus(), listModels()])",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "&& Array.isArray(models.value) && models.value.some(model => model?.parameters?.provider === 'weknoracloud')",
+      "category": "internal_symbol",
+      "count": 1
     }
   ]
 }
