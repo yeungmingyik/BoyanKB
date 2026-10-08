@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promi
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
+import { loadFaviconAssets } from './check-branding.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const base = 'http://127.0.0.1:8088'
@@ -15,6 +16,9 @@ let channelId = channelIndex < 0 ? '' : args[channelIndex + 1]
 const recognized = new Set(['--public-only', '--embed-channel-id', '--prepare-embed'])
 const results = []
 const screenshots = []
+const layoutObservations = []
+const faviconRequests = new Map()
+let faviconAssets = []
 let browser
 let cdp
 let session
@@ -41,11 +45,13 @@ class CDP {
     this.next = 1
     this.pending = new Map()
     this.events = new Map()
+    this.observers = new Map()
     socket.addEventListener('message', (event) => {
       let message
       try { message = JSON.parse(event.data) } catch { return }
       if (message.method) {
         const key = `${message.sessionId || ''}:${message.method}`
+        for (const observe of this.observers.get(key) || []) observe(message.params)
         const waiting = this.events.get(key)
         if (waiting) {
           clearTimeout(waiting.timer)
@@ -71,6 +77,7 @@ class CDP {
         waiting.reject(new VerificationError('BROWSER_CONNECTION_CLOSED'))
       }
       this.events.clear()
+      this.observers.clear()
     })
   }
 
@@ -100,6 +107,65 @@ class CDP {
       this.events.set(key, { resolve, reject, timer })
     })
   }
+
+  observe(method, sessionId, listener) {
+    const key = `${sessionId || ''}:${method}`
+    const listeners = this.observers.get(key) || []
+    listeners.push(listener)
+    this.observers.set(key, listeners)
+  }
+}
+
+async function observeFavicons() {
+  const paths = new Set(faviconAssets.flatMap(icon => icon.format === 'ico' ? [icon.href, icon.stableUrl] : [icon.href]))
+  cdp.observe('Network.requestWillBeSent', session, event => {
+    let url
+    try { url = new URL(event.request.url) } catch { return }
+    if (url.origin !== base || !paths.has(url.pathname)) return
+    faviconRequests.set(event.requestId, { path: url.pathname, resourceType: event.type || '', initiatorType: event.initiator?.type || '' })
+  })
+  cdp.observe('Network.responseReceived', session, event => {
+    const request = faviconRequests.get(event.requestId)
+    if (request) Object.assign(request, { status: event.response.status, mimeType: event.response.mimeType, fromDiskCache: Boolean(event.response.fromDiskCache) })
+  })
+  cdp.observe('Network.loadingFailed', session, event => {
+    const request = faviconRequests.get(event.requestId)
+    if (request) request.failed = true
+  })
+  await cdp.send('Network.enable', {}, session)
+  await cdp.send('Network.setCacheDisabled', { cacheDisabled: true }, session)
+}
+
+async function faviconResourceChecks() {
+  const expected = faviconAssets.flatMap(icon => [icon.stableUrl, icon.href].map(url => ({ url, type: icon.type, format: icon.format, sha256: icon.sha256 })))
+  const checked = await evaluate(`Promise.all(${JSON.stringify(expected)}.map(async icon => {
+    const response = await fetch(icon.url, { cache: 'no-store', redirect: 'error' })
+    const mime = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
+    if (!response.ok || !(mime === icon.type || icon.format === 'ico' && mime === 'image/vnd.microsoft.icon')) return { url: icon.url, ok: false }
+    const data = new Uint8Array(await response.arrayBuffer())
+    const view = new DataView(data.buffer)
+    let signature = true
+    if (icon.format === 'png') signature = data.length >= 33 && [137, 80, 78, 71, 13, 10, 26, 10].every((value, index) => data[index] === value) && view.getUint32(16) === 32 && view.getUint32(20) === 32
+    if (icon.format === 'ico') {
+      signature = data.length >= 54 && view.getUint16(0, true) === 0 && view.getUint16(2, true) === 1 && view.getUint16(4, true) === 3
+      if (signature) {
+        const sizes = []
+        for (let index = 0; index < 3; index++) {
+          const offset = 6 + index * 16
+          const width = data[offset] || 256
+          const length = view.getUint32(offset + 8, true)
+          const start = view.getUint32(offset + 12, true)
+          signature = signature && width === (data[offset + 1] || 256) && length > 0 && start >= 54 && start + length <= data.length
+          sizes.push(width)
+        }
+        signature = signature && sizes.sort((a, b) => a - b).join(',') === '16,32,48'
+      }
+    }
+    const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', data))].map(value => value.toString(16).padStart(2, '0')).join('')
+    return { url: icon.url, ok: signature && hash === icon.sha256 }
+  }))`)
+  requireCheck(Array.isArray(checked) && checked.length === expected.length && checked.every(icon => icon.ok), 'FAVICON_BYTES_SIGNATURE_OR_TYPE_FAILED')
+  result('favicon-hashed-and-stable-resources')
 }
 
 async function evaluate(expression) {
@@ -127,6 +193,7 @@ async function navigate(route, selector) {
   requireCheck(!response.errorText, 'PAGE_NAVIGATION_FAILED')
   await waitFor(`document.readyState === 'complete' && !!document.querySelector(${JSON.stringify(selector)})`, 'PAGE_CONTENT_TIMEOUT')
   await delay(450)
+  if (url.pathname.startsWith('/platform/')) await dismissGuides()
 }
 
 async function click(selector, code) {
@@ -142,6 +209,34 @@ async function click(selector, code) {
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', clickCount: 1, ...position }, session)
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', clickCount: 1, ...position }, session)
   await delay(300)
+}
+
+async function dismissGuides() {
+  const closeSelector = '.guide__close, .driver-popover-close-btn'
+  const deadline = Date.now() + 12000
+  let quietSince = Date.now()
+  let dismissed = 0
+  while (Date.now() < deadline) {
+    const state = await evaluate(`(() => {
+      const visible = element => element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden'
+      return {
+        close: [...document.querySelectorAll(${JSON.stringify(closeSelector)})].some(visible),
+        overlay: [...document.querySelectorAll('.guide[role="dialog"], .driver-overlay')].some(visible),
+      }
+    })()`)
+    if (state.close) {
+      await click(closeSelector, 'GUIDE_CLOSE_CONTROL_MISSING')
+      dismissed++
+      quietSince = Date.now()
+    } else if (state.overlay) {
+      quietSince = Date.now()
+    } else if (Date.now() - quietSince >= 1200) {
+      if (dismissed) result(`${phase}-guides-dismissed`, 'passed', String(dismissed))
+      return
+    }
+    await delay(150)
+  }
+  throw new VerificationError('GUIDE_DISMISS_TIMEOUT')
 }
 
 async function screenshot(name) {
@@ -162,6 +257,194 @@ async function preferences(locale, theme) {
   })()`)
 }
 
+async function setViewport(width, height, mobile = false) {
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile }, session)
+  await delay(150)
+}
+
+async function loginLayoutCheck(name, desktop) {
+  const metrics = await evaluate(`(() => {
+    const selectors = ['html', 'body', '#app', '.login-layout', '.form-section', '.form-panel', '.form-card']
+    const elements = selectors.map(selector => {
+      const element = document.querySelector(selector)
+      if (!element) return { selector, missing: true }
+      const rect = element.getBoundingClientRect()
+      const style = getComputedStyle(element)
+      return { selector, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, overflowY: style.overflowY }
+    })
+    return { width: innerWidth, height: innerHeight, scrollX, scrollY, scale: visualViewport?.scale || 1, elements }
+  })()`)
+  layoutObservations.push({ name, ...metrics })
+  requireCheck(metrics.elements.every(element => !element.missing), 'LOGIN_LAYOUT_ELEMENT_MISSING')
+  requireCheck(metrics.elements.every(element => element.scrollWidth <= element.clientWidth + 1 && element.left >= -1 && element.right <= metrics.width + 1), 'LOGIN_HORIZONTAL_OVERFLOW')
+  if (desktop) {
+    requireCheck(metrics.elements.every(element => element.scrollHeight <= element.clientHeight + 1), 'DESKTOP_LOGIN_VERTICAL_OVERFLOW')
+    const card = metrics.elements.find(element => element.selector === '.form-card')
+    requireCheck(card.top >= -1 && card.bottom <= metrics.height + 1, 'DESKTOP_LOGIN_CARD_OUTSIDE_VIEWPORT')
+  } else {
+    requireCheck(metrics.elements.every(element => !['hidden', 'clip'].includes(element.overflowY) || element.scrollHeight <= element.clientHeight + 1), 'MOBILE_LOGIN_CONTENT_CLIPPED')
+  }
+  result(name, 'passed', `${metrics.width}x${metrics.height}`)
+}
+
+async function languageMenuCheck(name, capture) {
+  await click('.language-switch button', 'LANGUAGE_MENU_BUTTON_MISSING')
+  await waitFor(`!!document.querySelector('.language-option.active .check-icon')`, 'LANGUAGE_MENU_TIMEOUT')
+  const colors = await evaluate(`(() => {
+    const active = document.querySelector('.language-option.active')
+    const check = active.querySelector('.check-icon')
+    const probe = document.createElement('span')
+    probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none'
+    document.documentElement.appendChild(probe)
+    const resolved = (token, property = 'color') => {
+      probe.style.setProperty(property, 'var(' + token + ')')
+      return getComputedStyle(probe).getPropertyValue(property)
+    }
+    const expectedText = resolved('--app-selection-text')
+    const expectedBackground = resolved('--app-selection-bg', 'background-color')
+    const expectedCheck = resolved('--td-text-color-brand')
+    const success = ['--td-success-color', '--td-success-color-5', '--td-success-color-6'].map(token => resolved(token))
+    const successBackground = resolved('--td-success-color-light', 'background-color')
+    const state = { color: getComputedStyle(active).color, background: getComputedStyle(active).backgroundColor, check: getComputedStyle(check).color, expectedText, expectedBackground, expectedCheck, success, successBackground }
+    probe.remove()
+    return state
+  })()`)
+  layoutObservations.push({ name, colors })
+  requireCheck(colors.color === colors.expectedText && colors.background === colors.expectedBackground && colors.check === colors.expectedCheck, 'LANGUAGE_MENU_BRAND_COLOR_MISMATCH')
+  requireCheck(!colors.success.includes(colors.color) && !colors.success.includes(colors.check) && colors.background !== colors.successBackground, 'LANGUAGE_MENU_SUCCESS_GREEN_REMAINED')
+  if (capture) await screenshot(name)
+  await click('.language-switch button', 'LANGUAGE_MENU_BUTTON_MISSING')
+  await waitFor(`!document.querySelector('.language-dropdown')`, 'LANGUAGE_MENU_CLOSE_FAILED')
+  result(name)
+}
+
+async function controlReachability(selector, name) {
+  let state
+  for (let attempt = 0; attempt < 10; attempt++) {
+    state = await evaluate(`(() => {
+      const element = document.querySelector(${JSON.stringify(selector)})
+      if (!element || !element.getClientRects().length) return null
+      const rect = element.getBoundingClientRect()
+      const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      const target = document.elementFromPoint(center.x, center.y)
+      return { width: innerWidth, height: innerHeight, top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, scrollY, reachable: rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth && !!target && (target === element || element.contains(target)) }
+    })()`)
+    requireCheck(state, 'LOGIN_CONTROL_MISSING')
+    if (state.reachable) break
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: Math.round(state.width / 2), y: Math.round(state.height * 0.65), deltaX: 0, deltaY: (state.top < 0 ? -1 : 1) * Math.round(state.height * 0.7) }, session)
+    await delay(220)
+  }
+  layoutObservations.push({ name, control: state })
+  requireCheck(state?.reachable, 'LOGIN_CONTROL_UNREACHABLE_BY_SCROLL')
+  result(name)
+}
+
+async function responsiveCase(name, check, captureFailure = true) {
+  phase = name
+  try {
+    await check()
+    return true
+  } catch (error) {
+    result(phase, 'failed', error instanceof VerificationError ? error.message : 'EXECUTION_ERROR')
+    if (captureFailure) await screenshot(`${name}-failure`).catch(() => {})
+    return false
+  }
+}
+
+async function responsiveLoginChecks(brand) {
+  const locales = ['zh-CN', 'en-US', 'ru-RU', 'ko-KR', 'ja-JP']
+  const labels = { 'zh-CN': '登录', 'en-US': 'Login', 'ru-RU': 'Вход', 'ko-KR': '로그인', 'ja-JP': 'ログイン' }
+  try {
+    for (const [width, height] of [[1366, 680], [1440, 900]]) {
+      await setViewport(width, height)
+      for (const locale of locales) {
+        for (const theme of ['light', 'dark']) {
+          const name = `login-${locale.toLowerCase()}-${theme}-${width}x${height}`
+          const ready = await responsiveCase(`${name}-navigation`, async () => {
+            await preferences(locale, theme)
+            await navigate('/login', '.login-layout input[autocomplete="email"]')
+            requireCheck(await evaluate(`document.querySelector('.form-title')?.textContent.trim() === ${JSON.stringify(labels[locale])}`), 'LOGIN_LOCALE_NOT_APPLIED')
+          })
+          if (!ready) continue
+          await responsiveCase(name, async () => {
+            await brandingCheck(phase, brand, '.login-layout', { logo: true, title: true, theme })
+            await loginLayoutCheck(`${phase}-layout`, true)
+            await screenshot(phase)
+          })
+          if (width === 1366) await responsiveCase(`language-menu-${locale.toLowerCase()}-${theme}`, () => languageMenuCheck(`language-menu-${locale.toLowerCase()}-${theme}`, locale === 'en-US'))
+        }
+      }
+    }
+    await setViewport(390, 640, true)
+    for (const locale of locales) {
+      for (const theme of ['light', 'dark']) {
+        await responsiveCase(`mobile-login-${locale.toLowerCase()}-${theme}`, async () => {
+          await preferences(locale, theme)
+          await navigate('/login', '.login-layout input[autocomplete="current-password"]')
+          await loginLayoutCheck(`${phase}-layout`, false)
+          await controlReachability('.submit-button', `${phase}-submit-reachable`)
+          if (locale === 'en-US') await screenshot(phase)
+          if (!await evaluate(`!!document.querySelector('.register-cta__button')`)) {
+            result(`mobile-register-${locale.toLowerCase()}-${theme}`, 'not-applicable', 'PUBLIC_REGISTRATION_DISABLED')
+            return
+          }
+          await controlReachability('.register-cta__button', `${phase}-register-reachable`)
+          await click('.register-cta__button', 'REGISTER_MODE_BUTTON_MISSING')
+          await waitFor(`!!document.querySelector('input[autocomplete="new-password"]')`, 'REGISTER_FORM_TIMEOUT')
+          phase = `mobile-register-${locale.toLowerCase()}-${theme}`
+          await loginLayoutCheck(`${phase}-layout`, false)
+          await controlReachability('.submit-button', `${phase}-submit-reachable`)
+          await controlReachability('.form-footer .link-button', `${phase}-return-reachable`)
+          if (locale === 'en-US') await screenshot(phase)
+        })
+      }
+    }
+  } catch (error) {
+    await screenshot('responsive-login-failure').catch(() => {})
+    throw error
+  } finally {
+    await setViewport(1440, 1000)
+    await preferences('en-US', 'light')
+    await navigate('/login', '.login-layout input[autocomplete="current-password"]')
+  }
+}
+
+async function sidebarMaskCheck(theme) {
+  const icon = await evaluate(`(async () => {
+    const element = document.querySelector('.menu_item_active .resource-icon')
+    if (!element) return null
+    const style = getComputedStyle(element)
+    const mask = style.maskImage
+    let source = mask.startsWith('url(') && mask.endsWith(')') ? mask.slice(4, -1).trim() : ''
+    if ((source.startsWith('"') && source.endsWith('"')) || (source.startsWith("'") && source.endsWith("'"))) source = source.slice(1, -1)
+    const probe = document.createElement('span')
+    probe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;color:var(--td-text-color-brand)'
+    document.documentElement.appendChild(probe)
+    const expectedColor = getComputedStyle(probe).color
+    probe.remove()
+    let loaded = false
+    let sourceType = ''
+    if (source) {
+      const url = new URL(source, location.href)
+      sourceType = url.protocol
+      if (url.protocol === 'data:' || url.origin === location.origin) {
+        loaded = await new Promise(resolve => {
+          const image = new Image()
+          const timer = setTimeout(() => resolve(false), 5000)
+          image.onload = () => { clearTimeout(timer); resolve(image.naturalWidth > 0 && image.naturalHeight > 0) }
+          image.onerror = () => { clearTimeout(timer); resolve(false) }
+          image.src = url.href
+        })
+      }
+    }
+    return { color: style.color, background: style.backgroundColor, expectedColor, maskSet: Boolean(source), sourceType, loaded }
+  })()`)
+  layoutObservations.push({ name: `sidebar-mask-${theme}`, icon })
+  requireCheck(icon?.maskSet && icon.loaded, 'SIDEBAR_ACTIVE_MASK_NOT_LOADED')
+  requireCheck(icon.color === icon.expectedColor && icon.background === icon.expectedColor, 'SIDEBAR_ACTIVE_ICON_COLOR_MISMATCH')
+  result(`sidebar-mask-${theme}`)
+}
+
 async function brandingCheck(name, brand, selector, { logo = false, title = false, theme } = {}) {
   const state = await evaluate(`(() => {
     const scope = document.querySelector(${JSON.stringify(selector)})
@@ -177,7 +460,11 @@ async function brandingCheck(name, brand, selector, { logo = false, title = fals
       logo: logos.some(el => el.complete && el.naturalWidth > 0 && el.alt === ${JSON.stringify(brand.productName)}),
       title: document.title.includes(${JSON.stringify(brand.productName)}),
       theme: document.documentElement.getAttribute('theme-mode'),
-      favicon: [...document.querySelectorAll('link[rel~="icon"]')].some(el => new URL(el.href).pathname === ${JSON.stringify(brand.faviconUrl)}),
+      favicon: (() => {
+        const links = [...document.querySelectorAll('link[rel~="icon"]')]
+        const expected = ${JSON.stringify(faviconAssets.map(({ href, rel, type, sizes }) => ({ href, rel, type, sizes })))}
+        return links.length === expected.length && expected.every(icon => links.some(el => new URL(el.href).pathname === icon.href && el.rel === icon.rel && el.type === icon.type && el.sizes.value === icon.sizes))
+      })(),
     }
   })()`)
   requireCheck(state, 'BRANDING_REGION_MISSING')
@@ -229,9 +516,10 @@ async function login() {
   await waitFor(`location.pathname.startsWith('/platform/') && !!document.querySelector('.aside_box')`, 'UI_LOGIN_FAILED', 40000)
   await delay(900)
   result('ui-login')
+  await responsiveCase('login-guide-dismissal', dismissGuides)
 }
 
-async function providerChecks(brand) {
+async function modelProviderChecks(brand) {
   phase = 'model-providers'
   await navigate('/platform/settings?section=models', '.model-settings .model-card--add')
   await brandingCheck('model-settings', brand, '.settings-modal')
@@ -246,7 +534,9 @@ async function providerChecks(brand) {
   requireCheck(providers.some(value => /deepseek/i.test(value)), 'ACTIVE_MODEL_PROVIDER_MISSING')
   await screenshot('model-provider-options')
   result('unused-model-providers-hidden')
+}
 
+async function storageProviderChecks(brand) {
   phase = 'storage-providers'
   await navigate('/platform/settings?section=storage', '.storage-backend-settings .backend-card--add')
   await brandingCheck('storage-settings', brand, '.settings-modal')
@@ -424,9 +714,14 @@ async function validEmbedCheck(brand) {
       logo: image?.complete && image?.naturalWidth > 0 && new URL(image.src).pathname === ${JSON.stringify(brand.logoUrl)},
       clean: !/weknora|tencent|腾讯|powered\\s+by/i.test(text),
       privateUrl: !new URL(iframe.src).hash && !new URL(iframe.src).search,
+      favicon: (() => {
+        const links = [...doc.querySelectorAll('link[rel~="icon"]')]
+        const expected = ${JSON.stringify(faviconAssets.map(({ href, rel, type, sizes }) => ({ href, rel, type, sizes })))}
+        return links.length === expected.length && expected.every(icon => links.some(el => new URL(el.href).pathname === icon.href && el.rel === icon.rel && el.type === icon.type && el.sizes.value === icon.sizes))
+      })(),
     }
   })()`)
-  requireCheck(state.title && state.welcome && state.logo && state.clean && state.privateUrl, 'VALID_EMBED_BRANDING_FAILED')
+  requireCheck(state.title && state.welcome && state.logo && state.clean && state.privateUrl && state.favicon, 'VALID_EMBED_BRANDING_FAILED')
   await screenshot('valid-embed-page')
   await evaluate(`window[${JSON.stringify(brand.productName)}].destroy()`)
   result('valid-embed-page')
@@ -460,6 +755,7 @@ async function run() {
   requireCheck(!channelId || /^[0-9a-f-]{36}$/i.test(channelId), 'INVALID_EMBED_CHANNEL_ID')
   requireCheck(!(publicOnly && (prepareEmbed || channelId)), 'EMBED_PREVIEW_REQUIRES_LOGIN')
   const brand = JSON.parse(await readFile(path.join(root, 'branding/brand.json'), 'utf8'))
+  faviconAssets = await loadFaviconAssets(brand)
   const candidates = [
     process.env.BRANDING_BROWSER_PATH,
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -497,71 +793,86 @@ async function run() {
   session = (await cdp.send('Target.attachToTarget', { targetId: target.targetId, flatten: true })).sessionId
   await cdp.send('Page.enable', {}, session)
   await cdp.send('Runtime.enable', {}, session)
+  await observeFavicons()
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false }, session)
   await navigate('/login', '.login-layout')
-  for (const locale of ['zh-CN', 'en-US', 'ru-RU', 'ko-KR', 'ja-JP']) {
-    for (const theme of ['light', 'dark']) {
-      phase = `login-${locale.toLowerCase()}-${theme}`
-      await preferences(locale, theme)
-      await navigate('/login', '.login-layout input[autocomplete="email"]')
-      const loginLabels = { 'zh-CN': '登录', 'en-US': 'Login', 'ru-RU': 'Вход', 'ko-KR': '로그인', 'ja-JP': 'ログイン' }
-      requireCheck(await evaluate(`document.querySelector('.form-title')?.textContent.trim() === ${JSON.stringify(loginLabels[locale])}`), 'LOGIN_LOCALE_NOT_APPLIED')
-      await brandingCheck(phase, brand, '.login-layout', { logo: true, title: true, theme })
-      await screenshot(phase)
-    }
-  }
-  const assets = await evaluate(`Promise.all(${JSON.stringify([...new Set([brand.logoUrl, brand.faviconUrl, brand.appleTouchIconUrl])])}.map(async url => {
-    const response = await fetch(url, { cache: 'no-store', redirect: 'error' })
-    return response.ok && /image\\//.test(response.headers.get('content-type')) && (await response.arrayBuffer()).byteLength > 0
-  })).then(values => values.every(Boolean))`)
-  requireCheck(assets, 'BRAND_ASSET_REQUEST_FAILED')
-  const legacyIconRemoved = await evaluate(`fetch('/favicon.ico', { cache: 'no-store', redirect: 'error' }).then(response => !response.ok || !/image\\//.test(response.headers.get('content-type') || ''))`)
-  requireCheck(legacyIconRemoved, 'LEGACY_FAVICON_IMAGE_STILL_SERVED')
-  result('logo-and-favicon-resources')
+  await responsiveLoginChecks(brand)
+  await responsiveCase('logo-resources', async () => {
+    const assets = await evaluate(`Promise.all(${JSON.stringify([...new Set([brand.logoUrl, brand.appleTouchIconUrl])])}.map(async url => {
+      const response = await fetch(url, { cache: 'no-store', redirect: 'error' })
+      return response.ok && /image\\//.test(response.headers.get('content-type')) && (await response.arrayBuffer()).byteLength > 0
+    })).then(values => values.every(Boolean))`)
+    requireCheck(assets, 'BRAND_ASSET_REQUEST_FAILED')
+    result('logo-resources')
+  })
+  await responsiveCase('favicon-resources', faviconResourceChecks)
   if (!publicOnly) {
     phase = 'ui-login'
     await login()
-    phase = 'memory-export-filename'
-    const exportBranded = await evaluate(`(async () => {
-      const response = await fetch('/api/v1/memory/export', {
-        headers: { Authorization: 'Bearer ' + localStorage.getItem('weknora_token') }, redirect: 'error',
-      })
-      const disposition = response.headers.get('content-disposition') || ''
-      const match = /(?:^|;)\\s*filename=(?:"([^"]+)"|([^;\\s]+))/i.exec(disposition)
-      if (response.body) await response.body.cancel()
-      return response.ok && (match?.[1] || match?.[2]) === ${JSON.stringify(brand.productSlug + '-memories.json')}
-    })()`)
-    requireCheck(exportBranded, 'MEMORY_EXPORT_FILENAME_NOT_BRANDED')
-    result('memory-export-filename')
-    phase = 'user-menu-help-links'
-    await click('[data-guide="user-menu"]', 'USER_MENU_CONTROL_MISSING')
-    await waitFor(`!!document.querySelector('.user-dropdown')`, 'USER_MENU_TIMEOUT')
-    const hiddenHelp = await evaluate(`!document.querySelector('.user-dropdown .menu-item .t-icon-help-circle, .user-dropdown .menu-item .t-icon-logo-github')`)
-    requireCheck(hiddenHelp, 'UPSTREAM_HELP_MENU_VISIBLE')
-    result('upstream-help-menu-hidden')
-    await click('[data-guide="user-menu"]', 'USER_MENU_CONTROL_MISSING')
-    for (const theme of ['light', 'dark']) {
-      phase = `sidebar-${theme}`
-      await preferences('en-US', theme)
-      await navigate('/platform/knowledge-bases', '.aside_box .logo_box img')
-      await brandingCheck(phase, brand, '.aside_box', { logo: true, theme })
+    await responsiveCase('new-chat-favicon', async () => {
+      await navigate('/platform/creatChat', '.aside_box')
+      await brandingCheck(phase, brand, '.aside_box', { logo: true, title: true })
       await screenshot(phase)
-      await click('.sidebar-toggle', 'SIDEBAR_COLLAPSE_CONTROL_MISSING')
-      await waitFor(`!!document.querySelector('.aside_box--collapsed')`, 'SIDEBAR_COLLAPSE_FAILED')
-      await screenshot(`sidebar-collapsed-${theme}`)
-      await click('.sidebar-toggle-item', 'SIDEBAR_EXPAND_CONTROL_MISSING')
-      await navigate('/platform/settings?section=general', '.settings-modal')
-      await brandingCheck(`settings-${theme}`, brand, '.settings-modal', { theme })
-      await screenshot(`settings-${theme}`)
+    })
+    await responsiveCase('memory-export-filename', async () => {
+      const exportBranded = await evaluate(`(async () => {
+        const response = await fetch('/api/v1/memory/export', {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('weknora_token') }, redirect: 'error',
+        })
+        const disposition = response.headers.get('content-disposition') || ''
+        const match = /(?:^|;)\\s*filename=(?:"([^"]+)"|([^;\\s]+))/i.exec(disposition)
+        if (response.body) await response.body.cancel()
+        return response.ok && (match?.[1] || match?.[2]) === ${JSON.stringify(brand.productSlug + '-memories.json')}
+      })()`)
+      requireCheck(exportBranded, 'MEMORY_EXPORT_FILENAME_NOT_BRANDED')
+      result('memory-export-filename')
+    })
+    await responsiveCase('user-menu-help-links', async () => {
+      await navigate('/platform/creatChat', '.aside_box')
+      await click('[data-guide="user-menu"]', 'USER_MENU_CONTROL_MISSING')
+      await waitFor(`!!document.querySelector('.user-dropdown')`, 'USER_MENU_TIMEOUT')
+      const hiddenHelp = await evaluate(`!document.querySelector('.user-dropdown .menu-item .t-icon-help-circle, .user-dropdown .menu-item .t-icon-logo-github')`)
+      requireCheck(hiddenHelp, 'UPSTREAM_HELP_MENU_VISIBLE')
+      result('upstream-help-menu-hidden')
+      await click('[data-guide="user-menu"]', 'USER_MENU_CONTROL_MISSING')
+    })
+    for (const theme of ['light', 'dark']) {
+      const ready = await responsiveCase(`sidebar-${theme}-navigation`, async () => {
+        await preferences('en-US', theme)
+        await navigate('/platform/knowledge-bases', '.aside_box .logo_box img')
+      })
+      if (ready) {
+        await responsiveCase(`sidebar-${theme}`, async () => {
+          await brandingCheck(phase, brand, '.aside_box', { logo: true, theme })
+          await screenshot(phase)
+        })
+        await responsiveCase(`sidebar-mask-${theme}`, () => sidebarMaskCheck(theme), false)
+        await responsiveCase(`sidebar-collapse-${theme}`, async () => {
+          await click('.sidebar-toggle', 'SIDEBAR_COLLAPSE_CONTROL_MISSING')
+          await waitFor(`!!document.querySelector('.aside_box--collapsed')`, 'SIDEBAR_COLLAPSE_FAILED')
+          await screenshot(`sidebar-collapsed-${theme}`)
+          await click('.sidebar-toggle-item', 'SIDEBAR_EXPAND_CONTROL_MISSING')
+          await waitFor(`!document.querySelector('.aside_box--collapsed')`, 'SIDEBAR_EXPAND_FAILED')
+          result(`sidebar-collapse-${theme}`)
+        })
+      }
+      await responsiveCase(`settings-${theme}`, async () => {
+        await preferences('en-US', theme)
+        await navigate('/platform/settings?section=general', '.settings-modal')
+        await brandingCheck(phase, brand, '.settings-modal', { theme })
+        await screenshot(phase)
+      })
     }
     await preferences('en-US', 'light')
-    await providerChecks(brand)
+    await responsiveCase('model-providers', () => modelProviderChecks(brand))
+    await responsiveCase('storage-providers', () => storageProviderChecks(brand))
   } else {
     result('authenticated-settings', 'unverified', 'PUBLIC_ONLY')
   }
-  await prepareEmbedChannel(brand)
-  await widgetChecks(brand)
-  await validEmbedCheck(brand)
+  const embedReady = await responsiveCase('isolated-embed-channel', () => prepareEmbedChannel(brand))
+  const widgetReady = await responsiveCase('widget-loaders', () => widgetChecks(brand))
+  if (embedReady && widgetReady) await responsiveCase('valid-embed-page', () => validEmbedCheck(brand))
+  else if (prepareEmbed || channelId) result('valid-embed-page', 'unverified', 'EMBED_PREPARATION_OR_WIDGET_FAILED')
 }
 
 try {
@@ -570,12 +881,16 @@ try {
   result(phase, 'failed', error instanceof VerificationError ? error.message : 'EXECUTION_ERROR')
   if (cdp && output && phase !== 'ui-login') await screenshot('failure').catch(() => {})
 } finally {
+  const faviconNetwork = [...faviconRequests.values()].map(request => ({ ...request, automatic: request.initiatorType !== 'script' && !['Fetch', 'XHR'].includes(request.resourceType) }))
+  const automaticFaviconRequests = faviconNetwork.filter(request => request.automatic)
+  const faviconObservation = { automaticRequestObserved: automaticFaviconRequests.length > 0, requests: faviconNetwork, browserChromeAppearance: 'not-verified' }
+  process.stdout.write(`OBSERVATION favicon-browser-network ${automaticFaviconRequests.length ? 'AUTOMATIC_REQUEST_RECORDED' : 'NO_AUTOMATIC_REQUEST_OBSERVED'}; browser chrome appearance not verified\n`)
   await cleanup().catch(() => result('isolated-profile-cleanup', 'failed', 'CLEANUP_FAILED'))
   const failed = results.some(item => item.status === 'failed')
   const partial = results.some(item => item.status === 'unverified')
   const status = failed ? 'failed' : partial ? 'partial' : 'passed'
   if (output) {
-    await writeFile(path.join(output, 'report.json'), JSON.stringify({ status, results, screenshots }, null, 2) + '\n', { flag: 'wx' })
+    await writeFile(path.join(output, 'report.json'), JSON.stringify({ status, results, screenshots, faviconObservation, layoutObservations, browserZoom200Percent: 'not-verified' }, null, 2) + '\n', { flag: 'wx' })
     process.stdout.write(`ARTIFACTS ${path.relative(root, output).split(path.sep).join('/')}\n`)
   }
   process.stdout.write(`RESULT ${status.toUpperCase()}\n`)
