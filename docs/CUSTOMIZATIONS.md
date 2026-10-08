@@ -135,3 +135,30 @@
 | `docs/03-branding.md`、`docs/04-logo-vector.md`、`docs/CUSTOMIZATIONS.md` | 保持素材维护说明与实际状态一致 | 记录来源、配色、透明通道、构建部署与验证方法 |
 
 升级上游时一起保留两种 Logo 素材及上述四处构建/检查接入；无需保留原 PDF 或安装 PDF 提取库才能正常构建。LICENSE 与上游版权声明不变。
+
+## 标签图标、登录布局与交互色
+
+日期：2026-10-08。分支：`feat/branding-polish`。覆盖 favicon 未刷新、普通登录页过长、语言选择器及类似交互仍用旧绿色的问题。部署与证据见 [05-ui-polish.md](05-ui-polish.md)。
+
+| 文件 | 原因 | 改动 |
+| --- | --- | --- |
+| `branding/brand.json`、`branding/favicon-32.png`、`branding/favicon.ico` | SVG 标签图标缺少传统格式兼容 | 增加 PNG/ICO 配置与透明图标，ICO 含 16/32/48 三种尺寸 |
+| `frontend/branding-plugin.ts`、`frontend/index.html`、`frontend/embed.html` | 原图标地址固定，旧缓存可能继续命中 | 三种图标均使用内容哈希文件名；开发与生产分发稳定及哈希地址 |
+| `frontend/nginx.conf` | `/favicon.ico` 原先回退为 SPA HTML | 专用 ICO 路由、类型和重新验证缓存 |
+| `docker/Dockerfile.frontend-boyankb`、`docker/Dockerfile.frontend-boyankb.dockerignore` | 原构建删除 ICO，新增素材需进入上下文 | 放行两个精确资源；比较源/产物 ICO 字节；运行输入框相关现有测试 |
+| `frontend/src/views/auth/Login.vue` | 登录留白过多，表单选择器未命中实际类名，语言菜单误用成功绿 | 收紧紧凑布局并修正 TDesign 字段/标签选择器；返回链接整块换行；保留自然滚动；语言与静态特点图标使用品牌 token |
+| `frontend/src/components/icons/ResourceIcon.vue`、`frontend/src/components/menu.vue` | 旧绿色 SVG 不能随主题变色 | 复用遮罩图标，支持源资源 URL，按 currentColor 显示选中态 |
+| `frontend/src/components/AgentSelector.vue`、`frontend/src/components/MentionSelector.vue`、`frontend/src/components/ResourceOriginBadge.vue` | 共享资源仍引用固定绿色图像或文本色 | 改用现有资源图标与品牌文字 token |
+| `frontend/src/components/Input-field.vue`、`frontend/src/components/EmbedInputField.vue`、`frontend/src/components/KnowledgeBaseSelector.vue`、`frontend/src/components/PromptTemplateSelector.vue` | 模式、选择、焦点和禁用发送误用成功色 | 用对应的品牌选择、焦点、文字或禁用 token |
+| `frontend/src/components/SettingsModalShell.vue`、`frontend/src/components/UserMenu.vue`、`frontend/src/components/document-preview.vue` | 导航、选择与预览中的品牌色不一致 | 使用明暗主题选择背景与品牌文字色 |
+| `frontend/src/views/agent/AgentEditorModal.vue`、`frontend/src/views/agent/AgentList.vue` | 智能体选择与共享资源标记含旧绿 | 使用品牌 token 和共享遮罩图标 |
+| `frontend/src/views/knowledge/KnowledgeBase.vue`、`frontend/src/views/knowledge/KnowledgeBaseList.vue`、`frontend/src/views/knowledge/components/FAQEntryManager.vue` | 知识库标签和 FAQ 操作混用成功色 | 选择、悬停、资源标记改用品牌 token；成功状态保留 |
+| `frontend/src/views/organization/OrganizationList.vue`、`frontend/src/views/organization/OrganizationSettingsModal.vue` | 共享空间资源图标和品牌标记固定为绿色 | 复用资源图标与品牌文字色 |
+| `frontend/src/views/settings/ParserEngineSettings.vue` | 内置解析器与外部服务共用厂商绿色 | 分离内置和外部供应商配色 |
+| `scripts/check-branding.mjs`、`scripts/check-branding.test.mjs` | 原检测错误接受 ICO 地址返回 HTML | 检查哈希链接、三种文件格式/尺寸与字节，拒绝旧地址及 HTML 回退 |
+| `scripts/verify-branding.mjs` | 既有浏览器检查未覆盖短屏与实际图标请求 | 添加桌面/移动布局、语言颜色、控件可达性及 favicon 网络证据 |
+| `docs/03-branding.md`、`docs/05-ui-polish.md`、`docs/CUSTOMIZATIONS.md` | 维护升级、验证及已知边界 | 记录最新资源格式、分支重放顺序与验收结果 |
+
+未全局改变 success token、真实厂商图标、状态语义或业务数据。保留 LICENSE 及上游版权声明。
+
+最终镜像已在本机替换 frontend；15 个 HTTP URL 与 133 项浏览器检查通过，六个容器健康。升级时按 [03-branding.md](03-branding.md) 的分支顺序重放，并运行 [05-ui-polish.md](05-ui-polish.md) 的检查命令；尤其确认 TDesign 类名与图标资源字节。200% 缩放及用户既有标签栏外观未验证。
