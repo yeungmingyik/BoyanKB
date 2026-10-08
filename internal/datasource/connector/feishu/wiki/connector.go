@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -41,6 +44,9 @@ func (c *Connector) Validate(ctx context.Context, config *types.DataSourceConfig
 	if err != nil {
 		return err
 	}
+	if _, err := newStrictWikiScope(config, c.region); err != nil {
+		return err
+	}
 
 	client := core.NewClient(feishuConfig)
 	if err := client.Ping(ctx); err != nil {
@@ -68,6 +74,14 @@ func (c *Connector) ListResources(
 	}
 
 	client := core.NewClient(feishuConfig)
+
+	scope, err := newStrictWikiScope(config, c.region)
+	if err != nil {
+		return nil, err
+	}
+	if scope != nil {
+		return c.listStrictResources(ctx, client, scope, parentID)
+	}
 
 	if parentID == "" {
 		spaces, err := client.ListWikiSpaces(ctx)
@@ -120,6 +134,13 @@ func (c *Connector) ResolveResourceAncestors(
 		return nil, err
 	}
 	client := core.NewClient(feishuConfig)
+	scope, err := newStrictWikiScope(config, c.region)
+	if err != nil {
+		return nil, err
+	}
+	if scope != nil {
+		return scope.ancestors(ctx, client, resourceIDs)
+	}
 
 	seen := make(map[string]bool)
 	ancestors := make([]string, 0)
@@ -171,7 +192,11 @@ func (c *Connector) FetchAll(ctx context.Context, config *types.DataSourceConfig
 		return nil, err
 	}
 	client := core.NewClient(feishuConfig)
-	return core.FetchAllEngine(ctx, client, config, resourceIDs, wikiOps{region: c.region})
+	ops, err := c.prepareWikiOps(ctx, client, config, resourceIDs)
+	if err != nil {
+		return nil, err
+	}
+	return core.FetchAllEngine(ctx, client, config, resourceIDs, ops)
 }
 
 // FetchIncremental performs an incremental sync by comparing node edit times
@@ -185,7 +210,10 @@ func (c *Connector) FetchIncremental(ctx context.Context, config *types.DataSour
 		return nil, nil, err
 	}
 	client := core.NewClient(feishuConfig)
-	ops := wikiOps{region: c.region}
+	ops, err := c.prepareWikiOps(ctx, client, config, config.ResourceIDs)
+	if err != nil {
+		return nil, nil, err
+	}
 	if len(config.ResourceIDs) == 0 {
 		return nil, nil, errors.New(ops.EmptyResourceIDsError())
 	}
@@ -209,7 +237,10 @@ func (c *Connector) FetchStream(
 		return nil, err
 	}
 	client := core.NewClient(feishuConfig)
-	ops := wikiOps{region: c.region}
+	ops, err := c.prepareWikiOps(ctx, client, config, config.ResourceIDs)
+	if err != nil {
+		return nil, err
+	}
 	if len(config.ResourceIDs) == 0 {
 		return nil, errors.New(ops.EmptyResourceIDsError())
 	}
@@ -220,10 +251,18 @@ func (c *Connector) FetchStream(
 // region (for URL rendering) and encodes/decodes the wiki cursor wire format
 // (core.FeishuCursor / space_node_times) so the engine can stay format-agnostic.
 type wikiOps struct {
-	region core.Region
+	region      core.Region
+	strictNodes map[string][]core.WikiNode
 }
 
 func (o wikiOps) List(ctx context.Context, client *core.Client, resourceID string) ([]core.WikiNode, error, error) {
+	if o.strictNodes != nil {
+		nodes, ok := o.strictNodes[resourceID]
+		if !ok {
+			return nil, nil, fmt.Errorf("wiki resource was not preflighted: %s", resourceID)
+		}
+		return nodes, nil, nil
+	}
 	spaceID, nodeToken := parseWikiResourceID(resourceID)
 	nodes, err := client.ListWikiNodesRecursiveFrom(ctx, spaceID, nodeToken)
 	if err == nil {
@@ -456,6 +495,258 @@ func makeWikiNodeResourceID(spaceID, nodeToken string) string {
 func parseWikiResourceID(resourceID string) (spaceID string, nodeToken string) {
 	spaceID, nodeToken, _ = strings.Cut(resourceID, core.FeishuWikiNodeResourceSeparator)
 	return spaceID, nodeToken
+}
+
+type strictWikiScope struct {
+	spaceID string
+}
+
+func newStrictWikiScope(config *types.DataSourceConfig, region core.Region) (*strictWikiScope, error) {
+	value, configured := config.Settings["allowed_space_id"]
+	if !configured {
+		return nil, nil
+	}
+	spaceID, ok := value.(string)
+	if !ok {
+		return nil, errors.New("allowed_space_id must be a string")
+	}
+	if spaceID == "" {
+		return nil, errors.New("allowed_space_id must not be empty")
+	}
+	if strings.TrimSpace(spaceID) != spaceID || strings.Contains(spaceID, core.FeishuWikiNodeResourceSeparator) {
+		return nil, errors.New("invalid allowed_space_id")
+	}
+	if value, configured := config.Credentials["base_url"]; configured {
+		baseURL, ok := value.(string)
+		if !ok || strings.TrimSuffix(baseURL, "/") != strings.TrimSuffix(region.OpenBaseURL, "/") {
+			return nil, errors.New("allowed_space_id requires the connector region's official base_url")
+		}
+	}
+	mode := strings.TrimSpace(os.Getenv("FEISHU_DOCX_PARSE_MODE"))
+	if mode != "" && !strings.EqualFold(mode, "export") {
+		return nil, errors.New("allowed_space_id requires FEISHU_DOCX_PARSE_MODE=export")
+	}
+	scope := &strictWikiScope{spaceID: spaceID}
+	if err := scope.validateResources(config.ResourceIDs); err != nil {
+		return nil, err
+	}
+	return scope, nil
+}
+
+func (s *strictWikiScope) validateResources(resourceIDs []string) error {
+	for _, resourceID := range resourceIDs {
+		spaceID, nodeToken, hasNode := strings.Cut(resourceID, core.FeishuWikiNodeResourceSeparator)
+		if spaceID != s.spaceID || (hasNode && (nodeToken == "" || strings.Contains(nodeToken, core.FeishuWikiNodeResourceSeparator))) {
+			return fmt.Errorf("wiki resource is outside allowed space: %s", resourceID)
+		}
+	}
+	return nil
+}
+
+func (s *strictWikiScope) validateNode(node core.WikiNode) error {
+	if node.SpaceID != s.spaceID {
+		return fmt.Errorf("wiki node %s has unexpected space_id %q", node.NodeToken, node.SpaceID)
+	}
+	if node.NodeType != "origin" {
+		return fmt.Errorf("wiki node %s has disallowed node_type %q", node.NodeToken, node.NodeType)
+	}
+	if node.OriginSpaceID != "" && node.OriginSpaceID != s.spaceID {
+		return fmt.Errorf("wiki node %s has an external origin_space_id", node.NodeToken)
+	}
+	if node.NodeToken == "" {
+		return errors.New("wiki node has an empty node_token")
+	}
+	if core.IsSupportedDocType(node.ObjType) && node.ObjToken == "" {
+		return fmt.Errorf("wiki node %s has an empty obj_token", node.NodeToken)
+	}
+	return nil
+}
+
+func (s *strictWikiScope) getNode(ctx context.Context, client *core.Client, nodeToken string) (core.WikiNode, error) {
+	var response core.WikiNodeInfoResponse
+	path := "/open-apis/wiki/v2/spaces/get_node?token=" + url.QueryEscape(nodeToken)
+	if err := client.DoRequest(ctx, http.MethodGet, path, nil, &response); err != nil {
+		return core.WikiNode{}, err
+	}
+	if response.Code != 0 {
+		return core.WikiNode{}, fmt.Errorf("get wiki node error: code=%d", response.Code)
+	}
+	node := response.Data.Node
+	if err := s.validateNode(node); err != nil {
+		return core.WikiNode{}, err
+	}
+	if node.NodeToken != nodeToken {
+		return core.WikiNode{}, errors.New("wiki node token does not match the requested token")
+	}
+	return node, nil
+}
+
+func (s *strictWikiScope) listNodes(ctx context.Context, client *core.Client, parentNodeToken string) ([]core.WikiNode, error) {
+	var nodes []core.WikiNode
+	pageToken := ""
+	seenPages := make(map[string]bool)
+	for {
+		query := url.Values{"page_size": {"50"}}
+		if parentNodeToken != "" {
+			query.Set("parent_node_token", parentNodeToken)
+		}
+		if pageToken != "" {
+			query.Set("page_token", pageToken)
+		}
+		path := "/open-apis/wiki/v2/spaces/" + url.PathEscape(s.spaceID) + "/nodes?" + query.Encode()
+		var response core.WikiNodeListResponse
+		if err := client.DoRequest(ctx, http.MethodGet, path, nil, &response); err != nil {
+			return nil, err
+		}
+		if response.Code != 0 {
+			return nil, fmt.Errorf("list wiki nodes error: code=%d", response.Code)
+		}
+		for _, node := range response.Data.Items {
+			if err := s.validateNode(node); err != nil {
+				return nil, err
+			}
+			if parentNodeToken != "" && node.ParentNodeID == "" {
+				node.ParentNodeID = parentNodeToken
+			}
+			nodes = append(nodes, node)
+		}
+		if !response.Data.HasMore {
+			return nodes, nil
+		}
+		pageToken = response.Data.PageToken
+		if pageToken == "" || seenPages[pageToken] {
+			return nil, errors.New("wiki pagination did not advance")
+		}
+		seenPages[pageToken] = true
+	}
+}
+
+func (s *strictWikiScope) preflight(ctx context.Context, client *core.Client, resourceID string) ([]core.WikiNode, error) {
+	_, nodeToken := parseWikiResourceID(resourceID)
+	var pending []core.WikiNode
+	if nodeToken == "" {
+		nodes, err := s.listNodes(ctx, client, "")
+		if err != nil {
+			return nil, err
+		}
+		pending = nodes
+	} else {
+		node, err := s.getNode(ctx, client, nodeToken)
+		if err != nil {
+			return nil, err
+		}
+		pending = []core.WikiNode{node}
+	}
+	var nodes []core.WikiNode
+	seenNodes := make(map[string]bool)
+	for len(pending) > 0 {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		node := pending[0]
+		pending = pending[1:]
+		if seenNodes[node.NodeToken] {
+			return nil, fmt.Errorf("wiki node was listed more than once: %s", node.NodeToken)
+		}
+		seenNodes[node.NodeToken] = true
+		nodes = append(nodes, node)
+		if node.HasChild {
+			children, err := s.listNodes(ctx, client, node.NodeToken)
+			if err != nil {
+				return nil, err
+			}
+			pending = append(pending, children...)
+		}
+	}
+	return nodes, nil
+}
+
+func (c *Connector) prepareWikiOps(ctx context.Context, client *core.Client, config *types.DataSourceConfig, resourceIDs []string) (wikiOps, error) {
+	ops := wikiOps{region: c.region}
+	scope, err := newStrictWikiScope(config, c.region)
+	if err != nil || scope == nil {
+		return ops, err
+	}
+	if err := scope.validateResources(resourceIDs); err != nil {
+		return ops, err
+	}
+	ops.strictNodes = make(map[string][]core.WikiNode, len(resourceIDs))
+	for _, resourceID := range resourceIDs {
+		nodes, err := scope.preflight(ctx, client, resourceID)
+		if err != nil {
+			return wikiOps{}, fmt.Errorf("wiki scope preflight failed for %s: %w", resourceID, err)
+		}
+		ops.strictNodes[resourceID] = nodes
+	}
+	return ops, nil
+}
+
+func (c *Connector) listStrictResources(ctx context.Context, client *core.Client, scope *strictWikiScope, parentID string) ([]types.Resource, error) {
+	if parentID == "" {
+		return []types.Resource{{
+			ExternalID:  scope.spaceID,
+			Name:        scope.spaceID,
+			Type:        "wiki_space",
+			URL:         c.region.WikiURL(scope.spaceID),
+			HasChildren: true,
+			Metadata:    map[string]interface{}{"space_id": scope.spaceID},
+		}}, nil
+	}
+	if err := scope.validateResources([]string{parentID}); err != nil {
+		return nil, err
+	}
+	_, nodeToken := parseWikiResourceID(parentID)
+	if nodeToken != "" {
+		if _, err := scope.getNode(ctx, client, nodeToken); err != nil {
+			return nil, err
+		}
+	}
+	nodes, err := scope.listNodes(ctx, client, nodeToken)
+	if err != nil {
+		return nil, err
+	}
+	resources := make([]types.Resource, 0, len(nodes))
+	for _, node := range nodes {
+		resources = append(resources, c.wikiNodeToResource(scope.spaceID, node))
+	}
+	return resources, nil
+}
+
+func (s *strictWikiScope) ancestors(ctx context.Context, client *core.Client, resourceIDs []string) ([]string, error) {
+	if err := s.validateResources(resourceIDs); err != nil {
+		return nil, err
+	}
+	var ancestors []string
+	seen := make(map[string]bool)
+	add := func(resourceID string) {
+		if !seen[resourceID] {
+			seen[resourceID] = true
+			ancestors = append(ancestors, resourceID)
+		}
+	}
+	for _, resourceID := range resourceIDs {
+		_, current := parseWikiResourceID(resourceID)
+		if current == "" {
+			continue
+		}
+		add(s.spaceID)
+		path := make(map[string]bool)
+		for current != "" {
+			if path[current] {
+				return nil, errors.New("wiki ancestor cycle detected")
+			}
+			path[current] = true
+			node, err := s.getNode(ctx, client, current)
+			if err != nil {
+				return nil, err
+			}
+			current = node.ParentNodeID
+			if current != "" {
+				add(makeWikiNodeResourceID(s.spaceID, current))
+			}
+		}
+	}
+	return ancestors, nil
 }
 
 func (c *Connector) wikiNodeToResource(spaceID string, node core.WikiNode) types.Resource {

@@ -1,8 +1,18 @@
 package middleware
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func TestSanitizeBody(t *testing.T) {
@@ -72,6 +82,26 @@ func TestSanitizeBody(t *testing.T) {
 			in:   `{"authorization_url":"https://idp.example/authorize?state=secret","authorization_attempt":"secret-state"}`,
 			want: `{"authorization_url":"***","authorization_attempt":"***"}`,
 		},
+		{
+			name: "nested datasource credentials",
+			in:   `{"config":{"credentials":{"app_id":"dummy-app","app_secret":"dummy-secret"}},"items":[{"feishu_app_secret":"dummy-feishu-secret","AppSecret":"dummy-camel-secret","appId":"dummy-camel-app"}]}`,
+			want: `{"config":{"credentials":{"app_id":"***","app_secret":"***"}},"items":[{"feishu_app_secret":"***","AppSecret":"***","appId":"***"}]}`,
+		},
+		{
+			name: "escaped secret value",
+			in:   `{"app_secret":"first\"second\\third","name":"visible"}`,
+			want: `{"app_secret":"***","name":"visible"}`,
+		},
+		{
+			name: "truncated secret value",
+			in:   `{"config":{"credentials":{"app_secret":"truncated-secret`,
+			want: `{"config":{"credentials":{"app_secret":"***"`,
+		},
+		{
+			name: "nested authorization and tenant token",
+			in:   `{"data":{"authorization":"Bearer dummy-auth","tenant_access_token":"dummy-tenant-token","token":"dummy-token"}}`,
+			want: `{"data":{"authorization":"***","tenant_access_token":"***","token":"***"}}`,
+		},
 	}
 
 	for _, tc := range cases {
@@ -79,6 +109,60 @@ func TestSanitizeBody(t *testing.T) {
 			got := sanitizeBody(tc.in)
 			if got != tc.want {
 				t.Errorf("sanitizeBody(%q)\n got: %s\nwant: %s", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestLoggerRedactsDataSourceCredentials(t *testing.T) {
+	const body = `{"config":{"credentials":{"app_id":"dummy-app-id","app_secret":"dummy-app-secret"}},"data":{"authorization":"Bearer dummy-auth-token","tenant_access_token":"dummy-tenant-token"}}`
+	cases := []struct {
+		method string
+		path   string
+		status int
+	}{
+		{http.MethodPost, "/api/v1/datasource", http.StatusCreated},
+		{http.MethodPost, "/api/v1/datasource/validate-credentials", http.StatusBadRequest},
+		{http.MethodPut, "/api/v1/datasource/test/credentials", http.StatusInternalServerError},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			var output bytes.Buffer
+			log := logrus.New()
+			log.SetOutput(&output)
+			log.SetFormatter(&logrus.JSONFormatter{})
+			r := gin.New()
+			r.ContextWithFallback = true
+			r.Use(Logger())
+			r.Handle(tc.method, tc.path, func(c *gin.Context) {
+				got, err := io.ReadAll(c.Request.Body)
+				if err != nil || string(got) != body {
+					t.Fatal("logging changed the request body")
+				}
+				c.Data(tc.status, "application/json", got)
+			})
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer dummy-header-token")
+			req = req.WithContext(context.WithValue(req.Context(), types.LoggerContextKey, logrus.NewEntry(log)))
+			response := httptest.NewRecorder()
+			r.ServeHTTP(response, req)
+			if response.Code != tc.status || response.Body.String() != body {
+				t.Fatal("logging changed the response")
+			}
+			for _, secret := range []string{"dummy-app-id", "dummy-app-secret", "dummy-auth-token", "dummy-tenant-token", "dummy-header-token"} {
+				if strings.Contains(output.String(), secret) {
+					t.Fatalf("access log contains credential %q", secret)
+				}
+			}
+			var entry map[string]interface{}
+			if err := json.Unmarshal(output.Bytes(), &entry); err != nil {
+				t.Fatalf("decode access log: %v", err)
+			}
+			for _, field := range []string{"request_body", "response_body"} {
+				if entry[field] != sanitizeBody(body) {
+					t.Errorf("%s was not redacted", field)
+				}
 			}
 		})
 	}
