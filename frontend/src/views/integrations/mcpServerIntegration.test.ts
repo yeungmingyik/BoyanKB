@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { productSlug } from '../../config/branding.ts'
 import {
   buildClaudeCodeCommand,
   buildHttpClientSnippet,
@@ -17,17 +18,17 @@ test('buildMcpEndpointUrl strips the api prefix and joins the endpoint path', ()
 })
 
 test('mcpServerKey slugs the endpoint name', () => {
-  assert.equal(mcpServerKey('Docs Bot!'), 'weknora-docs-bot')
-  assert.equal(mcpServerKey('  '), 'weknora')
-  assert.equal(mcpServerKey('产品知识库'), 'weknora')
-  assert.equal(mcpServerKey('产品知识库', '3f9a2c1e-aaaa'), 'weknora-3f9a2c1e')
+  assert.equal(mcpServerKey('Docs Bot!'), `${productSlug}-docs-bot`)
+  assert.equal(mcpServerKey('  '), productSlug)
+  assert.equal(mcpServerKey('产品知识库'), productSlug)
+  assert.equal(mcpServerKey('产品知识库', '3f9a2c1e-aaaa'), `${productSlug}-3f9a2c1e`)
   assert.notEqual(mcpServerKey('知识库A', 'id-one'), mcpServerKey('知识库B', 'id-two'))
 })
 
 test('http snippet carries url and bearer header', () => {
   const parsed = JSON.parse(buildHttpClientSnippet('Docs', 'https://h/mcp/1', 'mcp_t'))
   assert.deepEqual(parsed, {
-    mcpServers: { 'weknora-docs': { url: 'https://h/mcp/1', headers: { Authorization: 'Bearer mcp_t' } } },
+    mcpServers: { [`${productSlug}-docs`]: { url: 'https://h/mcp/1', headers: { Authorization: 'Bearer mcp_t' } } },
   })
 })
 
@@ -35,14 +36,14 @@ test('snippets fall back to a placeholder when no token is known', () => {
   assert.match(buildHttpClientSnippet('a', 'u', ''), new RegExp(MCP_TOKEN_PLACEHOLDER))
   assert.match(buildClaudeCodeCommand('a', 'u', ''), new RegExp(MCP_TOKEN_PLACEHOLDER))
   const bridge = JSON.parse(buildStdioBridgeSnippet('a', 'https://h/mcp/1', ''))
-  assert.equal(bridge.mcpServers['weknora-a'].command, 'npx')
-  assert.ok(bridge.mcpServers['weknora-a'].args.includes('https://h/mcp/1'))
+  assert.equal(bridge.mcpServers[`${productSlug}-a`].command, 'npx')
+  assert.ok(bridge.mcpServers[`${productSlug}-a`].args.includes('https://h/mcp/1'))
 })
 
 test('claude code command uses the http transport', () => {
   assert.equal(
     buildClaudeCodeCommand('Docs', 'https://h/mcp/1', 'mcp_t'),
-    'claude mcp add --transport http weknora-docs https://h/mcp/1 --header "Authorization: Bearer mcp_t"',
+    `claude mcp add --transport http ${productSlug}-docs https://h/mcp/1 --header "Authorization: Bearer mcp_t"`,
   )
 })
 

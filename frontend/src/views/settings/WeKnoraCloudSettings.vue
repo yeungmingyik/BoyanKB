@@ -6,7 +6,8 @@
         {{ $t('settings.weknoraCloud.description') }}
         <a
           class="doc-link"
-          href="https://developers.weixin.qq.com/doc/aispeech/knowledge/atomic_capability/atomic_interface.html"
+          v-if="helpUrl('cloud-models')"
+          :href="helpUrl('cloud-models')"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -204,6 +205,7 @@
 </template>
 
 <script setup lang="ts">
+import { helpUrl } from '@/config/branding'
 import { ref, computed, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useI18n } from 'vue-i18n'

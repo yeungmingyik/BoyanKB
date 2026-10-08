@@ -1,5 +1,5 @@
 <template>
-  <div class="integrations-settings">
+  <div v-if="isIntegrationEnabled(tab)" class="integrations-settings">
     <div class="integrations-settings__body" :class="{ 'integrations-settings__body--landing': isLandingSection }">
       <div v-if="tab === 'im'" class="section">
         <div class="section-header">
@@ -7,7 +7,8 @@
           <p class="section-description">
             {{ $t('agentEditor.im.description') }}
             <a
-              href="https://github.com/Tencent/WeKnora/blob/main/website-docs/03-features/12-im-integration.md"
+              v-if="helpUrl('im')"
+              :href="helpUrl('im')"
               target="_blank"
               rel="noopener noreferrer"
               class="doc-link"
@@ -61,7 +62,8 @@ import McpServerIntegrationSettings from '@/views/integrations/McpServerIntegrat
 import ChromeExtensionLanding from '@/views/integrations/ChromeExtensionLanding.vue'
 import ClawSkillLanding from '@/views/integrations/ClawSkillLanding.vue'
 import CliIntegrationLanding from '@/views/integrations/CliIntegrationLanding.vue'
-import type { IntegrationTab } from '@/config/integrations'
+import { isIntegrationEnabled, type IntegrationTab } from '@/config/integrations'
+import { helpUrl } from '@/config/branding'
 
 const filterAgentId = ref('')
 

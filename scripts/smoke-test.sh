@@ -39,7 +39,8 @@ import uuid
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 root = pathlib.Path(sys.argv[1])
-parser = argparse.ArgumentParser(description="Verify local WeKnora document ingestion, retrieval and cited DeepSeek answers.")
+brand = json.loads((root / "branding" / "brand.json").read_text(encoding="utf-8"))
+parser = argparse.ArgumentParser(description=f"Verify local {brand['productName']} document ingestion, retrieval and cited DeepSeek answers.")
 parser.add_argument("--prepare-only", action="store_true", help="Verify ingestion and retrieval only; skip paid DeepSeek generation.")
 args = parser.parse_args(sys.argv[2:])
 settings = {}
@@ -71,7 +72,7 @@ base = settings.get("SMOKE_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
 timeout = int(settings.get("SMOKE_TIMEOUT_SECONDS", "900"))
 chat_model = settings.get("SMOKE_CHAT_MODEL_ID", "local-deepseek-chat")
 embedding_model = settings.get("SMOKE_EMBEDDING_MODEL_ID", "local-embedding")
-marker = "weknora-local-smoke-v1"
+marker = brand["productSlug"] + "-local-smoke-v1"
 question = "根据星尘计划启动备忘录，谁是首席科学家、研发的推进系统叫什么、原型机测试目标年份是哪一年？请逐项回答并引用知识库来源。"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
@@ -178,7 +179,7 @@ def unique_named(rows, name, owned=False):
 
 
 def upload(kb_id, source):
-    boundary = "weknora-smoke-" + uuid.uuid4().hex
+    boundary = brand["productSlug"] + "-smoke-" + uuid.uuid4().hex
     fields = {"enable_multimodel": "false", "channel": "api", "process_config": json.dumps({"summary_enabled": False, "graph_enabled": False, "question_generation_config": {"enabled": False}})}
     body = bytearray()
     for name, value in fields.items():

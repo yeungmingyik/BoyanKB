@@ -360,6 +360,7 @@
 </template>
 
 <script setup lang="ts">
+import { productSlug } from '@/config/branding'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -845,7 +846,7 @@ const handleExport = async () => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'weknora-memories.json'
+    link.download = `${productSlug}-memories.json`
     link.click()
     URL.revokeObjectURL(url)
   } catch (error: any) {

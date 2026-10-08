@@ -66,6 +66,7 @@
 </template>
 
 <script setup lang="ts">
+import { isProviderHidden } from '@/config/branding'
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { type ParserEngineInfo } from '@/api/system'
@@ -188,6 +189,7 @@ const fileTypeGroups = computed(() => {
 function getEngineOptions(extensions: string[]): EngineOption[] {
   const raw: { name: string; desc: string; fileTypes: string[]; available: boolean; reason: string }[] = []
   for (const engine of parserEngines.value) {
+    if (isProviderHidden(engine.Name) && !props.parserEngineRules.some(rule => rule.engine === engine.Name)) continue
     const supports = extensions.some(ext => (engine.FileTypes || []).includes(ext))
     if (supports) {
       raw.push({

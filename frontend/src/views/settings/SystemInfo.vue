@@ -138,15 +138,17 @@
           <template #default>
             <p class="migration-error-desc">{{ $t('system.dbMigrationFailedDesc') }}</p>
             <pre class="migration-error-detail">{{ systemInfo.db_migration_error }}</pre>
-            <div class="migration-error-actions">
+            <div v-if="troubleshootingDocsURL || reportIssueURL" class="migration-error-actions">
               <t-link
+                v-if="troubleshootingDocsURL"
                 theme="primary"
                 :href="troubleshootingDocsURL"
                 target="_blank"
                 rel="noopener noreferrer"
               >{{ $t('system.dbMigrationViewDocs') }}</t-link>
-              <span class="migration-error-actions-sep">·</span>
+              <span v-if="troubleshootingDocsURL && reportIssueURL" class="migration-error-actions-sep">·</span>
               <t-link
+                v-if="reportIssueURL"
                 theme="primary"
                 :href="reportIssueURL"
                 target="_blank"
@@ -195,6 +197,7 @@
 </template>
 
 <script setup lang="ts">
+import { brand, helpUrl, productName } from '@/config/branding'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getSystemInfo, type SystemInfo } from '@/api/system'
 import { useI18n } from 'vue-i18n'
@@ -245,14 +248,14 @@ function formatUptime(totalSeconds: number): string {
   return parts.join(' ')
 }
 
-const troubleshootingDocsURL =
-  'https://github.com/Tencent/WeKnora/blob/main/website-docs/01-getting-started/05-troubleshooting.md#database-migrations'
+const troubleshootingDocsURL = helpUrl('database-migrations')
 
 // Pre-fills a new issue with the current migration error so users don't have to
 // paste it manually. Body is intentionally minimal — the bug template will fill
 // in the rest. Encode aggressively to survive newlines / quotes.
 const reportIssueURL = computed(() => {
-  const base = 'https://github.com/Tencent/WeKnora/issues/new'
+  const base = brand.links.feedback
+  if (!base) return ''
   const params = new URLSearchParams({
     template: 'bug_report.yml',
     title: '[Bug]: Database migration failed at startup',
@@ -262,7 +265,7 @@ const reportIssueURL = computed(() => {
   if (errMsg) {
     const body = [
       '### Environment',
-      `- WeKnora version: ${systemInfo.value?.version || 'unknown'}`,
+      `- ${productName} version: ${systemInfo.value?.version || 'unknown'}`,
       `- Commit: ${systemInfo.value?.commit_id || 'unknown'}`,
       `- Frontend version: ${frontendVersion} (${frontendCommit})`,
       `- DB version reported: ${systemInfo.value?.db_version || 'unknown'}`,

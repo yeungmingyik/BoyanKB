@@ -1,0 +1,14 @@
+services:
+  frontend:
+    image: ${BOYANKB_FRONTEND_IMAGE:-boyankb/frontend:v0.8.2}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend-boyankb
+
+  app:
+    image: ${BOYANKB_APP_IMAGE:-boyankb/app:v0.8.2}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.app-boyankb
+    environment:
+      BRANDING_CONFIG: /app/branding/brand.json

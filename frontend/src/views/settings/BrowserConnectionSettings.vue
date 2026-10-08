@@ -10,7 +10,7 @@
       :row-col="[{ width: '100%', height: '132px', type: 'rect' }]" />
     <p v-else-if="loaded && !status.enabled" class="empty-hint">{{ t('localBrowser.unavailable') }}</p>
 
-    <div v-else-if="loaded" class="browser-layout">
+    <div v-else-if="loaded && (brand.features.browserExtension || status.device)" class="browser-layout">
       <article class="connection-card">
         <div class="product-row">
           <img class="product-logo" :src="browserLogo" width="44" height="44" alt="BrowserSkill" />
@@ -26,7 +26,7 @@
             </div>
             <p class="product-desc">
               {{ t('localBrowser.productDescription') }}
-              <a class="product-link" href="https://github.com/Tencent/BrowserSkill" target="_blank"
+              <a v-if="helpUrl('browser')" class="product-link" :href="helpUrl('browser')" target="_blank"
                 rel="noopener noreferrer">GitHub<t-icon name="jump" size="12px" /></a>
             </p>
           </div>
@@ -165,6 +165,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { brand, helpUrl, productSlug } from '@/config/branding'
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { get, post, getDown } from '@/utils/request'
@@ -251,7 +252,7 @@ async function download() {
     const blob = await getDown(`${endpoint}/extension?t=${Date.now()}`)
     if (!alive) return
     const url = URL.createObjectURL(blob), link = document.createElement('a')
-    link.href = url; link.download = 'browser-skill-weknora.zip'; link.click()
+    link.href = url; link.download = `${productSlug}-browser-extension.zip`; link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (e: any) { if (alive) error.value = e?.message || t('localBrowser.failed') }
   finally { if (alive) downloading.value = false }

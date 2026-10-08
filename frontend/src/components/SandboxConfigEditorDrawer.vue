@@ -154,7 +154,7 @@
                   ? $t('settings.sandbox.secretConfigured')
                   : $t('settings.sandbox.cubeApiKeyOptional') }}
               </p>
-              <a class="inline-guide-link" :href="clusterGuideUrl" target="_blank" rel="noopener noreferrer">
+              <a v-if="clusterGuideUrl" class="inline-guide-link" :href="clusterGuideUrl" target="_blank" rel="noopener noreferrer">
                 <t-icon name="link" />
                 {{ $t('settings.sandbox.cubeApiKeyWhere') }}
               </a>
@@ -240,7 +240,7 @@
         </t-form-item>
         <t-form-item :label="$t('settings.sandbox.dockerTlsCertPath')"
           :help="$t('settings.sandbox.dockerTlsCertPathHelp')">
-          <t-input v-model="docker.tls_cert_path" placeholder="/etc/weknora/docker-certs"
+          <t-input v-model="docker.tls_cert_path" placeholder="/etc/docker/certs"
             :disabled="retargetFrozen" @input="onFieldInput('tls_cert_path')" />
         </t-form-item>
         <t-alert theme="warning" class="compact-alert" :message="$t('settings.sandbox.dockerHostRisk')" />
@@ -378,7 +378,7 @@
           </div>
         </div>
         <t-alert v-if="templatesError" theme="warning" class="compact-alert" :message="templatesError" />
-        <a class="inline-guide-link" :href="clusterGuideUrl" target="_blank" rel="noopener noreferrer">
+        <a v-if="clusterGuideUrl" class="inline-guide-link" :href="clusterGuideUrl" target="_blank" rel="noopener noreferrer">
           <t-icon name="link" />
           {{ $t('settings.sandbox.howToBuildTemplate') }}
         </a>
@@ -759,6 +759,7 @@
 </template>
 
 <script setup lang="ts">
+import { helpUrl } from '@/config/branding'
 import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -816,7 +817,7 @@ const isMaskedSecret = (value?: string) => value === secretPlaceholder
 // the sandbox account cannot write.
 const defaultDockerImage = 'wechatopenai/weknora-sandbox:main'
 
-const clusterGuideUrl = 'https://github.com/Tencent/WeKnora/blob/main/website-docs/06-development/04-sandbox-deployment.md'
+const clusterGuideUrl = helpUrl('sandbox')
 const e2bApiKeysUrl = 'https://e2b.dev/dashboard?tab=keys'
 
 const backendOptions = computed(() => {

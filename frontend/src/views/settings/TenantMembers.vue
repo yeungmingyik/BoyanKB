@@ -54,7 +54,7 @@
         {{ $t('tenantMember.sectionDescription') }}
         <a
           class="doc-link"
-          href="https://github.com/Tencent/WeKnora/blob/main/website-docs/03-features/01-tenant-auth.md"
+          v-if="helpUrl('members')" :href="helpUrl('members')"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -513,6 +513,7 @@
 </template>
 
 <script setup lang="ts">
+import { helpUrl } from '@/config/branding'
 import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { MessagePlugin } from 'tdesign-vue-next'

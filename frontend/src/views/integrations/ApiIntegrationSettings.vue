@@ -80,7 +80,7 @@
             <label>{{ $t('tenant.api.docLabel') }}</label>
             <p>
               {{ $t('tenant.api.docDescription') }}
-              <a class="doc-link" @click="openApiDoc">
+              <a v-if="helpUrl('api')" class="doc-link" @click="openApiDoc">
                 {{ $t('tenant.api.openDoc') }}
                 <t-icon name="link" class="link-icon" />
               </a>
@@ -671,6 +671,7 @@
 </template>
 
 <script setup lang="ts">
+import { helpUrl } from '@/config/branding'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -1073,7 +1074,6 @@ func signExternalUserToken(hmacSecret, externalUserID string, tenantID uint64) (
 		SignedString([]byte(hmacSecret))
 }
 
-// Send on each WeKnora API request:
 //   ${headerName}: <JWT from signExternalUserToken>
 // Tenant ID for this workspace: ${tid}`
 })
@@ -1431,7 +1431,7 @@ const saveDesktopPort = async () => {
 }
 
 function openApiDoc() {
-  window.open('https://github.com/Tencent/WeKnora/blob/main/website-docs/04-api/01-api-overview.md', '_blank')
+  if (helpUrl('api')) window.open(helpUrl('api'), '_blank', 'noopener,noreferrer')
 }
 
 function openCreateAPIKeyDialog() {

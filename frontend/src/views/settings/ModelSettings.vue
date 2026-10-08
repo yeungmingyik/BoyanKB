@@ -27,7 +27,7 @@
             ? 'modelSettings.builtinModels.descriptionAdmin'
             : 'modelSettings.builtinModels.description') }}
         </p>
-        <a class="doc-link" href="https://github.com/Tencent/WeKnora/blob/main/website-docs/03-features/06-models.md" target="_blank"
+        <a v-if="helpUrl('models')" class="doc-link" :href="helpUrl('models')" target="_blank"
           rel="noopener noreferrer">
           {{ $t('modelSettings.builtinModels.viewGuide') }}
           <t-icon name="link" class="link-icon" />
@@ -270,6 +270,7 @@
 </template>
 
 <script setup lang="ts">
+import { helpUrl } from '@/config/branding'
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { AddIcon, PlayCircleIcon } from 'tdesign-icons-vue-next'

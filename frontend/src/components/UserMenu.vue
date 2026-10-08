@@ -108,7 +108,7 @@
           <span>{{ $t('settings.navGroups.systemAdministration') }}</span>
         </div>
         <div class="menu-divider"></div>
-        <div class="menu-item" @click="openDocs">
+        <div v-if="helpUrl()" class="menu-item" @click="openDocs">
           <t-icon name="help-circle" class="menu-icon" />
           <span class="menu-text-with-icon">
             <span>{{ $t('general.helpAndDocs') }}</span>
@@ -118,7 +118,7 @@
             </svg>
           </span>
         </div>
-        <div class="menu-item" :title="$t('common.githubStarTip')" @click="openGithub">
+        <div v-if="brand.links.repository" class="menu-item" :title="$t('common.githubStarTip')" @click="openGithub">
           <t-icon name="logo-github" class="menu-icon" />
           <span class="menu-text-with-icon">
             <span>{{ $t('common.github') }}</span>
@@ -197,6 +197,7 @@
 </template>
 
 <script setup lang="ts">
+import { brand, helpUrl } from '@/config/branding'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
@@ -493,13 +494,13 @@ const reopenGuide = () => {
 
 const openDocs = () => {
   menuVisible.value = false
-  window.open('https://github.com/Tencent/WeKnora/tree/main/website-docs', '_blank')
+  if (helpUrl()) window.open(helpUrl(), '_blank', 'noopener,noreferrer')
 }
 
 // 打开 GitHub
 const openGithub = () => {
   menuVisible.value = false
-  window.open('https://github.com/Tencent/WeKnora', '_blank')
+  if (brand.links.repository) window.open(brand.links.repository, '_blank', 'noopener,noreferrer')
 }
 
 // 注销

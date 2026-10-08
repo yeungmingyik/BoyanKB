@@ -1,5 +1,5 @@
 <template>
-  <div class="login-layout">
+  <div class="login-layout" :class="{ 'login-layout--compact': !brand.features.showcase }">
     <div class="animated-bg">
       <div class="knowledge-node node-1">
         <svg class="node-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -96,13 +96,14 @@
     </div>
 
     <!-- Logo - Top Left -->
-    <a href="https://github.com/Tencent/WeKnora" target="_blank" class="header-logo" :title="$t('common.github')">
-      <img src="@/assets/img/weknora.png" alt="WeKnora" class="logo-image" />
-    </a>
+    <div class="header-logo">
+      <img :src="brand.logoUrl" :alt="productName" class="logo-image" />
+      <span class="brand-name">{{ productName }}</span>
+    </div>
 
     <!-- Header Links - Top Right -->
     <div class="header-links">
-      <a href="https://weknora.weixin.qq.com" target="_blank" class="header-link" :title="$t('common.website')">
+      <a v-if="brand.links.home" :href="brand.links.home" target="_blank" rel="noopener noreferrer" class="header-link" :title="$t('common.website')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
           stroke-linecap="round">
           <circle cx="12" cy="12" r="10" />
@@ -112,7 +113,7 @@
         <span class="link-text">{{ $t('common.website') }}</span>
       </a>
 
-      <a href="https://github.com/Tencent/WeKnora" target="_blank" class="header-link" :title="$t('common.info')">
+      <a v-if="brand.links.repository" :href="brand.links.repository" target="_blank" rel="noopener noreferrer" class="header-link" :title="$t('common.info')">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
           <path
             d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
@@ -143,7 +144,7 @@
     </div>
 
     <!-- Left Showcase Section -->
-    <div class="showcase-section">
+    <div v-if="brand.features.showcase" class="showcase-section">
       <div class="showcase-content">
         <p class="showcase-subtitle">{{ $t('platform.subtitle') }}</p>
         <p class="showcase-description">{{ $t('platform.description') }}</p>
@@ -340,6 +341,7 @@
 </template>
 
 <script setup lang="ts">
+import { brand, productName } from '@/config/branding'
 import { ref, reactive, nextTick, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
@@ -842,7 +844,7 @@ onMounted(async () => {
   min-height: 100%;
   overflow: hidden;
   position: relative;
-  background: linear-gradient(225deg, #022c22 0%, #064e3b 15%, #065f46 25%, #047857 38%, #059669 50%, #07C05F 65%, #10B981 78%, #34D399 90%, #6EE7B7 100%);
+  background: linear-gradient(135deg, var(--bk-background), color-mix(in srgb, var(--td-brand-color) 20%, white));
 
   &::before {
     content: '';
@@ -878,7 +880,7 @@ onMounted(async () => {
   border: 2px solid rgba(255, 255, 255, 0.3);
   box-shadow:
     0 0 15px rgba(255, 255, 255, 0.35),
-    0 0 30px rgba(16, 185, 129, 0.2),
+    0 0 30px color-mix(in srgb, var(--td-brand-color) 20%, transparent),
     inset 0 0 8px rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
@@ -1189,6 +1191,16 @@ onMounted(async () => {
   position: relative;
 }
 
+.login-layout--compact .form-section {
+  flex: 1;
+  align-items: center;
+  padding: 108px 24px 40px;
+}
+
+.login-layout--compact .form-panel {
+  margin-bottom: 0;
+}
+
 .form-panel {
   width: 100%;
   max-width: 480px;
@@ -1198,15 +1210,24 @@ onMounted(async () => {
 }
 
 .header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   position: fixed;
   top: 32px;
   left: 50px;
   z-index: 100;
-  cursor: pointer;
 
   .logo-image {
-    width: 120px;
-    height: auto;
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+  }
+
+  .brand-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--td-text-color-primary);
   }
 }
 
@@ -1228,7 +1249,7 @@ onMounted(async () => {
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.25);
-  color: var(--td-text-color-anti);
+  color: var(--td-text-color-primary);
   text-decoration: none;
   font-size: var(--app-text-md);
   font-weight: 600;
@@ -1248,7 +1269,7 @@ onMounted(async () => {
   &:hover {
     background: rgba(255, 255, 255, 0.3);
     border-color: rgba(255, 255, 255, 0.4);
-    color: var(--td-text-color-anti);
+    color: var(--td-text-color-primary);
   }
 }
 
@@ -1258,7 +1279,7 @@ onMounted(async () => {
   button {
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.25);
-    color: var(--td-text-color-anti);
+    color: var(--td-text-color-primary);
 
     .lang-flag-icon {
       font-size: var(--app-text-xl);
@@ -1657,7 +1678,7 @@ onMounted(async () => {
     left: 40px;
 
     .logo-image {
-      width: 100px;
+      width: 36px;
     }
   }
 
@@ -1705,7 +1726,7 @@ onMounted(async () => {
     left: 30px;
 
     .logo-image {
-      width: 80px;
+      width: 36px;
     }
   }
 
@@ -1765,7 +1786,7 @@ onMounted(async () => {
     left: 20px;
 
     .logo-image {
-      width: 70px;
+      width: 36px;
     }
   }
 
@@ -1820,7 +1841,7 @@ onMounted(async () => {
 <style lang="less">
 html[theme-mode="dark"] {
   .login-layout {
-    background: linear-gradient(225deg, #011a14 0%, #032e22 15%, #043a2c 25%, #05503d 38%, #046647 50%, #038a56 65%, #049b60 78%, #06a06a 90%, #07b074 100%);
+    background: linear-gradient(135deg, var(--td-bg-color-page), color-mix(in srgb, var(--td-brand-color) 18%, var(--td-bg-color-page)));
   }
 
   .knowledge-node {
@@ -1831,10 +1852,6 @@ html[theme-mode="dark"] {
 
   .connection-line {
     stroke: rgba(255, 255, 255, 0.25);
-  }
-
-  .header-logo .logo-image {
-    filter: invert(1) hue-rotate(180deg) brightness(1.1);
   }
 
   .header-link {
@@ -1892,7 +1909,7 @@ html[theme-mode="dark"] {
   }
 
   .login-features .feature-icon {
-    background: rgba(6, 176, 77, 0.15);
+    background: color-mix(in srgb, var(--td-brand-color) 15%, transparent);
   }
 }
 </style>

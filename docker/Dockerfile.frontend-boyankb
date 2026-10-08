@@ -1,0 +1,26 @@
+FROM --platform=$BUILDPLATFORM node:24-bookworm-slim@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS builder
+WORKDIR /workspace/frontend
+ARG NPM_REGISTRY=
+ARG NODE_MAX_OLD_SPACE_SIZE=4096
+ENV VITE_IS_DOCKER=true
+ENV NODE_OPTIONS="--max-old-space-size=${NODE_MAX_OLD_SPACE_SIZE}"
+COPY frontend/package.json frontend/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm if [ -n "$NPM_REGISTRY" ]; then npm ci --registry="$NPM_REGISTRY"; else npm ci; fi
+COPY frontend/ ./
+COPY branding/ /workspace/branding/
+COPY LICENSE /workspace/LICENSE
+ARG VITE_FRONTEND_COMMIT=unknown
+ENV VITE_FRONTEND_COMMIT=${VITE_FRONTEND_COMMIT}
+RUN npm run check-i18n && npm test -- src/views/knowledge/settings/DataSourceEditorDialog.test.ts src/views/integrations/mcpServerIntegration.test.ts src/views/integrations/cliIntegration.test.ts && npm run build && rm -f /workspace/frontend/dist/favicon.ico
+
+FROM nginx:1.30.3-alpine@sha256:0d3b80406a13a767339fbe2f41406d6c7da727ab89cf8fae399e81f780f814d1
+COPY --from=builder /workspace/frontend/dist /usr/share/nginx/html
+COPY frontend/nginx.conf /etc/nginx/templates/default.conf.template
+COPY frontend/nginx-api-proxy.conf /etc/nginx/api-proxy.conf
+COPY frontend/nginx-http.conf /etc/nginx/conf.d/00-weknora-http.conf
+COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
+COPY LICENSE /usr/share/licenses/upstream/LICENSE
+RUN chmod +x /docker-entrypoint.sh
+ENV MAX_FILE_SIZE_MB=50
+EXPOSE 80
+ENTRYPOINT ["/docker-entrypoint.sh"]

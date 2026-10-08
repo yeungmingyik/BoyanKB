@@ -3,7 +3,8 @@
         <!-- 展开时：Logo + 搜索/折叠按钮同行 -->
         <div class="logo_row" v-if="!uiStore.sidebarCollapsed">
             <div class="logo_box" @click="router.push('/platform/knowledge-bases')" style="cursor: pointer;">
-                <img class="logo" src="@/assets/img/weknora.png" alt="">
+                <img class="logo" :src="brand.logoUrl" :alt="productName">
+                <span class="brand-name">{{ productName }}</span>
                 <sup v-if="isLiteEdition" class="lite-badge">Lite</sup>
             </div>
             <div class="logo_actions">
@@ -213,6 +214,7 @@
 </template>
 
 <script setup lang="ts">
+import { brand, productName } from '@/config/branding'
 import { storeToRefs } from 'pinia';
 import { onMounted, onUnmounted, watch, computed, ref, h, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -1352,8 +1354,18 @@ const resizeSidebar = (delta: number, keyboard: boolean) => {
         overflow: hidden;
 
         .logo {
-            width: 128px;
-            height: auto;
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .brand-name {
+            margin-left: 8px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--td-text-color-primary);
+            white-space: nowrap;
         }
 
         .lite-badge {
@@ -1946,11 +1958,6 @@ const resizeSidebar = (delta: number, keyboard: boolean) => {
 }
 </style>
 <style lang="less">
-// Dark mode: invert dark logo to light
-html[theme-mode="dark"] .aside_box .logo_box .logo {
-    filter: invert(1) hue-rotate(180deg);
-}
-
 // Dark mode: 滚动条在深色背景下需要更亮的颜色才看得见
 html[theme-mode="dark"] .aside_box .menu_top:hover {
     scrollbar-color: rgba(255, 255, 255, 0.22) transparent;

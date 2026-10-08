@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isProviderHidden } from '@/config/branding'
 import { ref, computed, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -691,6 +692,8 @@ const connectorDefs = computed<ConnectorDef[]>(() => [
 ])
 
 
+const visibleConnectorDefs = computed(() => connectorDefs.value.filter(def => !isProviderHidden(def.type) || props.dataSource?.type === def.type))
+
 const currentDef = computed(() => connectorDefs.value.find(d => d.type === form.value.type))
 
 const displayedCredentialFields = computed(() => {
@@ -1374,7 +1377,7 @@ const drawerConfirmText = computed(() => {
       <h4 class="setting-drawer__section-title">{{ t('datasource.step.selectType') }}</h4>
       <div class="ds-type-grid">
         <button
-          v-for="def in connectorDefs"
+          v-for="def in visibleConnectorDefs"
           :key="def.type"
           type="button"
           :class="['ds-type-card', { disabled: !def.available }]"

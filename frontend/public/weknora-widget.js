@@ -1,37 +1,17 @@
-/**
- * WeKnora embed widget SDK — floating chat launcher.
- *
- * Programmatic:
- *   WeKnora.init({ channel, token, position, primaryColor, title, baseUrl })
- *   WeKnora.open() | close() | toggle() | destroy()
- *   WeKnora.on('ready', fn) | off('ready', fn)
- *
- * Host context & actions (postMessage to iframe):
- *   WeKnora.setContext({ userId, page, ... })
- *     Inject visitor/page context merged into each chat query.
- *   WeKnora.openWithQuery('How do I reset my password?')
- *     Opens the panel (if closed) and sends the query when the iframe is ready.
- *   WeKnora.setLocale('en-US')
- *     Switch embed UI language (zh-CN | en-US | ko-KR | ja-JP | ru-RU).
- *
- * Secure mode (recommended): instead of `token`, pass `tokenEndpoint` — a URL on
- * your own backend that returns { token: "ems_...", expiresIn: 1800 }. Your
- * backend mints that short-lived session token by exchanging the publish token
- * (kept server-side) against POST /api/v1/embed/:channel/exchange. The publish
- * token then never reaches the browser; the widget auto-refreshes before expiry.
- *
- * Legacy script-tag auto-init via data-* attributes on the script element
- * (data-channel + data-token, or data-channel + data-token-endpoint).
- */
 (function (global) {
   'use strict';
+
+  var BRAND_NAME = '__BRAND_NAME__';
+  var BRAND_SLUG = '__BRAND_SLUG__';
+  var loaderScript = document.currentScript;
+  if (global[BRAND_NAME] && global[BRAND_NAME] === global.WeKnora) return;
 
   var HOST_SOURCE = 'weknora-host';
   var EMBED_SOURCE = 'weknora-embed';
   var POSITIONS = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
   var DEFAULT_POSITION = 'bottom-right';
-  var DEFAULT_COLOR = '#07C05F';
-  var DEFAULT_TITLE = 'AI Assistant';
+  var DEFAULT_COLOR = '__BRAND_PRIMARY_COLOR__';
+  var DEFAULT_TITLE = BRAND_NAME;
   var DEFAULT_WIDTH = 400;
   var DEFAULT_HEIGHT = 600;
 
@@ -57,21 +37,16 @@
     var handlers = listeners[event];
     if (!handlers) return;
     handlers.slice().forEach(function (fn) {
-      try { fn(payload); } catch (e) { console.error('[WeKnora]', e); }
+      try { fn(payload); } catch (e) { console.error('[' + BRAND_NAME + ']', e); }
     });
   }
 
   function createWidget(opts) {
     var channelId = opts.channel || opts.channelId;
-    // Insecure mode: a long-lived publish token is embedded in the page.
     var staticToken = opts.token;
-    // Secure mode: the page never holds the publish token. Instead it points at
-    // an endpoint on the integrator's own backend that mints a short-lived
-    // session token (by server-side exchange of the publish token). The widget
-    // fetches a fresh token here and refreshes it before expiry.
     var tokenEndpoint = opts.tokenEndpoint || opts.token_endpoint || '';
     if (!channelId || (!staticToken && !tokenEndpoint)) {
-      console.warn('[WeKnora] channel and (token or tokenEndpoint) are required');
+      console.warn('[' + BRAND_NAME + '] channel and (token or tokenEndpoint) are required');
       return null;
     }
 
@@ -83,17 +58,13 @@
       if (!tokenEndpoint) return;
       if (refreshTimer) clearTimeout(refreshTimer);
       var ttl = Number(expiresInSec) > 0 ? Number(expiresInSec) : 1800;
-      // Refresh at ~80% of the lifetime, never sooner than 30s.
       var delayMs = Math.max(Math.floor(ttl * 0.8), 30) * 1000;
       refreshTimer = setTimeout(function () {
         loadToken(true).then(function (tok) {
           if (tok) provideToken();
-        }).catch(function () { /* keep last token; next interaction retries */ });
+        }).catch(function () {});
       }, delayMs);
     }
-
-    // Returns a Promise resolving to a usable token. In static mode this is the
-    // embedded publish token. In secure mode it fetches from tokenEndpoint.
     function loadToken(force) {
       if (staticToken) return Promise.resolve(staticToken);
       if (currentToken && !force) return Promise.resolve(currentToken);
@@ -118,7 +89,7 @@
           return tok;
         })
         .catch(function (e) {
-          console.error('[WeKnora] failed to load token', e);
+          console.error('[' + BRAND_NAME + '] failed to load token', e);
           throw e;
         })
         .then(function (tok) { tokenInFlight = null; return tok; }, function (e) { tokenInFlight = null; throw e; });
@@ -130,12 +101,20 @@
     var title = opts.title || DEFAULT_TITLE;
     var baseUrl = (opts.baseUrl || opts.base || '').replace(/\/$/, '');
     if (!baseUrl) {
-      var script = document.currentScript;
+      var script = opts.scriptEl || loaderScript;
       if (script && script.src) {
-        baseUrl = script.src.replace(/\/weknora-widget\.js.*$/, '');
-      } else {
-        baseUrl = global.location ? global.location.origin : '';
+        try {
+          var scriptUrl = new URL(script.src, global.location ? global.location.href : undefined);
+          var fileName = scriptUrl.pathname.split('/').pop();
+          if (fileName === 'weknora-widget.js' || fileName === BRAND_SLUG + '-widget.js') {
+            scriptUrl.pathname = scriptUrl.pathname.slice(0, -fileName.length);
+            scriptUrl.search = '';
+            scriptUrl.hash = '';
+            baseUrl = scriptUrl.href.replace(/\/$/, '');
+          }
+        } catch (e) {}
       }
+      if (!baseUrl) baseUrl = global.location ? global.location.origin : '';
     }
 
     var panelWidth = Number(opts.width) > 0 ? Number(opts.width) : DEFAULT_WIDTH;
@@ -143,8 +122,6 @@
     var embedUrl = baseUrl + '/embed/' + encodeURIComponent(channelId);
     var embedOrigin = baseUrl;
     try {
-      // Derive the exact origin (scheme + host + port) rather than trusting the
-      // raw baseUrl string, so postMessage origin checks are precise.
       embedOrigin = new URL(embedUrl, global.location ? global.location.href : undefined).origin;
     } catch (e) {
       embedOrigin = baseUrl;
@@ -223,8 +200,6 @@
 
     function postToIframe(message) {
       if (!iframe.contentWindow) return;
-      // Always target the known embed origin; never fall back to '*' so the
-      // publish token can't leak to an unexpected document.
       iframe.contentWindow.postMessage(message, embedOrigin || '/');
     }
 
@@ -237,12 +212,12 @@
           token: tok,
           channel_id: channelId,
         });
-      }).catch(function () { /* already logged; iframe stays awaiting */ });
+      }).catch(function () {});
     }
 
     function postHostPayload(type, payload) {
       if (!iframe.contentWindow) {
-        console.warn('[WeKnora] iframe not ready');
+        console.warn('[' + BRAND_NAME + '] iframe not ready');
         return false;
       }
       postToIframe({ source: HOST_SOURCE, type: type, payload: payload || {} });
@@ -256,7 +231,7 @@
         return;
       }
       if (tries >= 20) {
-        console.warn('[WeKnora] iframe not ready');
+        console.warn('[' + BRAND_NAME + '] iframe not ready');
         return;
       }
       setTimeout(function () { whenIframeReady(fn, tries + 1); }, 100);
@@ -264,7 +239,7 @@
 
     function setContext(ctx) {
       if (!ctx || typeof ctx !== 'object') {
-        console.warn('[WeKnora] setContext expects an object');
+        console.warn('[' + BRAND_NAME + '] setContext expects an object');
         return;
       }
       postHostPayload('set_context', ctx);
@@ -273,7 +248,7 @@
     function openWithQuery(query) {
       var text = String(query || '').trim();
       if (!text) {
-        console.warn('[WeKnora] openWithQuery requires a non-empty query');
+        console.warn('[' + BRAND_NAME + '] openWithQuery requires a non-empty query');
         return;
       }
       setOpen(true);
@@ -285,14 +260,13 @@
     function setLocale(locale) {
       var loc = String(locale || '').trim();
       if (!loc) {
-        console.warn('[WeKnora] setLocale requires a locale string');
+        console.warn('[' + BRAND_NAME + '] setLocale requires a locale string');
         return;
       }
       postHostPayload('set_locale', { locale: loc });
     }
 
     function onMessage(e) {
-      // Only trust messages coming from our own iframe window and origin.
       if (e.source !== iframe.contentWindow) return;
       if (!isTrustedOrigin(e.origin)) return;
       if (!e.data || e.data.source !== EMBED_SOURCE) return;
@@ -358,8 +332,6 @@
 
     launcher.addEventListener('click', toggle);
     iframe.addEventListener('load', function () {
-      // The embed page lives at embedOrigin; we cannot (and need not) read the
-      // cross-origin contentWindow.location. Just (re)provide the token.
       iframeOrigin = embedOrigin;
       provideToken();
     });
@@ -409,9 +381,10 @@
     setLocale: function (locale) { if (instance) instance.setLocale(locale); },
   };
 
+  global[BRAND_NAME] = api;
   global.WeKnora = api;
 
-  var legacyScript = document.currentScript;
+  var legacyScript = loaderScript;
   if (legacyScript) {
     var legacyChannel = legacyScript.getAttribute('data-channel');
     var legacyToken = legacyScript.getAttribute('data-token');

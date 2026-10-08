@@ -5,6 +5,7 @@
   >
     <template #actions>
       <IntegrationExternalCta
+        v-if="helpUrl('cli')"
         :label="$t('integrations.cli.docs')"
         :hint="$t('integrations.cli.docsHint')"
         @click="openDocs"
@@ -70,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { helpUrl } from '@/config/branding'
 import { computed } from 'vue'
 import { useApiBaseUrlDisplay } from '@/composables/useApiBaseUrlDisplay'
 import { copyWithToast } from '@/utils/clipboard'
@@ -103,6 +105,6 @@ const examples = [
 
 const copy = (command: string) => copyWithToast(command, 'integrations.cli.copied')
 const openDocs = () => {
-  window.open('https://github.com/Tencent/WeKnora/blob/main/cli/README.md', '_blank', 'noopener,noreferrer')
+  if (helpUrl('cli')) window.open(helpUrl('cli'), '_blank', 'noopener,noreferrer')
 }
 </script>

@@ -50,3 +50,71 @@
 | `internal/agent/tools/todo_write.go`、`internal/application/service/tenant_skill_install.go`、`internal/application/service/workspace_reset.go`、`internal/browserskill/authorization.go` | 工具、安装、重置与浏览器授权说明含旧名称 | 使用品牌化说明；保留功能、第三方包与兼容目录 |
 
 后端镜像构建已通过 `internal/branding`、`internal/config`、`internal/middleware`、飞书 `core` 与 `wiki` 五包测试，包含实际四类 YAML 和 Swagger 文档的品牌边界测试。前端五语言检查首轮 13 项通过；镜像和浏览器最终验证进行中，完成后追加记录。
+
+前端、构建与验收文件登记：
+
+| 文件 | 原因 | 改动 |
+| --- | --- | --- |
+| `branding/allowed-upstream.json` | 防止漏改与不受控例外 | 精确例外清单、源码检查与真实 HTTP 资源校验 |
+| `docker-compose.branding.yml` | 独立构建和部署覆盖 | 品牌镜像、敏感文件排除、许可证交付；继承飞书修复 |
+| `docker/Dockerfile.app-boyankb` | 独立构建和部署覆盖 | 品牌镜像、敏感文件排除、许可证交付；继承飞书修复 |
+| `docker/Dockerfile.app-boyankb.dockerignore` | 独立构建和部署覆盖 | 品牌镜像、敏感文件排除、许可证交付；继承飞书修复 |
+| `docker/Dockerfile.frontend-boyankb` | 独立构建和部署覆盖 | 品牌镜像、敏感文件排除、许可证交付；继承飞书修复 |
+| `docker/Dockerfile.frontend-boyankb.dockerignore` | 独立构建和部署覆盖 | 品牌镜像、敏感文件排除、许可证交付；继承飞书修复 |
+| `frontend/branding-plugin.ts` | 构建时配置与资源覆盖 | 注入 HTML、颜色和 widget；覆盖旧 Logo 引用并排除隐藏宣传图 |
+| `frontend/embed.html` | 首屏标题与浏览器图标 | 构建时替换标题、描述和资源地址 |
+| `frontend/index.html` | 首屏标题与浏览器图标 | 构建时替换标题、描述和资源地址 |
+| `frontend/nginx.conf` | 新旧 widget、品牌素材和许可证分发 | 统一脚本缓存；品牌资源重新验证缓存；许可证使用纯文本类型 |
+| `frontend/public/weknora-widget.js` | 嵌入展示与 SDK 兼容 | 品牌默认值、新代码示例和旧协议兼容 |
+| `frontend/src/api/embed/index.ts` | 嵌入展示与 SDK 兼容 | 品牌默认值、新代码示例和旧协议兼容 |
+| `frontend/src/api/embed/widgetBranding.test.mjs` | 验证隐藏目录、嵌入兼容与集成示例 | 针对品牌边界的回归检查 |
+| `frontend/src/assets/theme/branding.css` | 统一浅蓝视觉 | 覆盖明暗主题品牌 token，保持语义状态色 |
+| `frontend/src/components/AgentEmbedChannelPanel.vue` | 嵌入展示与 SDK 兼容 | 品牌默认值、新代码示例和旧协议兼容 |
+| `frontend/src/components/Input-field.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/components/ModelEditorDialog.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/components/SandboxConfigEditorDrawer.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/components/UserMenu.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/components/menu.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/config/branding.ts` | 页面共享品牌来源 | 封装共享 JSON、帮助 URL 和厂商显示策略 |
+| `frontend/src/config/integrations.ts` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/embed-main.ts` | 两入口加载品牌样式 | 加入颜色覆盖；主入口诊断前缀读取配置 |
+| `frontend/src/i18n/embed.ts` | 多语言产品文字分散 | 引用统一名称和 slug，保留原翻译 key 与真实协议 |
+| `frontend/src/i18n/locales/en-US.ts` | 多语言产品文字分散 | 引用统一名称和 slug，保留原翻译 key 与真实协议 |
+| `frontend/src/i18n/locales/ja-JP.ts` | 多语言产品文字分散 | 引用统一名称和 slug，保留原翻译 key 与真实协议 |
+| `frontend/src/i18n/locales/ko-KR.ts` | 多语言产品文字分散 | 引用统一名称和 slug，保留原翻译 key 与真实协议 |
+| `frontend/src/i18n/locales/ru-RU.ts` | 多语言产品文字分散 | 引用统一名称和 slug，保留原翻译 key 与真实协议 |
+| `frontend/src/i18n/locales/zh-CN.ts` | 多语言产品文字分散 | 引用统一名称和 slug，保留原翻译 key 与真实协议 |
+| `frontend/src/main.ts` | 两入口加载品牌样式 | 加入颜色覆盖；主入口诊断前缀读取配置 |
+| `frontend/src/views/agent/AgentEditorModal.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/auth/Login.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/embed/EmbedPage.vue` | 嵌入展示与 SDK 兼容 | 品牌默认值、新代码示例和旧协议兼容 |
+| `frontend/src/views/integrations/ApiIntegrationSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/integrations/CliIntegrationLanding.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/integrations/IntegrationSettingsSection.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/integrations/mcpServerIntegration.test.ts` | 验证隐藏目录、嵌入兼容与集成示例 | 针对品牌边界的回归检查 |
+| `frontend/src/views/integrations/mcpServerIntegration.ts` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/knowledge/components/FAQEntryManager.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/knowledge/settings/DataSourceEditorDialog.test.ts` | 验证隐藏目录、嵌入兼容与集成示例 | 针对品牌边界的回归检查 |
+| `frontend/src/views/knowledge/settings/DataSourceEditorDialog.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/knowledge/settings/DataSourceSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/knowledge/settings/GraphSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/knowledge/settings/KBParserSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/knowledge/settings/chunkingSamples.ts` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/BrowserConnectionSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/MemorySettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/ModelSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/ParserEngineSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/SandboxSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/Settings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/StorageBackendSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/SystemInfo.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/TenantMembers.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/VectorStoreSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/src/views/settings/WeKnoraCloudSettings.vue` | 产品文案与上游入口分散 | 接入统一品牌、隐藏空帮助链接及未使用第三方选项；保留已有配置 |
+| `frontend/vite.config.ts` | 构建时配置与资源覆盖 | 注入 HTML、颜色和 widget；覆盖旧 Logo 引用并排除隐藏宣传图 |
+| `scripts/build-image.sh` | 提供一条命令构建 | Docker 内构建，支持 --with-app，不自动启动服务 |
+| `scripts/check-branding.mjs` | 防止漏改与不受控例外 | 精确例外清单、源码检查与真实 HTTP 资源校验 |
+| `scripts/check-branding.test.mjs` | 防止漏改与不受控例外 | 精确例外清单、源码检查与真实 HTTP 资源校验 |
+| `scripts/migrate-branding-smoke.mjs` | 原测试记录带旧品牌 | 读取品牌配置；只迁移固定测试名称且精确匹配旧描述的记录 |
+| `scripts/smoke-test.sh` | 原测试记录带旧品牌 | 读取品牌配置；只迁移固定测试名称且精确匹配旧描述的记录 |
+| `scripts/verify-branding.mjs` | 实际页面验收 | 隔离浏览器、五语言与主题、厂商隐藏、widget 和测试嵌入截图 |

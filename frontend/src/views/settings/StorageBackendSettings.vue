@@ -121,7 +121,7 @@
             <label class="form-label required">{{ t('settings.storageBackend.providerLabel') }}</label>
             <t-select v-model="form.provider" :disabled="!!editing" @change="resetConfig">
               <t-option
-                v-for="provider in providers"
+                v-for="provider in visibleProviders"
                 :key="provider"
                 :value="provider"
                 :label="provider.toUpperCase()"
@@ -198,7 +198,7 @@
           <h4 class="setting-drawer__section-title">{{ t('settings.storageBackend.advancedSection') }}</h4>
           <div class="form-item">
             <label class="form-label">{{ t('settings.storageBackend.pathPrefixLabel') }}</label>
-            <t-input v-model="form.config.path_prefix" :disabled="!!editing" placeholder="weknora/" clearable />
+            <t-input v-model="form.config.path_prefix" :disabled="!!editing" :placeholder="`${productSlug}/`" clearable />
           </div>
           <div v-if="form.provider === 'minio'" class="form-item">
             <div class="vision-toggle">
@@ -245,6 +245,7 @@
 </template>
 
 <script setup lang="ts">
+import { isProviderHidden, productSlug } from '@/config/branding'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { DialogPlugin, MessagePlugin } from 'tdesign-vue-next'
 import { AddIcon } from 'tdesign-icons-vue-next'
@@ -263,6 +264,7 @@ const authStore = useAuthStore()
 const loading = ref(false), saving = ref(false), testing = ref(false), visible = ref(false)
 const backends = ref<StorageBackend[]>([]), providers = ref<string[]>([]), defaultID = ref('')
 const editing = ref<StorageBackend | null>(null)
+const visibleProviders = computed(() => providers.value.filter(provider => !isProviderHidden(provider) || editing.value?.provider === provider))
 const rawTestResult = ref<'ok' | 'error' | null>(null)
 const blankConfig = (): StorageBackendConfig => ({ mode: 'remote', endpoint: '', region: '', access_key_id: '', secret_access_key: '', bucket_name: '', path_prefix: '', use_ssl: true })
 const form = reactive<{ name: string; provider: string; config: StorageBackendConfig }>({ name: '', provider: 'local', config: blankConfig() })
@@ -333,7 +335,7 @@ async function load() {
   } finally { loading.value = false }
 }
 function resetConfig() { form.config = blankConfig(); rawTestResult.value = null }
-function openCreate() { editing.value = null; form.name = ''; form.provider = providers.value[0] || 'local'; form.config = blankConfig(); rawTestResult.value = null; visible.value = true }
+function openCreate() { editing.value = null; form.name = ''; form.provider = visibleProviders.value[0] || 'local'; form.config = blankConfig(); rawTestResult.value = null; visible.value = true }
 function openEdit(backend: StorageBackend) { editing.value = backend; form.name = backend.name; form.provider = backend.provider; form.config = { ...blankConfig(), ...backend.config }; rawTestResult.value = null; visible.value = true }
 async function testRaw() {
   testing.value = true

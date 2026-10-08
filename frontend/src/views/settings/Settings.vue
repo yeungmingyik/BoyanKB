@@ -187,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import { isProviderHidden } from '@/config/branding'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import type { LocationQueryRaw } from 'vue-router'
@@ -223,6 +224,7 @@ import {
   INTEGRATION_PREVIEW_ITEMS,
   INTEGRATION_TAB_CAPABILITY,
   INTEGRATION_TAB_MIN_ROLE,
+  isIntegrationEnabled,
 } from '@/config/integrations'
 import {
   SETTINGS_SECTION_MIN_ROLE,
@@ -296,7 +298,9 @@ const syncSettingsRoute = (sectionKey: string) => {
 }
 
 const isSectionSupported = (key: string): boolean => {
+  if (isProviderHidden(key)) return false
   if (isIntegrationSection(key)) {
+    if (!isIntegrationEnabled(integrationTabFromSection(key))) return false
     return deploymentCapabilities.isSupported(
       INTEGRATION_TAB_CAPABILITY[integrationTabFromSection(key)],
     )
@@ -305,7 +309,9 @@ const isSectionSupported = (key: string): boolean => {
 }
 
 const canSeeSection = (key: string): boolean => {
+  if (isProviderHidden(key)) return false
   if (isIntegrationSection(key)) {
+    if (!isIntegrationEnabled(integrationTabFromSection(key))) return false
     const min = INTEGRATION_TAB_MIN_ROLE[integrationTabFromSection(key)]
     if (!min) return true
     if (authStore.canAccessAllTenants) return true

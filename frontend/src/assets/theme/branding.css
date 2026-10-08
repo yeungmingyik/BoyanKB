@@ -1,0 +1,57 @@
+:root:root:root,
+:root:root:root[theme-mode="light"] {
+  --td-brand-color-1: var(--bk-background);
+  --td-brand-color-2: color-mix(in srgb, var(--bk-primary) 40%, white);
+  --td-brand-color-3: var(--bk-actionHover);
+  --td-brand-color-4: var(--bk-action);
+  --td-brand-color-5: var(--bk-actionActive);
+  --td-brand-color-6: var(--bk-actionActive);
+  --td-brand-color-7: color-mix(in srgb, var(--bk-action) 75%, black);
+  --td-brand-color-8: color-mix(in srgb, var(--bk-action) 65%, black);
+  --td-brand-color-9: color-mix(in srgb, var(--bk-action) 55%, black);
+  --td-brand-color-10: color-mix(in srgb, var(--bk-action) 45%, black);
+  --brand-main: var(--bk-action);
+  --td-brand-color: var(--bk-action);
+  --td-brand-color-hover: var(--bk-actionHover);
+  --td-brand-color-active: var(--bk-actionActive);
+  --td-brand-color-light: var(--bk-background);
+  --td-brand-color-disabled: color-mix(in srgb, var(--bk-primary) 45%, white);
+  --td-brand-color-focus: color-mix(in srgb, var(--bk-primary) 25%, transparent);
+  --td-text-color-brand: var(--bk-action);
+  --td-text-color-link: var(--bk-action);
+  --app-selection-bg: var(--bk-background);
+  --app-selection-text: var(--bk-actionActive);
+  --app-selection-border: color-mix(in srgb, var(--bk-primary) 50%, var(--td-component-stroke));
+  --app-focus-border: var(--bk-action);
+}
+
+:root:root:root[theme-mode="dark"] {
+  --td-brand-color-1: color-mix(in srgb, var(--bk-primary) 14%, #181818);
+  --td-brand-color-2: color-mix(in srgb, var(--bk-primary) 24%, #181818);
+  --td-brand-color-3: var(--bk-actionHover);
+  --td-brand-color-4: var(--bk-action);
+  --td-brand-color-5: var(--bk-actionHover);
+  --td-brand-color-6: var(--bk-action);
+  --td-brand-color-7: var(--bk-actionActive);
+  --td-brand-color-8: var(--bk-primary);
+  --td-brand-color-9: var(--bk-darkAction);
+  --td-brand-color-10: var(--bk-background);
+  --brand-main: var(--bk-action);
+  --td-brand-color: var(--bk-action);
+  --td-brand-color-hover: var(--bk-actionHover);
+  --td-brand-color-active: var(--bk-actionActive);
+  --td-brand-color-light: var(--td-brand-color-1);
+  --td-brand-color-disabled: color-mix(in srgb, var(--bk-action) 35%, #242424);
+  --td-brand-color-focus: color-mix(in srgb, var(--bk-primary) 30%, transparent);
+  --td-text-color-brand: var(--bk-darkAction);
+  --td-text-color-link: var(--bk-darkAction);
+  --app-selection-bg: var(--td-brand-color-1);
+  --app-selection-text: var(--bk-darkAction);
+  --app-selection-border: color-mix(in srgb, var(--bk-primary) 40%, var(--td-component-stroke));
+  --app-focus-border: var(--bk-darkAction);
+}
+
+::selection {
+  color: var(--app-selection-text);
+  background: var(--app-selection-bg);
+}

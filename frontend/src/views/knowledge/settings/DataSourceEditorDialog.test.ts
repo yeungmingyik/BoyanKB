@@ -4,6 +4,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { runInNewContext } from 'node:vm'
 import test from 'node:test'
+import { isProviderHidden } from '../../../config/branding.ts'
 import { compileScript, parse } from '@vue/compiler-sfc'
 import ts from 'typescript'
 import { createRenderer, h, nextTick, reactive, ref } from 'vue'
@@ -18,7 +19,7 @@ const compiled = ts.transpileModule(script, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText
 
-async function fixture({ configured = true, create = false } = {}) {
+async function fixture({ configured = true, create = false, sourceType = 'gitlab' } = {}) {
   const calls: Array<{ method: string; args: any[] }> = []
   let storedToken = configured ? 'expired-token' : ''
   const api = {
@@ -42,7 +43,7 @@ async function fixture({ configured = true, create = false } = {}) {
   const props = reactive({
     visible: false, kbId: 'kb-one',
     dataSource: create ? null : {
-      id: 'source-one', name: 'GitLab', type: 'gitlab',
+      id: 'source-one', name: 'GitLab', type: sourceType,
       credentials: { credentials: { configured } },
       config: { resource_ids: [], settings: { projects: [{ project_id: '123', paths: [] }] } },
       sync_schedule: '0 0 */6 * * *', sync_mode: 'incremental',
@@ -57,6 +58,7 @@ async function fixture({ configured = true, create = false } = {}) {
       if (name === 'vue-i18n') return { useI18n: () => ({ t: (key: string) => key }) }
       if (name === 'tdesign-vue-next') return { MessagePlugin: { warning() {}, success() {}, error() {} } }
       if (name === '@/api/datasource') return api
+      if (name === '@/config/branding') return { isProviderHidden }
       return { default: {} }
     },
     URL, console,
@@ -156,4 +158,15 @@ test('new GitLab data sources continue to test credentials without persistence',
     assert.equal(f.vm.testResult, 'success')
     assert.deepEqual(f.calls.map(call => call.method), ['validateCredentials'])
   } finally { f.close() }
+})
+
+test('new data sources omit hidden providers while existing sources remain editable', async () => {
+  const fresh = await fixture({ create: true })
+  assert.ok(fresh.vm.visibleConnectorDefs.some((def: { type: string }) => def.type === 'feishu'))
+  assert.ok(!fresh.vm.visibleConnectorDefs.some((def: { type: string }) => def.type === 'ima'))
+  fresh.close()
+  const existing = await fixture({ sourceType: 'ima' })
+  assert.ok(existing.vm.visibleConnectorDefs.some((def: { type: string }) => def.type === 'ima'))
+  assert.equal(existing.vm.currentDef.type, 'ima')
+  existing.close()
 })

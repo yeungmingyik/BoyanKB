@@ -1,0 +1,3431 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "file": "frontend/index.html",
+      "text": "<t-icon> 运行时向 https://tdesign.gtimg.com 发起请求（见 issue #867 / #897）。",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/index.html",
+      "text": "if (localStorage.getItem('weknora_lite_mode') !== 'true') return;",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/index.html",
+      "text": "var saved = sessionStorage.getItem('weknora_lite_last_path');",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/index.html",
+      "text": "var t=localStorage.getItem('WeKnora_theme')||'light';",
+      "category": "storage_key",
+      "count": 2
+    },
+    {
+      "file": "frontend/public/weknora-widget.js",
+      "text": "global.WeKnora = api;",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/public/weknora-widget.js",
+      "text": "if (fileName === 'weknora-widget.js' || fileName === BRAND_SLUG + '-widget.js') {",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/public/weknora-widget.js",
+      "text": "if (global[BRAND_NAME] && global[BRAND_NAME] === global.WeKnora) return;",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/public/weknora-widget.js",
+      "text": "var EMBED_SOURCE = 'weknora-embed';",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/public/weknora-widget.js",
+      "text": "var HOST_SOURCE = 'weknora-host';",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/agent/index.ts",
+      "text": "// 单轮问答等待附件解析完成的最长时间（秒，0 = 使用全局默认 WEKNORA_CHAT_ATTACHMENT_WAIT_TIMEOUT_SEC）",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/agent/index.ts",
+      "text": "// 扫描件 OCR 最大页数（0 = 使用全局默认 WEKNORA_CHAT_ATTACHMENT_OCR_MAX_PAGES）",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/auth/index.ts",
+      "text": "headers: { 'X-WeKnora-Desktop-Token': token },",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/chat/streame.ts",
+      "text": "// defaultTenantId 时不附\" 来减少 header 体积，但任何把 weknora_tenant",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/chat/streame.ts",
+      "text": "const selectedTenantId = localStorage.getItem('weknora_selected_tenant_id');",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/chat/streame.ts",
+      "text": "const token = embedToken || localStorage.getItem('weknora_token');",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/embed/index.ts",
+      "text": "const EMBED_HOST_SOURCE = 'weknora-host'",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/embed/index.ts",
+      "text": "const EMBED_MSG_SOURCE = 'weknora-embed'",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/embed/index.ts",
+      "text": "export const EMBED_CHAT_SESSION_STORAGE_PREFIX = 'weknora-embed-session:'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/embed/index.ts",
+      "text": "export const EMBED_VISITOR_STORAGE_PREFIX = 'weknora-embed-visitor:'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/initialization/index.ts",
+      "text": "/** 第二段密钥（如 LKEAP Rerank 的腾讯云 SecretKey） */",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/initialization/index.ts",
+      "text": "const selectedTenantId = localStorage.getItem('weknora_selected_tenant_id');",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/initialization/index.ts",
+      "text": "const token = localStorage.getItem('weknora_token');",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/model/index.ts",
+      "text": "// 仅保存 WeKnoraCloud 凭证，不自动创建模型",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/model/index.ts",
+      "text": "console.error('Failed to save WeKnoraCloud credentials:', error)",
+      "category": "diagnostics",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/model/index.ts",
+      "text": "export function getWeKnoraCloudStatus(): Promise<WeKnoraCloudStatusResult> {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/model/index.ts",
+      "text": "export function saveWeKnoraCloudCredentials(data: InitializeWeKnoraCloudRequest): Promise<{ success: boolean; message: string }> {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/model/index.ts",
+      "text": "export interface InitializeWeKnoraCloudRequest {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/model/index.ts",
+      "text": "export interface WeKnoraCloudStatusResult {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/model/index.ts",
+      "text": "get('/api/v1/models/weknoracloud/status')",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/model/index.ts",
+      "text": "post('/api/v1/weknoracloud/credentials', data)",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/api/system/index.ts",
+      "text": "* `ensure_standard` starts a provider-side CLI build when that WeKnora",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/App.vue",
+      "text": "const pendingInviteToken = sessionStorage.getItem('weknora_pending_invite_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/App.vue",
+      "text": "sessionStorage.removeItem('weknora_pending_invite_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/assets/browserskill/LICENSE",
+      "text": "Copyright (c) 2026 Tencent",
+      "category": "copyright",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ChatAttachmentPreviewDrawer.vue",
+      "text": "const MAIN_DRAWER_WIDTH_KEY = 'weknora-chat-attachment-drawer-width'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/credentials/CredentialResource.vue",
+      "text": "(e.g. WeKnora Cloud's api_key + app_secret) so a single-field card",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/css/chat-resource-chips.less",
+      "text": "color: var(--weknora-faq-color, #0052d9);",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/doc-content.vue",
+      "text": "const MAIN_DRAWER_WIDTH_KEY = 'weknora-doc-drawer-width';",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/doc-content.vue",
+      "text": "const TRACE_DRAWER_WIDTH_KEY = 'weknora-trace-drawer-width';",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/GlobalCommandPalette.vue",
+      "text": "new CustomEvent('weknora:open-knowledge', {",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/IMChannelPanel.vue",
+      "text": "<a href=\"https://work.weixin.qq.com/\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"doc-link\">",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/IMChannelPanel.vue",
+      "text": "<t-input v-model=\"formData.credentials.api_base_url\" placeholder=\"https://qyapi.weixin.qq.com\" />",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/IMChannelPanel.vue",
+      "text": "<t-input v-model=\"formData.credentials.ws_endpoint\" placeholder=\"wss://openws.work.weixin.qq.com\" />",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/Input-field.vue",
+      "text": "color: var(--weknora-faq-color, #0052d9);",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/Input-field.vue",
+      "text": "const CHAT_FILE_DROP_EVENT = 'weknora:chat-file-drop';",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/Input-field.vue",
+      "text": "const LAST_CHAT_MODEL_KEY = 'weknora_last_chat_model_id'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/MentionSelector.vue",
+      "text": "color: var(--weknora-faq-color, #0052d9);",
+      "category": "internal_symbol",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": ":confirm-disabled=\"formData.provider === 'weknoracloud' && wkcCredentialState !== 'configured'\"",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": ":disabled=\"formData.provider === 'weknoracloud' && wkcCredentialState !== 'configured'\"",
+      "category": "internal_symbol",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": ":disabled=\"saving || !formData.modelName || (!formData.baseUrl && formData.provider !== 'weknoracloud') || (formData.provider === 'weknoracloud' && wkcCredentialState !== 'configured')\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": ".weknoracloud-hint {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "{{ $t('settings.weknoraCloud.credentialExpired') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "{{ $t('settings.weknoraCloud.credentialUnconfigured') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "{{ $t('settings.weknoraCloud.goToSettings') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "{{ $t('settings.weknoraCloud.modelHintConfigured') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "{{ $t('settings.weknoraCloud.modelHintDocsLink') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "// 如果当前 provider 是 WeKnoraCloud，检查凭证状态",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "// 如果是 remote 类型且非 WeKnoraCloud，必须填写 baseUrl",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "// WeKnoraCloud 凭证状态",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "// WeKnoraCloud 提示信息",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "// WeKnoraCloud: 检查凭证状态",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "&& formData.value.provider !== 'weknoracloud',",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<!-- WeKnoraCloud 提示信息 -->",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<div v-else class=\"weknoracloud-hint\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<div v-else-if=\"wkcCredentialState !== 'loading'\" class=\"weknoracloud-hint weknoracloud-hint--warn\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<div v-if=\"formData.provider !== 'weknoracloud'\" class=\"form-item\">",
+      "category": "internal_symbol",
+      "count": 3
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<div v-if=\"secretExtraField && !isEdit && formData.provider !== 'weknoracloud'\" class=\"form-item\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<div v-if=\"wkcCredentialState === 'configured'\" class=\"weknoracloud-hint weknoracloud-hint--ok\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<span>{{ $t('settings.weknoraCloud.checkingStatus') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<t-button variant=\"text\" size=\"small\" @click=\"goToWeKnoraCloudSettings\"",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<template v-if=\"formData.provider === 'weknoracloud'\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "<template v-if=\"formData.source === 'remote' && formData.provider !== 'weknoracloud'\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "const goToWeKnoraCloudSettings = async () => {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "const status = await getWeKnoraCloudStatus()",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "getWeKnoraCloudStatus,",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "if (!formData.value.modelName || (!formData.value.baseUrl && formData.value.provider !== 'weknoracloud')) {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "if (formData.value.provider === 'weknoracloud') {",
+      "category": "internal_symbol",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "if (formData.value.provider === WEKNORA_CLOUD_PROVIDER && entries.length === 0) {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "if (formData.value.source === 'remote' && formData.value.provider !== 'weknoracloud') {",
+      "category": "internal_symbol",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "if (value === 'weknoracloud') {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "import { WEKNORA_CLOUD_PROVIDER, WKC_MODEL_KINDS, WKC_MODEL_NAME_BY_KIND } from '@/utils/weknoraCloudModels'",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/ModelEditorDialog.vue",
+      "text": "uiStore.openSettings('weknoracloud')",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": ".weknora-template-card {",
+      "category": "internal_symbol",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": ".weknora-template-card__content {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": ".weknora-template-card__title {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": ".weknora-template-card__title-row {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "<div class=\"weknora-template-card is-active\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "<div class=\"weknora-template-card__content\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "<div class=\"weknora-template-card__title-row\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "<p>{{ $t('settings.sandbox.weknoraDockerImageHint') }}</p>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "<span class=\"template-row__title\">{{ $t('settings.sandbox.weknoraDesktopTemplate') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "<span class=\"template-row__title\">{{ $t('settings.sandbox.weknoraStandardTemplate') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "<span class=\"weknora-template-card__title\">{{ $t('settings.sandbox.weknoraDockerImage') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "const defaultDockerImage = 'wechatopenai/weknora-sandbox:main'",
+      "category": "upstream_artifact",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "if (item.standard) return t('settings.sandbox.weknoraStandardTemplate')",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SandboxConfigEditorDrawer.vue",
+      "text": "keeps its memory and CPU share on the daemon host until WeKnora",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/sessionGrouping.ts",
+      "text": "export const SESSION_GROUP_MODE_STORAGE_KEY = 'weknora:session-group-mode'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/sessionMutations.ts",
+      "text": "export const SESSION_MUTATION_EVENT = 'weknora:session-mutation'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SkillInstallTimeline.vue",
+      "text": "const tenantId = localStorage.getItem('weknora_selected_tenant_id')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/SkillInstallTimeline.vue",
+      "text": "const token = localStorage.getItem('weknora_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/components/upload-tasks/UploadTasksPanel.vue",
+      "text": "window.dispatchEvent(new CustomEvent('weknora:open-knowledge', {",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/preferenceStorage.ts",
+      "text": "*   - Legacy un-namespaced keys (WeKnora_${suffix}) from earlier branch",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/preferenceStorage.ts",
+      "text": "* Storage layout: WeKnora_${userId}_${suffix}, where userId is the active",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/preferenceStorage.ts",
+      "text": "console.warn(`[WeKnora] failed to persist preference \"${key}\":`, err)",
+      "category": "diagnostics",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/preferenceStorage.ts",
+      "text": "const anonKey = `WeKnora_anon_${suffix}`",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/preferenceStorage.ts",
+      "text": "const legacyKey = `WeKnora_${suffix}`",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/preferenceStorage.ts",
+      "text": "const raw = localStorage.getItem('weknora_user')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/preferenceStorage.ts",
+      "text": "const target = `WeKnora_${userId}_${suffix}`",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/preferenceStorage.ts",
+      "text": "return `WeKnora_${readUserId()}_${suffix}`",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/useApiBaseUrlDisplay.ts",
+      "text": "__WEKNORA_API_BASE__?: string",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/useApiBaseUrlDisplay.ts",
+      "text": "const injected = win.__WEKNORA_API_BASE__",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/useApiBaseUrlDisplay.ts",
+      "text": "const win = window as WeKnoraDesktopWindow",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/useApiBaseUrlDisplay.ts",
+      "text": "type WeKnoraDesktopWindow = Window & {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/useConfigSkillInstallProgress.ts",
+      "text": "const tenantId = localStorage.getItem('weknora_selected_tenant_id')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/useConfigSkillInstallProgress.ts",
+      "text": "const token = localStorage.getItem('weknora_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/useResourcePins.ts",
+      "text": "return `WeKnora_${readUserId()}_${tenantSegmentForKey()}${RECENTS_SUFFIX}`",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/composables/useSkillInstallerModel.ts",
+      "text": "const LAST_CHAT_MODEL_KEY = 'weknora_last_chat_model_id'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "export const AGENT_EDITOR_FOCUS_SECTION_EVENT = 'weknora:agent-editor-focus-section'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "export const GLOBAL_USER_GUIDE_KEY = 'weknora:new-user-guide-done:v1'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "export const KB_EDITOR_FOCUS_SECTION_EVENT = 'weknora:kb-editor-focus-section'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "export const OPEN_NEW_USER_GUIDE_EVENT = 'weknora:open-new-user-guide'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "storageKey: 'weknora:contextual-guide-agent-create:v1',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "storageKey: 'weknora:contextual-guide-agent-list:v1',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "storageKey: 'weknora:contextual-guide-chat:v1',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "storageKey: 'weknora:contextual-guide-kb-create:v3',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "storageKey: 'weknora:contextual-guide-kb-detail:v1',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "storageKey: 'weknora:contextual-guide-kb-list:v2',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/contextualGuides.ts",
+      "text": "storageKey: 'weknora:contextual-guide-tenant-models:v1',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/integrations.ts",
+      "text": "export const CLAWHUB_SKILL_URL = 'https://clawhub.ai/lyingbug/weknora'",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/config/settingsAccess.ts",
+      "text": "weknoracloud: 'admin',",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/embed.ts",
+      "text": "export const EMBED_LOCALE_STORAGE_KEY = 'weknora-embed-locale'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/localeKeyAudit.ts",
+      "text": "const tempDir = mkdtempSync(join(tmpdir(), 'weknora-locales-'))",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "appIdDesc: 'WeKnora Cloud application ID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "appSecretDesc: 'WeKnora Cloud application secret',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "channelIma: 'Tencent IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "chat: 'WeKnoraCloud Chat',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "connectDesc: 'Create and activate a profile named weknora, then sign in with your email and password. If that profile already exists, choose another name and update the MCP example to match.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "cosAppIdPlaceholder: 'Tencent Cloud Account AppID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "cosDesc: 'Tencent Cloud Object Storage, suitable for public cloud deployment with CDN acceleration.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "cosSecretIdPlaceholder: 'Tencent Cloud API SecretId',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "cosSecretKeyPlaceholder: 'Tencent Cloud API SecretKey',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "cosTitle: 'Tencent Cloud COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "credentialConfigured: 'WeKnoraCloud credentials configured.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "credentialUnconfigured: 'WeKnoraCloud credentials not configured. Please set up APPID and APPSECRET first.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "desc: 'Document parsing via WeKnora Cloud'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "desc: 'Set WEKNORA_BASE_URL and WEKNORA_API_KEY in your shell or ~/.zshrc / ~/.bashrc. The example below uses your current API base URL—replace the API Key with your actual value.'",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "descReady: 'Register the four standard WeKnora Cloud models for chat, retrieval, reranking, and vision.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "description: 'Configure WeKnora Cloud APPID and APPSECRET credentials. Credentials are used for model services and document parsing engine.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "ecosystemNote: 'Skill hosted on ClawHub ({\\'@\\'}lyingbug/weknora). See the ClawHub page for full API docs and version history.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "embedding: 'WeKnoraCloud Embedding',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "engineCos: 'Tencent Cloud COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "expired: 'WeKnora Cloud credentials expired',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "hubMeta: 'ClawHub · {\\'@\\'}lyingbug/weknora · MIT-0'",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "ima: 'Sync documents, notes and files from Tencent IMA knowledge bases (AI sessions and video parses are not supported)',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "ima: 'Tencent IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "mcpDesc: 'After signing in, add this configuration to an MCP client that supports stdio. If the client cannot find weknora, set command to the absolute path of the binary.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "modelHintConfigured: 'WeKnoraCloud credentials configured. See supported models in',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "name: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "nameInvalid: 'That name cannot be used. Names the sandbox reserves, such as PATH or anything starting with WEKNORA_, are not accepted.',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "prereqBarText_ima: 'First time? Click to see the Tencent IMA OpenAPI setup guide',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "prereqOpenConsole_ima: 'Open Tencent IMA OpenAPI console',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "rerank: 'WeKnoraCloud ReRank',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "signedFlowDetail: `Keep the HMAC secret only on ${productName} and your trusted backend—never put it in requests or ship it to browsers. The request header carries the JWT string signed with that secret (it changes on each issuance or after expiry), not the secret itself. JWT must include sub (external user ID), tenant_id, aud=weknora, and exp (max 24h lifetime).`,",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "signedRequestStep0: '# 0. Sign JWT on your backend (HS256, aud=weknora, sub=user id, tenant_id={tenantId}, exp<=24h)',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "title: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "usageSteps: '1. Save APPID and APPSECRET\\n2. Register chat, embedding, rerank, and vlm in Cloud Models below\\n3. Parser: Knowledge Base Settings → Parser Engine → WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "vllm: 'WeKnoraCloud Vision'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "webhookSecretPlaceholder: 'HMAC-SHA256 secret (X-WeKnora-Signature header)',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoracloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoraCloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoraDesktopTemplate: `${productName} desktop template`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoraDockerImage: `${productName} standard image`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoraDockerImageHint: 'Each session gets its own long-lived container. Scripts, shell commands and files all share it until the session ends or the idle timeout reclaims it.',",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoraStandardTemplate: `${productName} standard template`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoraTemplateDescription: `Includes the Python, Node.js, CLI tools, workspace path, and non-root execution user expected by ${productName} skills.`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoraTemplateOverview: `${productName} provides the standard runtime. Templates are discovered after connecting and the standard one is created when missing.`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/en-US.ts",
+      "text": "weknoraTemplateTitle: `${productName} standard template`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "appIdDesc: 'WeKnora CloudのアプリケーションID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "appSecretDesc: 'WeKnora Cloudのアプリケーションシークレット',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "channelIma: 'Tencent IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "chat: 'WeKnoraCloud Chat',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "connectDesc: 'weknoraという名前のプロファイルを作成して有効化し、メールアドレスとパスワードでサインインします。同名のプロファイルが既にある場合は別の名前を選び、MCPの例もそれに合わせて変更してください。',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "cosAppIdPlaceholder: 'Tencent CloudアカウントのAppID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "cosDesc: 'Tencent Cloudのオブジェクトストレージです。CDNによる高速化を伴うパブリッククラウドのデプロイに適しています。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "cosSecretIdPlaceholder: 'Tencent Cloud APIのSecretId',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "cosSecretKeyPlaceholder: 'Tencent Cloud APIのSecretKey',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "cosTitle: 'Tencent Cloud COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "credentialConfigured: 'WeKnoraCloudの認証情報は設定済みです。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "credentialUnconfigured: 'WeKnoraCloudの認証情報が未設定です。先にAPPIDとAPPSECRETを設定してください。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "desc: 'WeKnora Cloudによるドキュメント解析'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "desc: 'シェルまたは~/.zshrc / ~/.bashrcでWEKNORA_BASE_URLとWEKNORA_API_KEYを設定します。下記の例では現在のAPIベースURLを使用しています。APIキーは実際の値に置き換えてください。'",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "descReady: 'チャット、検索、リランク、画像理解（VLM）の4種類のWeKnora Cloud標準モデルを登録します。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "description: 'WeKnora CloudのAPPIDとAPPSECRETを設定します。この認証情報はモデルサービスとドキュメント解析エンジンで使用されます。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "ecosystemNote: 'スキルはClawHub（{\\'@\\'}lyingbug/weknora）でホストされています。完全なAPIドキュメントとバージョン履歴はClawHubページをご覧ください。',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "embedding: 'WeKnoraCloud Embedding',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "engineCos: 'Tencent Cloud COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "expired: 'WeKnora Cloudの認証情報が無効になりました',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "hubMeta: 'ClawHub · {\\'@\\'}lyingbug/weknora · MIT-0'",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "ima: 'Tencent IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "ima: 'Tencent IMAのナレッジベースからドキュメント、ノート、ファイルを同期します（AIセッションと動画の解析は非対応）',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "mcpDesc: 'サインイン後、この設定をstdio対応のMCPクライアントに追加してください。クライアントがweknoraを見つけられない場合は、commandをバイナリの絶対パスに変更してください。',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "modelHintConfigured: 'WeKnoraCloudの認証情報は設定済みです。対応モデルは以下を参照してください:',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "name: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "nameInvalid: 'この名前は使用できません。PATHやWEKNORA_で始まる名前など、サンドボックスが予約している名前は指定できません。',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "prereqBarText_ima: '初めてですか？クリックしてTencent IMA OpenAPIの設定ガイドを表示',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "prereqOpenConsole_ima: 'Tencent IMA OpenAPIコンソールを開く',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "rerank: 'WeKnoraCloud ReRank',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "signedFlowDetail: `HMACシークレットは${productName}と信頼できる自社バックエンドにのみ保存し、リクエストに含めたりブラウザに配布したりしないでください。リクエストヘッダーで送るのは、そのシークレットで署名したJWT文字列（発行ごと、または有効期限切れ後に変わります）であり、シークレット自体ではありません。JWTにはsub（外部ユーザID）、tenant_id、aud=weknora、exp（有効期間は最大24時間）を含める必要があります。`,",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "signedRequestStep0: '# 0.バックエンドでJWTに署名（HS256、aud=weknora、sub=ユーザID、tenant_id={tenantId}、exp<=24h）',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "title: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "usageSteps: '1. APPIDとAPPSECRETを保存\\\\\\n2. 下の「クラウドモデル」でチャット、埋め込み、リランク、vlmを登録\\\\\\n3. 解析エンジン: ナレッジベース設定 → 解析エンジン → WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "vllm: 'WeKnoraCloud Vision'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "webhookSecretPlaceholder: 'HMAC-SHA256シークレット（X-WeKnora-Signatureヘッダー）',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoracloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoraCloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoraDesktopTemplate: `${productName}デスクトップテンプレート`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoraDockerImage: `${productName}標準イメージ`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoraDockerImageHint: 'セッションごとに専用の長時間稼働コンテナが割り当てられます。スクリプト、シェルコマンド、ファイルはすべてこのコンテナを共有し、セッション終了またはアイドルタイムアウトによる回収まで保持されます。',",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoraStandardTemplate: `${productName}標準テンプレート`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoraTemplateDescription: `${productName}のスキルが必要とするPython、Node.js、CLIツール、ワークスペースパス、非root実行ユーザが含まれます。`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoraTemplateOverview: `${productName}が標準ランタイムを提供します。テンプレートは接続後に検出され、存在しない場合は標準テンプレートが作成されます。`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ja-JP.ts",
+      "text": "weknoraTemplateTitle: `${productName}標準テンプレート`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "appIdDesc: 'WeKnora Cloud 애플리케이션 ID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "appSecretDesc: 'WeKnora Cloud 애플리케이션 비밀키',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "channelIma: 'Tencent IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "chat: 'WeKnoraCloud 대화',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "connectDesc: 'weknora 프로필을 생성하고 활성화한 후 이메일과 비밀번호로 로그인하세요. 같은 이름의 프로필이 있다면 다른 이름을 사용하고 MCP 예제의 프로필 이름도 변경하세요.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "cosAppIdPlaceholder: 'Tencent Cloud Account AppID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "cosDesc: 'Tencent Cloud 오브젝트 스토리지, 퍼블릭 클라우드 배포에 적합하며 CDN 가속을 지원합니다.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "cosSecretIdPlaceholder: 'Tencent Cloud API SecretId',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "cosSecretKeyPlaceholder: 'Tencent Cloud API SecretKey',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "cosTitle: 'Tencent Cloud COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "credentialConfigured: 'WeKnoraCloud 자격 증명이 설정되었습니다.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "credentialUnconfigured: 'WeKnoraCloud 자격 증명이 설정되지 않았습니다. APPID와 APPSECRET을 먼저 설정하세요.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "desc: 'WeKnora Cloud를 통한 문서 파싱'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "desc: '셸 또는 ~/.zshrc, ~/.bashrc에 WEKNORA_BASE_URL과 WEKNORA_API_KEY를 설정하세요. 아래 예시는 현재 API 주소를 사용하며, API Key는 실제 값으로 바꾸세요.'",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "descReady: 'WeKnora Cloud의 네 가지 표준 모델을 등록하여 대화, 검색, 재정렬, 비전에 사용합니다.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "description: 'WeKnora Cloud APPID 및 APPSECRET 자격 증명을 설정합니다. 자격 증명은 모델 서비스와 문서 파싱 엔진에 사용됩니다.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "ecosystemNote: 'Skill은 ClawHub({\\'@\\'}lyingbug/weknora)에 호스팅됩니다. 전체 API 문서는 ClawHub 페이지를 참고하세요.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "embedding: 'WeKnoraCloud Embedding',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "engineCos: 'Tencent Cloud COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "expired: 'WeKnora Cloud 자격 증명 만료',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "hubMeta: 'ClawHub · {\\'@\\'}lyingbug/weknora · MIT-0',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "ima: 'Tencent IMA 지식베이스에서 문서, 노트 및 파일 동기화 (AI 세션과 동영상 분석은 지원되지 않음)',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "ima: 'Tencent IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "mcpDesc: '로그인 후 stdio를 지원하는 MCP 클라이언트에 아래 설정을 추가하세요. 클라이언트가 weknora를 찾지 못하면 command를 바이너리의 절대 경로로 변경하세요.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "modelHintConfigured: 'WeKnoraCloud 자격 증명이 설정되었습니다. 지원 모델은',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "name: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "nameInvalid: '이 이름은 사용할 수 없습니다. PATH처럼 샌드박스가 예약한 이름이나 WEKNORA_로 시작하는 이름은 허용되지 않습니다.',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "prereqBarText_ima: '처음 사용하시나요? 클릭하여 Tencent IMA OpenAPI 설정 가이드를 확인하세요',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "prereqOpenConsole_ima: 'Tencent IMA OpenAPI 콘솔로 이동',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "rerank: 'WeKnoraCloud ReRank',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "signedFlowDetail: `HMAC secret은 ${productName}와 신뢰할 수 있는 백엔드에만 보관하세요. 요청에 넣거나 브라우저에 배포하지 마세요. 요청 헤더에는 secret이 아니라 해당 secret으로 서명한 JWT 문자열을 넣습니다(발급마다 또는 만료 후 변경). JWT에는 sub(외부 사용자 ID), tenant_id, aud=weknora, exp(최대 24시간)가 필요합니다.`,",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "signedRequestStep0: '# 0. 백엔드에서 JWT 서명 (HS256, aud=weknora, sub=사용자 ID, tenant_id={tenantId}, exp 최대 24시간)',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "title: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "usageSteps: '1. APPID / APPSECRET 저장\\n2. 아래 「클라우드 모델」에서 chat, embedding, rerank, vlm 추가\\n3. 문서 파싱: 지식 베이스 설정 → 파싱 엔진 → WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "vllm: 'WeKnoraCloud 비전'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "webhookSecretPlaceholder: 'HMAC-SHA256 secret (X-WeKnora-Signature header)',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoracloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoraCloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoraDesktopTemplate: `${productName} 데스크톱 템플릿`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoraDockerImage: `${productName} standard image`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoraDockerImageHint: 'Each session gets its own long-lived container. Scripts, shell commands and files all share it until the session ends or the idle timeout reclaims it.',",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoraStandardTemplate: `${productName} 표준 템플릿`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoraTemplateDescription: `Includes the Python, Node.js, CLI tools, workspace path, and non-root execution user expected by ${productName} skills.`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoraTemplateOverview: `${productName} provides the standard runtime. Templates are discovered after connecting and the standard one is created when missing.`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ko-KR.ts",
+      "text": "weknoraTemplateTitle: `${productName} standard template`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "appIdDesc: 'ID приложения WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "appSecretDesc: 'Секрет приложения WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "channelIma: 'Tencent IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "chat: 'WeKnoraCloud Chat',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "connectDesc: 'Создайте и активируйте профиль weknora, затем войдите с электронной почтой и паролем. Если такой профиль уже существует, выберите другое имя и измените имя профиля в примере MCP.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "cosAppIdPlaceholder: 'Tencent Cloud Account AppID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "cosDesc: 'Объектное хранилище Tencent Cloud для публичного облака с поддержкой CDN-ускорения.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "cosSecretIdPlaceholder: 'Tencent Cloud API SecretId',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "cosSecretKeyPlaceholder: 'Tencent Cloud API SecretKey',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "cosTitle: 'Tencent Cloud COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "credentialConfigured: 'Учётные данные WeKnoraCloud настроены.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "credentialUnconfigured: 'Учётные данные WeKnoraCloud не настроены. Заполните APPID и APPSECRET.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "desc: 'Задайте WEKNORA_BASE_URL и WEKNORA_API_KEY в shell или ~/.zshrc / ~/.bashrc. Пример ниже использует текущий API URL — замените API Key на фактическое значение.'",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "desc: 'Парсинг документов через WeKnora Cloud'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "descReady: 'Зарегистрируйте четыре стандартные модели WeKnora Cloud для чата, поиска, реранкинга и зрения.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "description: 'Настройте учётные данные APPID и APPSECRET для WeKnora Cloud. Данные используются для модельных сервисов и движка парсинга документов.',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "ecosystemNote: 'Skill размещён на ClawHub ({\\'@\\'}lyingbug/weknora). Полная документация API — на странице ClawHub.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "embedding: 'WeKnoraCloud Embedding',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "engineCos: 'Tencent Cloud COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "expired: 'Учётные данные WeKnora Cloud истекли',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "hubMeta: 'ClawHub · {\\'@\\'}lyingbug/weknora · MIT-0',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "ima: 'Tencent IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "ima: 'Синхронизация документов, заметок и файлов из баз знаний Tencent IMA (ИИ-сессии и разбор видео не поддерживаются)',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "mcpDesc: 'После входа добавьте эту конфигурацию в клиент MCP с поддержкой stdio. Если клиент не находит weknora, укажите в command абсолютный путь к бинарному файлу.',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "modelHintConfigured: 'Учётные данные WeKnoraCloud настроены. Поддерживаемые модели см. в',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "name: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "nameInvalid: 'Это имя использовать нельзя. Имена, зарезервированные песочницей, например PATH или начинающиеся с WEKNORA_, не принимаются.',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "prereqBarText_ima: 'В первый раз? Нажмите, чтобы увидеть руководство по настройке Tencent IMA OpenAPI',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "prereqOpenConsole_ima: 'Открыть консоль Tencent IMA OpenAPI',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "rerank: 'WeKnoraCloud ReRank',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "signedFlowDetail: `HMAC secret храните только в ${productName} и на доверенном backend — не передавайте в запросах и не отдавайте браузеру. В заголовке запроса передаётся JWT, подписанный этим secret (меняется при каждой выдаче или после истечения), а не сам secret. JWT должен содержать sub (ID внешнего пользователя), tenant_id, aud=weknora и exp (не более 24 ч).`,",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "signedRequestStep0: '# 0. Подпишите JWT на backend (HS256, aud=weknora, sub=ID пользователя, tenant_id={tenantId}, exp не более 24 ч)',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "title: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "usageSteps: '1. Сохраните APPID и APPSECRET\\n2. Добавьте chat, embedding, rerank и vlm в разделе «Облачные модели» ниже\\n3. Парсинг: Настройки БЗ → Движок парсинга → WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "vllm: 'WeKnoraCloud Vision'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "webhookSecretPlaceholder: 'HMAC-SHA256 secret (X-WeKnora-Signature header)',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoracloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoraCloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoraDesktopTemplate: `Шаблон рабочего стола ${productName}`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoraDockerImage: `${productName} standard image`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoraDockerImageHint: 'Each session gets its own long-lived container. Scripts, shell commands and files all share it until the session ends or the idle timeout reclaims it.',",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoraStandardTemplate: `Стандартный шаблон ${productName}`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoraTemplateDescription: `Includes the Python, Node.js, CLI tools, workspace path, and non-root execution user expected by ${productName} skills.`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoraTemplateOverview: `${productName} provides the standard runtime. Templates are discovered after connecting and the standard one is created when missing.`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/ru-RU.ts",
+      "text": "weknoraTemplateTitle: `${productName} standard template`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "appIdDesc: 'WeKnora Cloud 的应用 ID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "appSecretDesc: 'WeKnora Cloud 的应用密钥',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "channelIma: '腾讯 IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "chat: 'WeKnoraCloud 对话',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "connectDesc: '创建并启用名为 weknora 的连接配置，然后使用邮箱和密码登录。如果已有同名配置，请更换名称，并同步修改 MCP 示例中的配置名。',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "cosAppIdPlaceholder: '腾讯云账号 AppID',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "cosDesc: '腾讯云对象存储服务，适合公有云部署，支持 CDN 加速。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "cosSecretIdPlaceholder: '腾讯云 API 密钥 SecretId',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "cosSecretKeyPlaceholder: '腾讯云 API 密钥 SecretKey',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "cosTitle: '腾讯云 COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "credentialConfigured: 'WeKnoraCloud 凭证已配置',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "credentialUnconfigured: '尚未配置 WeKnoraCloud 凭证，请先填写 APPID 和 APPSECRET。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "desc: '使用 WeKnora Cloud 进行文档解析'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "desc: '在终端或 ~/.zshrc、~/.bashrc 中设置 WEKNORA_BASE_URL 与 WEKNORA_API_KEY。下方示例已填入当前 API 地址，请将 API Key 替换为实际值。'",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "descReady: '将 WeKnora Cloud 提供的四类标准模型注册到当前空间，用于对话、向量检索、重排序与多模态理解。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "description: '配置 WeKnora Cloud 的 APPID 和 APPSECRET 凭证。凭证用于模型服务和文档解析引擎。',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "ecosystemNote: 'Skill 托管于 ClawHub（{\\'@\\'}lyingbug/weknora），完整 API 说明与版本历史请参见 ClawHub 页面。',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "embedding: 'WeKnoraCloud Embedding',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "engineCos: '腾讯云 COS',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "expired: 'WeKnora Cloud 凭证已失效',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "hubMeta: 'ClawHub · {\\'@\\'}lyingbug/weknora · MIT-0',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "ima: '腾讯 IMA',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "ima: '同步腾讯 IMA 知识库中的文档、笔记与文件（暂不支持 AI 会话与视频解析）',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "mcpDesc: '完成登录后，将以下配置添加到支持 stdio 的 MCP 客户端。若客户端无法找到 weknora，请将 command 改为二进制的绝对路径。',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "modelHintConfigured: 'WeKnoraCloud 凭证已配置。支持的模型可参考',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "name: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "nameInvalid: '这个名字不能用。沙箱保留的名字（例如 PATH，或以 WEKNORA_ 开头的名字）不接受。',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "prereqBarText_ima: '首次使用？点击查看腾讯 IMA OpenAPI 授权指引',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "rerank: 'WeKnoraCloud ReRank',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "signedFlowDetail: `HMAC 密钥仅保存在 ${productName} 与你的可信后端，切勿放入请求或下发给浏览器。请求头里传的是用该密钥签出的 JWT 字符串（每次签发或过期后会变），不是密钥本身。JWT 须包含 sub（外部用户 ID）、tenant_id、aud=weknora、exp（有效期不超过 24 小时）。`,",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "signedRequestStep0: '# 0. 在你的后端签发 JWT（HS256，aud=weknora，sub=用户 ID，tenant_id={tenantId}，exp 不超过 24 小时）',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "title: 'WeKnora Cloud',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "usageSteps: '1. 填写并保存 APPID / APPSECRET\\n2. 在下方「云模型接入」中按行添加 chat、embedding、rerank、vlm\\n3. 文档解析：知识库设置 → 解析引擎，选择 WeKnora Cloud 引擎',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "vllm: 'WeKnoraCloud 视觉'",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "webhookSecretPlaceholder: '用于 HMAC-SHA256 签名（X-WeKnora-Signature）',",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoracloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoraCloud: {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoraDesktopTemplate: `${productName} 桌面模板`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoraDockerImage: `${productName} 标准镜像`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoraDockerImageHint: '每次会话独占一个长驻容器，脚本、shell 命令与文件都在同一个容器内，会话结束或空闲超时后回收。',",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoraStandardTemplate: `${productName} 标准模板`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoraTemplateDescription: `包含 ${productName} 技能所需的 Python、Node.js、CLI 工具、工作目录和非 root 执行用户。`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoraTemplateOverview: `${productName} 负责提供标准运行环境。连接集群后会自动发现模板，缺少标准模板时自动创建。`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/i18n/locales/zh-CN.ts",
+      "text": "weknoraTemplateTitle: `${productName} 标准模板`,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/main.ts",
+      "text": "// 必须在 Vue 组件挂载之前执行，避免 tdesign-icons 运行时请求 tdesign.gtimg.com",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/main.ts",
+      "text": "if (localStorage.getItem(\"weknora_token\")) {",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/router/index.ts",
+      "text": "const AUTO_SETUP_FAILED_KEY = 'weknora_auto_setup_failed'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/router/index.ts",
+      "text": "const LITE_LAST_PATH_KEY = 'weknora_lite_last_path'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/router/index.ts",
+      "text": "const storedRefreshToken = localStorage.getItem('weknora_refresh_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/router/index.ts",
+      "text": "const token = localStorage.getItem('weknora_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/router/index.ts",
+      "text": "return authStore.isLiteMode || localStorage.getItem('weknora_lite_mode') === 'true'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "// SECURITY: This value is read from localStorage (`weknora_memberships`)",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const raw = localStorage.getItem('WeKnora_settings')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedCurrentKb = localStorage.getItem('weknora_current_kb')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedKnowledgeBases = localStorage.getItem('weknora_knowledge_bases')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedMemberships = localStorage.getItem('weknora_memberships')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedRefreshToken = localStorage.getItem('weknora_refresh_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedSelectedTenantId = localStorage.getItem('weknora_selected_tenant_id')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedSelectedTenantName = localStorage.getItem('weknora_selected_tenant_name')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedTenant = localStorage.getItem('weknora_tenant')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedToken = localStorage.getItem('weknora_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "const storedUser = localStorage.getItem('weknora_user')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "isLiteMode.value = localStorage.getItem('weknora_lite_mode') === 'true'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_current_kb')",
+      "category": "storage_key",
+      "count": 3
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_knowledge_bases')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_last_chat_model_id')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_lite_mode')",
+      "category": "storage_key",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_memberships')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_refresh_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_selected_tenant_id')",
+      "category": "storage_key",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_selected_tenant_name')",
+      "category": "storage_key",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_tenant')",
+      "category": "storage_key",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.removeItem('weknora_user')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_current_kb', JSON.stringify(kb))",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_knowledge_bases', JSON.stringify(knowledgeBases.value))",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_lite_mode', 'true')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_memberships', JSON.stringify(memberships.value))",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_refresh_token', refreshTokenValue)",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_selected_tenant_id', String(tenantId))",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_selected_tenant_name', tenantName)",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('WeKnora_settings', JSON.stringify(parsed))",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_tenant', JSON.stringify(tenantData))",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_token', tokenValue)",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "localStorage.setItem('weknora_user', JSON.stringify(userData))",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/auth.ts",
+      "text": "sessionStorage.removeItem('weknora_lite_last_path')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/commandPalette.ts",
+      "text": "const RECENT_KEY_PREFIX = 'weknora_cmdk_recent'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/settings.ts",
+      "text": "localStorage.setItem(\"WeKnora_settings\", JSON.stringify(this.settings));",
+      "category": "storage_key",
+      "count": 30
+    },
+    {
+      "file": "frontend/src/stores/settingsStorage.ts",
+      "text": "\"[settings] Failed to parse WeKnora_settings from localStorage, resetting to defaults:\",",
+      "category": "diagnostics",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/stores/settingsStorage.ts",
+      "text": "export const SETTINGS_STORAGE_KEY = \"WeKnora_settings\";",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/types/novnc.d.ts",
+      "text": "* Not used by WeKnora: the desktop authenticates one hop out, on",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/api-base.ts",
+      "text": "// axios calls work at `/app/weknora/` (LocalHub reverse proxy). Without",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/api-base.ts",
+      "text": "// POST\". Strip trailing slash so axios doesn't produce `/app/weknora//api/v1/...`.",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/api-base.ts",
+      "text": "// See: plugins/weknora/patches/api-base-baseurl.patch",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_current_kb',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_knowledge_bases',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_memberships',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_refresh_token',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_selected_tenant_id',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_selected_tenant_name',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_tenant',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_token',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "'weknora_user',",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "const storedRefreshToken = localStorage.getItem('weknora_refresh_token')",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "localStorage.setItem('weknora_refresh_token', newRefreshToken)",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/authRefresh.ts",
+      "text": "localStorage.setItem('weknora_token', token)",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/citationMarkdown.ts",
+      "text": "const HTML_PLACEHOLDER_RE = /@@WEKNORA_HTML_PLACEHOLDER_(\\d+)@@/g",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/citationMarkdown.ts",
+      "text": "return `@@WEKNORA_HTML_PLACEHOLDER_${idx}@@`",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/protectedFileAccess.ts",
+      "text": "__weknoraProtectedFileAccessV1__?: ProtectedFileAccessState;",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/protectedFileAccess.ts",
+      "text": "// active tenant into weknora_tenant, leaving authenticated file",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/protectedFileAccess.ts",
+      "text": "const selectedTenantId = (localStorage.getItem('weknora_selected_tenant_id') || '').trim();",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/protectedFileAccess.ts",
+      "text": "const token = (localStorage.getItem('weknora_token') || '').trim();",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/protectedFileAccess.ts",
+      "text": "return scope.__weknoraProtectedFileAccessV1__;",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/protectedFileAccess.ts",
+      "text": "scope.__weknoraProtectedFileAccessV1__ ||= fresh();",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/protectedResource.ts",
+      "text": "export const RESOURCE_PREVIEW_EVENT = 'weknora:resource-preview';",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/request.ts",
+      "text": "// 但这条优化会被任何把 weknora_tenant 写成激活空间的代码（OIDC",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/request.ts",
+      "text": "const selectedTenantId = localStorage.getItem('weknora_selected_tenant_id');",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/request.ts",
+      "text": "const token = localStorage.getItem('weknora_token');",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/sandboxArtifactRefs.ts",
+      "text": "* （`腾讯控股(00700) 成交量_838ccc.html`）。marked 会在第一个空格处把目标截断，",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/sandboxArtifactRefs.ts",
+      "text": "const scope = window as typeof window & { __weknoraArtifactBlobCacheV1__?: ArtifactBlobState };",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/sandboxArtifactRefs.ts",
+      "text": "return scope.__weknoraArtifactBlobCacheV1__;",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/sandboxArtifactRefs.ts",
+      "text": "scope.__weknoraArtifactBlobCacheV1__ ||= fresh();",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/sandboxPtyId.ts",
+      "text": "const KEY_PREFIX = 'weknora_sandbox_pty:'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/security.ts",
+      "text": "__weknoraProtectedFileCacheV4__?: ProtectedFileCacheState;",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/security.ts",
+      "text": "const scope = window as typeof window & { __weknoraProtectedCardClicks__?: boolean };",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/security.ts",
+      "text": "if (scope.__weknoraProtectedCardClicks__) return;",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/security.ts",
+      "text": "return scope.__weknoraProtectedFileCacheV4__;",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/security.ts",
+      "text": "scope.__weknoraProtectedCardClicks__ = true;",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/security.ts",
+      "text": "scope.__weknoraProtectedFileCacheV4__ ||= fresh();",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/tdesign-icon-offline.ts",
+      "text": "(version) => `https://tdesign.gtimg.com/icon/${version}/fonts/index.css`,",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/tdesign-icon-offline.ts",
+      "text": "(version) => `https://tdesign.gtimg.com/icon/${version}/fonts/index.js`,",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/tdesign-icon-offline.ts",
+      "text": "*   `https://tdesign.gtimg.com/icon/<version>/fonts/index.(js|css)` 的",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/tdesign-icon-offline.ts",
+      "text": "stub.setAttribute(\"data-weknora-blocked-cdn\", \"tdesign-icons\");",
+      "category": "internal_symbol",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/utils/tenantSwitch.ts",
+      "text": "const PENDING_TOAST_KEY = 'weknora_pending_tenant_switch_toast'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/weknoraCloudModels.ts",
+      "text": "/** Returns kinds that already have a WeKnoraCloud model of the matching backend type. */",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/weknoraCloudModels.ts",
+      "text": "base_url: WEKNORA_CLOUD_BASE_URL,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/weknoraCloudModels.ts",
+      "text": "export const WEKNORA_CLOUD_BASE_URL = 'https://weknora.weixin.qq.com'",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/weknoraCloudModels.ts",
+      "text": "export const WEKNORA_CLOUD_PROVIDER = 'weknoracloud'",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/weknoraCloudModels.ts",
+      "text": "export function isWeKnoraCloudModel(model: ModelConfig): boolean {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/weknoraCloudModels.ts",
+      "text": "if (!isWeKnoraCloudModel(model)) continue",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/weknoraCloudModels.ts",
+      "text": "provider: WEKNORA_CLOUD_PROVIDER,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/utils/weknoraCloudModels.ts",
+      "text": "return model.parameters?.provider === WEKNORA_CLOUD_PROVIDER",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/auth/Login.vue",
+      "text": "const AUTO_SETUP_FAILED_KEY = 'weknora_auto_setup_failed'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/auth/Login.vue",
+      "text": "sessionStorage.setItem('weknora_pending_invite_token', inviteToken.value)",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/chat/components/ChatArtifactsDrawer.vue",
+      "text": "const PREVIEW_WIDTH_KEY = 'weknora-chat-artifact-preview-width'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/chat/components/SandboxTerminal.vue",
+      "text": "// exec=green, link=cyan). Only the green slots stay WeKnora brand so",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/chat/index.vue",
+      "text": "const FORK_PREFILL_KEY = 'weknora:fork-prefill'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/embed/EmbedChatCore.vue",
+      "text": "const embedWebSearchStorageKey = () => `weknora-embed-web-search:${props.channelId}`",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "__WEKNORA_API_BASE__?: string",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "__WEKNORA_API_LAN_BASE__?: string",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "\"aud\":       \"weknora\",",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "async function tryLoadWailsLanHints(win: WeKnoraDesktopWindow) {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "const fn = (window as WeKnoraDesktopWindow).go?.main?.App?.SetDesktopHTTPBindPublicSetting",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "const fn = (window as WeKnoraDesktopWindow).go?.main?.App?.SetDesktopHTTPPortSetting",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "const injected = win.__WEKNORA_API_BASE__",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "const injectedLan = win.__WEKNORA_API_LAN_BASE__",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "const win = window as WeKnoraDesktopWindow",
+      "category": "internal_symbol",
+      "count": 2
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "function desktopBindPublicBindingsAvailable(win: WeKnoraDesktopWindow) {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "function desktopPortBindingsAvailable(win: WeKnoraDesktopWindow) {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ApiIntegrationSettings.vue",
+      "text": "type WeKnoraDesktopWindow = Window & {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ClawSkillLanding.vue",
+      "text": "const installCommand = 'openclaw skills install @lyingbug/weknora'",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/ClawSkillLanding.vue",
+      "text": "return `export WEKNORA_BASE_URL=\"${base}\"\\nexport WEKNORA_API_KEY=\"sk-your-api-key\"`",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/cliIntegration.ts",
+      "text": "return `weknora profile add weknora --host ${quotedHost} --use &&\\nweknora auth login`",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/CliIntegrationLanding.vue",
+      "text": "{ key: 'verify', command: 'weknora doctor\\nweknora kb list' },",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/CliIntegrationLanding.vue",
+      "text": "command: 'git clone https://github.com/Tencent/WeKnora.git\\ncd WeKnora/cli\\ngo build -o weknora .\\nexport PATH=\"$PWD:$PATH\"',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/CliIntegrationLanding.vue",
+      "text": "command: 'weknora doc upload ./document.pdf --kb \"KB_ID\"\\nweknora search chunks \"query\" --kb \"KB_ID\"\\nweknora chat \"question\" --kb \"KB_ID\" --format text\\nweknora agent list',",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/CliIntegrationLanding.vue",
+      "text": "weknora: { command: 'weknora', args: ['--profile', 'weknora', 'mcp', 'serve'] },",
+      "category": "hidden_integration",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/integrations/mcpServerIntegration.ts",
+      "text": "* Pure helpers for the \"WeKnora as MCP server\" integration page. Kept free",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/knowledge/KnowledgeBase.vue",
+      "text": "const FOLDER_TREE_COLLAPSED_KEY = 'weknora.kbDirectorySidebarCollapsed';",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/knowledge/KnowledgeBase.vue",
+      "text": "const VIEW_MODE_KEY = 'weknora.kb.docs.viewMode';",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/knowledge/KnowledgeBase.vue",
+      "text": "window.addEventListener('weknora:knowledge-file-drop', handleKnowledgeFileDrop as EventListener);",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/knowledge/KnowledgeBase.vue",
+      "text": "window.addEventListener('weknora:open-knowledge', handleOpenKnowledgeEvent as EventListener);",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/knowledge/KnowledgeBase.vue",
+      "text": "window.removeEventListener('weknora:knowledge-file-drop', handleKnowledgeFileDrop as EventListener);",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/knowledge/KnowledgeBase.vue",
+      "text": "window.removeEventListener('weknora:open-knowledge', handleOpenKnowledgeEvent as EventListener);",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/knowledge/settings/DataSourceEditorDialog.vue",
+      "text": "// Tencent IMA (ima.qq.com). Uses the OpenAPI at /openapi/wiki/v1 with two",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/knowledge/wiki/WikiBrowser.vue",
+      "text": "const SIDEBAR_VIEW_MODE_KEY = 'weknora.wiki.sidebar.viewMode'",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/platform/index.vue",
+      "text": "window.dispatchEvent(new CustomEvent('weknora:chat-file-drop', {",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/platform/index.vue",
+      "text": "window.dispatchEvent(new CustomEvent('weknora:knowledge-file-drop', {",
+      "category": "storage_key",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/envVarState.ts",
+      "text": "const RESERVED_ENV_PREFIX = 'WEKNORA_'",
+      "category": "protocol_id",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ModelSettings.vue",
+      "text": "//   remote → provider's localized short name (e.g. \"腾讯云 LKEAP\",",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ModelSettings.vue",
+      "text": "// Maps a backend `provider` id (e.g. \"openai\", \"aliyun\", \"weknoracloud\")",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": ".engine-card--weknoracloud .engine-card__badge {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": ".parser-engine-drawer--weknoracloud .setting-drawer__header-icon {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.goToSettings') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "// ---- Inline alert（替代之前的 .weknoracloud-hint 卡片） ----",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "// ---- WeKnoraCloud 凭证状态 ----",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "// .form-item / .form-label / .form-desc / .weknoracloud-hint / .api-test",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "<span v-else>{{ $t('settings.weknoraCloud.unconfigured') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "<span v-if=\"wkcState === 'expired'\">{{ $t('settings.weknoraCloud.credentialExpired') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "<span>{{ $t('settings.weknoraCloud.checkingStatus') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "<span>{{ $t('settings.weknoraCloud.credentialConfigured') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "<template v-if=\"currentEngine.Name === 'weknoracloud'\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "const status = await getWeKnoraCloudStatus()",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "import { getWeKnoraCloudStatus } from '@/api/model'",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "Section 2 — 状态信息（DocReader 连接 / WeKnoraCloud 凭证）",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "uiStore.openSettings('weknoracloud')",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "v-if=\"currentEngine.Name === 'builtin' || currentEngine.Name === 'weknoracloud'\"",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "weknoracloud: 'https://developers.weixin.qq.com/doc/aispeech/knowledge/atomic_capability/atomic_interface.html',",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "weknoracloud: 1,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/ParserEngineSettings.vue",
+      "text": "weknoracloud: 凭证状态 — 不再用大块卡片。已配置 / 加载中 / 未配置",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "{ key: 'weknoracloud', icon: '', label: 'WeKnora Cloud' },",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "<!-- WeKnora Cloud -->",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "<!-- WeKnora Cloud 使用自定义 W 图标 -->",
+      "category": "developer_comment",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "<div v-if=\"currentSection === 'weknoracloud'\" class=\"section\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "<svg v-else-if=\"item.key === 'weknoracloud'\" width=\"17\" height=\"17\" viewBox=\"0 0 18 18\"",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "<WeKnoraCloudSettings />",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "import WeKnoraCloudSettings from './WeKnoraCloudSettings.vue'",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/Settings.vue",
+      "text": "items: pickItems(['models', 'ollama', 'weknoracloud']),",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/VectorStoreSettings.vue",
+      "text": ".store-card--tencent_vectordb .store-card__badge {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/VectorStoreSettings.vue",
+      "text": ".vectorstore-drawer--tencent_vectordb .setting-drawer__header-icon {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": ": $t('settings.weknoraCloud.modelsSection.descPending')",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": ":confirm-btn=\"{ content: $t('settings.weknoraCloud.modelsSection.addOne'), theme: 'primary' }\"",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": ":content=\"$t('settings.weknoraCloud.modelsSection.confirmAddAll', { count: missingKinds.length })\"",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": ":content=\"$t('settings.weknoraCloud.modelsSection.confirmAddOne', {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": ":placeholder=\"$t('settings.weknoraCloud.appIdPlaceholder')\"",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": ":placeholder=\"$t('settings.weknoraCloud.appSecretPlaceholder')\"",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "? $t('settings.weknoraCloud.modelsSection.descReady')",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": ".weknoracloud-settings {",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.description') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.modelsSection.addAllBtn', { count: missingKinds.length }) }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.modelsSection.addOne') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.modelsSection.allReady') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.modelsSection.statusAdded') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.modelsSection.statusPending') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.reconfigure') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.saveBtn') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ $t('settings.weknoraCloud.viewDocs') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "{{ reinitReason || $t('settings.weknoraCloud.expiredDefault') }}",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "} from '@/utils/weknoraCloudModels'",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<div class=\"weknoracloud-settings\">",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<h2>{{ $t('settings.weknoraCloud.title') }}</h2>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<h3 class=\"models-section__title\">{{ $t('settings.weknoraCloud.modelsSection.title') }}</h3>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<label class=\"setting-label\">{{ $t('settings.weknoraCloud.appIdLabel') }}</label>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<label class=\"setting-label\">{{ $t('settings.weknoraCloud.appSecretLabel') }}</label>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<p class=\"hint-text\" v-html=\"$t('settings.weknoraCloud.usageSteps').replace(/\\n/g, '<br />')\" />",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<p class=\"hint-title\">{{ $t('settings.weknoraCloud.usageTitle') }}</p>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<p class=\"setting-desc\">{{ $t('settings.weknoraCloud.appIdDesc') }}</p>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<p class=\"setting-desc\">{{ $t('settings.weknoraCloud.appSecretDesc') }}</p>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<p class=\"setting-desc\">{{ $t('settings.weknoraCloud.saveHint') }}</p>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<span class=\"status-text\">{{ $t('settings.weknoraCloud.configured') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<span>{{ $t('settings.weknoraCloud.unconfigured') }}</span>",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "<strong>{{ $t('settings.weknoraCloud.expired') }}</strong><br />",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "await saveWeKnoraCloudCredentials({",
+      "category": "real_provider",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "baseUrl: WEKNORA_CLOUD_BASE_URL,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "console.error(`Failed to create WeKnoraCloud ${kind} model:`, err)",
+      "category": "diagnostics",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "const status = await getWeKnoraCloudStatus()",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "content: $t('settings.weknoraCloud.modelsSection.addAllConfirm'),",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "import { saveWeKnoraCloudCredentials, getWeKnoraCloudStatus, createModel, listModels } from '@/api/model'",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "MessagePlugin.error(err?.message || t('settings.weknoraCloud.saveFailed'))",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "MessagePlugin.error(t('settings.weknoraCloud.addModelsFailed'))",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "MessagePlugin.success(t('settings.weknoraCloud.addModelsSuccess', { count: success }))",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "MessagePlugin.success(t('settings.weknoraCloud.saveSuccess'))",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "MessagePlugin.warning(t('settings.weknoraCloud.addModelsPartial', { success, failed }))",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "MessagePlugin.warning(t('settings.weknoraCloud.fillRequired'))",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "provider: WEKNORA_CLOUD_PROVIDER,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "t(`settings.weknoraCloud.addModelsDisplayName.${kind}`)",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "throw new Error(result.message || t('settings.weknoraCloud.addModelsEmbeddingFailed'))",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "WEKNORA_CLOUD_BASE_URL,",
+      "category": "internal_symbol",
+      "count": 1
+    },
+    {
+      "file": "frontend/src/views/settings/WeKnoraCloudSettings.vue",
+      "text": "WEKNORA_CLOUD_PROVIDER,",
+      "category": "internal_symbol",
+      "count": 1
+    }
+  ]
+}

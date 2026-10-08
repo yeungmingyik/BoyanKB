@@ -1825,6 +1825,7 @@
 </template>
 
 <script setup lang="ts">
+import { isProviderHidden } from '@/config/branding';
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import AgentCreateContextualGuide from '@/components/AgentCreateContextualGuide.vue';
@@ -2381,7 +2382,7 @@ const imageStorageOptions = computed(() => {
     { value: 'tos', label: t('settings.storage.engineTos'), disabled: statusMap.tos === false },
     { value: 's3', label: 'Amazon S3', disabled: statusMap.s3 === false },
     { value: 'oss', label: t('settings.storage.engineOss'), disabled: statusMap.oss === false },
-  ];
+  ].filter(option => !isProviderHidden(option.value) || formData.value.config.image_storage_provider === option.value);
 });
 
 // 系统默认配置（用于内置智能体显示默认提示词）

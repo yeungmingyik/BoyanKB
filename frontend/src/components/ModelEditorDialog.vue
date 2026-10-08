@@ -220,7 +220,7 @@
               <t-icon name="check-circle-filled" class="hint-icon hint-icon--ok" />
               <div>
                 {{ $t('settings.weknoraCloud.modelHintConfigured') }}
-                <a href="https://developers.weixin.qq.com/doc/aispeech/knowledge/atomic_capability/atomic_interface.html"
+                <a v-if="helpUrl('cloud-models')" :href="helpUrl('cloud-models')"
                   target="_blank" rel="noopener noreferrer" class="doc-link">
                   {{ $t('settings.weknoraCloud.modelHintDocsLink') }}
                   <t-icon name="link" class="link-icon" />
@@ -591,7 +591,7 @@
               <p v-if="specCompatError" class="form-desc form-desc--error">{{ $t('model.editor.advanced.compat.invalid') }}: {{ specCompatError }}</p>
               <p v-else class="form-desc">
                 {{ $t('model.editor.advanced.compat.desc') }}
-                <a :href="COMPAT_DOC_URL" target="_blank" rel="noopener noreferrer" class="compat-doc-link">
+                <a v-if="COMPAT_DOC_URL" :href="COMPAT_DOC_URL" target="_blank" rel="noopener noreferrer" class="compat-doc-link">
                   {{ $t('model.editor.advanced.compat.docLink') }}
                   <t-icon name="jump" size="12px" />
                 </a>
@@ -606,6 +606,7 @@
 </template>
 
 <script setup lang="ts">
+import { helpUrl, isProviderHidden } from '@/config/branding'
 import { ref, watch, computed, onUnmounted, nextTick } from 'vue'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import {
@@ -703,8 +704,7 @@ const PROTOCOL_OPTIONS = [
 ] as const
 
 /** Field reference for parameters.spec.compat, per protocol and model type. */
-const COMPAT_DOC_URL =
-  'https://github.com/Tencent/WeKnora/blob/main/website-docs/03-features/06-models.md#协议兼容覆盖-compat-json'
+const COMPAT_DOC_URL = helpUrl('model-compatibility')
 
 /** Legacy thinking_control values still honoured by catalog.Resolve. */
 const LEGACY_THINKING_CONTROL_VALUES = ['none', 'enable_thinking', 'thinking_type', 'chat_template_kwargs'] as const
@@ -761,7 +761,8 @@ const loadProviders = async () => {
   }
 }
 
-const providerOptions = computed<ModelProviderOption[]>(() => providersStore.providersFor(activeModelType.value))
+const providerOptions = computed<ModelProviderOption[]>(() => providersStore.providersFor(activeModelType.value)
+  .filter(provider => !isProviderHidden(provider.value) || props.modelData?.provider === provider.value))
 
 const selectedProvider = computed<ModelProviderOption | undefined>(() => {
   const id = formData.value.provider

@@ -11,7 +11,7 @@
       >
         <template #message>
           <div>{{ t('graphSettings.disabledWarning') }}</div>
-          <t-link class="graph-guide-link" theme="primary" @click="handleOpenGraphGuide">
+          <t-link v-if="graphGuideUrl" class="graph-guide-link" theme="primary" @click="handleOpenGraphGuide">
             {{ t('graphSettings.howToEnable') }}
           </t-link>
         </template>
@@ -320,6 +320,7 @@
 </template>
 
 <script setup lang="ts">
+import { helpUrl } from '@/config/branding'
 import { ref, watch, onMounted, computed } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -586,13 +587,11 @@ const loadSystemInfo = async (force = false) => {
   }
 }
 
-const graphGuideUrl =
-  import.meta.env.VITE_KG_GUIDE_URL ||
-  'https://github.com/Tencent/WeKnora/blob/main/website-docs/03-features/09-knowledge-graph.md'
+const graphGuideUrl = helpUrl('knowledge-graph')
 
 // Open guide documentation to show how to enable graph database
 const handleOpenGraphGuide = () => {
-  window.open(graphGuideUrl, '_blank', 'noopener')
+  if (graphGuideUrl) window.open(graphGuideUrl, '_blank', 'noopener,noreferrer')
 }
 
 // 初始化

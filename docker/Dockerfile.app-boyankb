@@ -1,0 +1,23 @@
+FROM golang:1.26-bookworm AS builder
+WORKDIR /app
+ENV GOMAXPROCS=3 GOFLAGS=-p=3 CARGO_BUILD_JOBS=2
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:$PATH
+RUN apt-get update && apt-get install -y --no-install-recommends libsqlite3-dev && rm -rf /var/lib/apt/lists/*
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
+COPY go.mod go.sum ./
+COPY third_party/anydoc-go ./third_party/anydoc-go
+COPY scripts/build-anydoc-lib.sh ./scripts/build-anydoc-lib.sh
+RUN --mount=type=cache,target=/go/pkg/mod go mod download -x
+RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/usr/local/cargo/git bash scripts/build-anydoc-lib.sh
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build go test -ldflags='-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn' ./internal/branding ./internal/config ./internal/middleware ./internal/datasource/connector/feishu/core ./internal/datasource/connector/feishu/wiki -count=1
+ARG BRANDING_COMMIT=local-branding
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build VERSION=v0.8.2-boyankb COMMIT_ID=${BRANDING_COMMIT} make build-prod GO_BUILD_TAGS=anydoc
+
+FROM wechatopenai/weknora-app:v0.8.2@sha256:bc8a534799fcb54045100daf4bc5db86270b38ae45c5f761c410c50b4dcd6cdc
+COPY --from=builder --chown=appuser:appuser /app/WeKnora /app/WeKnora
+COPY --chown=appuser:appuser branding/brand.json /app/branding/brand.json
+COPY LICENSE /usr/share/licenses/upstream/LICENSE
+ENV BRANDING_CONFIG=/app/branding/brand.json
+LABEL io.weknora.feishu-guard="1" io.boyankb.branding="1"

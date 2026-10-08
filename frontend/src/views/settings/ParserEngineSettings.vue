@@ -380,6 +380,7 @@
 </template>
 
 <script setup lang="ts">
+import { isProviderHidden } from '@/config/branding'
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useUIStore } from '@/stores/ui'
@@ -487,7 +488,7 @@ const ENGINE_ORDER: Record<string, number> = {
 }
 
 const sortedEngines = computed(() => {
-  return [...engines.value].sort((a, b) => {
+  return engines.value.filter(engine => !isProviderHidden(engine.Name) || engine.Available === true).sort((a, b) => {
     const oa = ENGINE_ORDER[a.Name] ?? 100
     const ob = ENGINE_ORDER[b.Name] ?? 100
     if (oa !== ob) return oa - ob

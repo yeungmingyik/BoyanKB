@@ -1,4 +1,5 @@
 import type { DeploymentCapabilityKey } from './deploymentCapabilities'
+import { brand } from './branding'
 
 export const CHROME_EXTENSION_URL =
   'https://chromewebstore.google.com/detail/jpemjbopikggjlmikmclgbmkhhopjdgd?utm_source=item-share-cb'
@@ -8,6 +9,13 @@ export const CLAWHUB_SKILL_URL = 'https://clawhub.ai/lyingbug/weknora'
 export type IntegrationTab = 'im' | 'embed' | 'api' | 'mcpserver' | 'cli' | 'chrome' | 'claw'
 
 export const INTEGRATION_TABS: IntegrationTab[] = ['im', 'embed', 'api', 'mcpserver', 'cli', 'chrome', 'claw']
+
+export function isIntegrationEnabled(tab: IntegrationTab): boolean {
+  if (tab === 'cli') return brand.features.upstreamCli
+  if (tab === 'claw') return brand.features.upstreamSkill
+  if (tab === 'chrome') return brand.features.browserExtension
+  return true
+}
 
 /** Aligns with Settings.vue SECTION_MIN_ROLE.api and router.go g.Owner() on /api-principal-config. */
 export type IntegrationTabRole = 'viewer' | 'contributor' | 'admin' | 'owner'
@@ -28,7 +36,7 @@ export type IntegrationPreviewIcon =
   | { type: 'emoji'; value: string }
 
 /** Sidebar hover preview + Integrations modal nav — add new entries here. */
-export const INTEGRATION_PREVIEW_ITEMS: Array<{
+const integrationPreviewItems: Array<{
   key: IntegrationTab
   icon: IntegrationPreviewIcon
 }> = [
@@ -40,3 +48,5 @@ export const INTEGRATION_PREVIEW_ITEMS: Array<{
   { key: 'chrome', icon: { type: 'icon', name: 'extension' } },
   { key: 'claw', icon: { type: 'emoji', value: '🦞' } },
 ]
+
+export const INTEGRATION_PREVIEW_ITEMS = integrationPreviewItems.filter(item => isIntegrationEnabled(item.key))

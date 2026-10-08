@@ -1,3 +1,5 @@
+import { productName, productSlug } from '../../config/branding.ts'
+
 export default {
   toolbox: {
     "title": "ツールボックス",
@@ -265,12 +267,12 @@ export default {
     reopen: 'プロダクトツアー',
     steps: {
       welcome: {
-        title: 'WeKnoraへようこそ',
+        title: `${productName}へようこそ`,
         desc: '数ステップでナレッジベース、チャット、エージェントの使い方をご紹介します。「次へ」をクリックして開始してください。'
       },
       knowledge: {
         title: 'ナレッジベースを作成',
-        desc: 'すべてはここから始まります。ドキュメント、Webページ、FAQをアップロードすると、WeKnoraが自動で解析してインデックスを作成します。ここをクリックしてナレッジベースを開いてください。'
+        desc: `すべてはここから始まります。ドキュメント、Webページ、FAQをアップロードすると、${productName}が自動で解析してインデックスを作成します。ここをクリックしてナレッジベースを開いてください。`
       },
       chat: {
         title: 'AIチャットを開始',
@@ -1367,12 +1369,12 @@ export default {
       backendDescriptions: {
         cube: 'プライベート環境やオンプレミス向けのセルフホストMicroVMクラスタ',
         e2b: 'マネージドMicroVMサービス、またはE2B互換のデプロイ',
-        docker: 'このWeKnoraホスト上でセッションごとに長時間稼働するコンテナを保持します。スクリプトとファイルはそのコンテナ内に残ります',
+        docker: `この${productName}ホスト上でセッションごとに長時間稼働するコンテナを保持します。スクリプトとファイルはそのコンテナ内に残ります`,
       },
       dockerDisabledAlert: 'このデプロイではDockerサンドボックスが有効になっていません',
       dockerDisabledHint: 'ローカルのdocker.sockはホスト上のroot権限に相当します。単一マシンのプライベート環境では、システム管理者が「設定 → システム設定 → ネットワークセキュリティ」から有効化できます。',
       dockerDisabledCard: 'このデプロイではDockerサンドボックスが無効です。この設定ではコンテナは作成されません',
-      dockerHostRisk: '空欄またはunix://を指定するとWeKnoraホストのDockerデーモンを使用します。これはそのマシンのroot権限に相当します。単一ノードのプライベート環境でのみ使用してください。複数のワークスペースがホストを共有する場合はCubeまたはE2Bを推奨します。リモートのtcp://エンドポイントにはTLS証明書ディレクトリが必要です。',
+      dockerHostRisk: `空欄またはunix://を指定すると${productName}ホストのDockerデーモンを使用します。これはそのマシンのroot権限に相当します。単一ノードのプライベート環境でのみ使用してください。複数のワークスペースがホストを共有する場合はCubeまたはE2Bを推奨します。リモートのtcp://エンドポイントにはTLS証明書ディレクトリが必要です。`,
       addConfig: 'サンドボックスを追加',
       viewClusterGuide: 'クラスタ構築ガイド',
       configName: '設定名',
@@ -1465,11 +1467,11 @@ export default {
       policySaveFailed: 'サンドボックス実行ポリシーの更新に失敗しました',
       legacyConfig: '非推奨',
       namedBackendHint: 'ワークスペース設定が唯一のランタイムの供給元です。設定のないエージェントはスキルスクリプトを実行できません。',
-      weknoraTemplateTitle: 'WeKnora標準テンプレート',
-      weknoraDockerImage: 'WeKnora標準イメージ',
+      weknoraTemplateTitle: `${productName}標準テンプレート`,
+      weknoraDockerImage: `${productName}標準イメージ`,
       weknoraDockerImageHint: 'セッションごとに専用の長時間稼働コンテナが割り当てられます。スクリプト、シェルコマンド、ファイルはすべてこのコンテナを共有し、セッション終了またはアイドルタイムアウトによる回収まで保持されます。',
-      weknoraTemplateOverview: 'WeKnoraが標準ランタイムを提供します。テンプレートは接続後に検出され、存在しない場合は標準テンプレートが作成されます。',
-      weknoraTemplateDescription: 'WeKnoraのスキルが必要とするPython、Node.js、CLIツール、ワークスペースパス、非root実行ユーザが含まれます。',
+      weknoraTemplateOverview: `${productName}が標準ランタイムを提供します。テンプレートは接続後に検出され、存在しない場合は標準テンプレートが作成されます。`,
+      weknoraTemplateDescription: `${productName}のスキルが必要とするPython、Node.js、CLIツール、ワークスペースパス、非root実行ユーザが含まれます。`,
       recommendedTag: '推奨',
       cardTemplateConfigured: 'テンプレート設定済み',
       cardCredentialMissing: 'APIキー未設定',
@@ -1486,7 +1488,7 @@ export default {
       templateSelectPlaceholder: 'クラスタに接続してテンプレートを読み込んでください',
       templateLoadHint: 'クラスタの接続情報を入力して更新してください。公式のCLIテンプレートがない場合はHubイメージから自動構築します。デスクトップテンプレートはサイズが大きいため、下の行から個別に作成してください。DNSやイメージを変更した場合は、該当カードから再構築してください。',
       templateLoadFailed: 'テンプレートの読み込みに失敗しました',
-      standardTemplateProvisioning: 'WeKnora標準テンプレートを作成しています。しばらくしてから更新してステータスを確認してください。',
+      standardTemplateProvisioning: `${productName}標準テンプレートを作成しています。しばらくしてから更新してステータスを確認してください。`,
       standardTemplateReplaced: '以前の標準テンプレートを削除し、再構築を開始しました。完了までお待ちください。',
       templateNotReady: '選択したテンプレートは準備ができていません。更新してビルドの完了をお待ちください。',
       connectionPassed: '接続を確認しました。以下のテンプレートはこのクラスタから読み込まれています。',
@@ -1494,21 +1496,21 @@ export default {
       templateStepHint: 'このステップではクラスタのテンプレートを表示し、公式のCLIイメージがなければHubから構築します。デスクトップ（XFCE）テンプレートはサイズが大きいため、「作成」を押したときだけ構築します。DNSやイメージを変更した場合は該当カードから「再構築」してください。テンプレートの準備ができたら次へ進めます。',
       loadingTemplates: 'クラスタからテンプレートを読み込み中...',
       templateBuildingHint: 'テンプレートをビルド中です。このリストは自動的に更新されます。',
-      templateUntaggedHint: 'ビルドは完了しましたが、デフォルトタグが付いたものがないため、サンドボックス作成時にこのテンプレートを解決できません。E2Bで削除して更新すると、WeKnoraが再構築します。',
+      templateUntaggedHint: `ビルドは完了しましたが、デフォルトタグが付いたものがないため、サンドボックス作成時にこのテンプレートを解決できません。E2Bで削除して更新すると、${productName}が再構築します。`,
       templateFailedReason: 'ビルドに失敗しました: {reason}',
       noTemplates: 'このクラスタからテンプレートが返されませんでした。',
-      weknoraStandardTemplate: 'WeKnora標準テンプレート',
+      weknoraStandardTemplate: `${productName}標準テンプレート`,
       createStandardTemplate: '作成',
       createStandardTemplateHint: 'DNSを含む現在の接続設定でビルドされます。設定を変更した場合は、カードから再構築してください。',
-      weknoraDesktopTemplate: 'WeKnoraデスクトップテンプレート',
+      weknoraDesktopTemplate: `${productName}デスクトップテンプレート`,
       createDesktopTemplate: '作成',
       createDesktopTemplateHint: '公式デスクトップイメージからXFCEグラフィカルデスクトップを構築します。CLIテンプレートよりはるかに大きいため、GUIが必要なときだけ作成してください。',
       replaceStandardTemplate: '再構築',
-      replaceStandardTemplateConfirm: 'DNSを含む現在の設定でWeKnora標準テンプレートを再構築します。既存の起動可能なテンプレートは、新しいテンプレートの準備が整うまで削除されません。',
-      desktopTemplateProvisioning: 'WeKnoraデスクトップテンプレートを作成しています。しばらくしてから更新してステータスを確認してください。',
+      replaceStandardTemplateConfirm: `DNSを含む現在の設定で${productName}標準テンプレートを再構築します。既存の起動可能なテンプレートは、新しいテンプレートの準備が整うまで削除されません。`,
+      desktopTemplateProvisioning: `${productName}デスクトップテンプレートを作成しています。しばらくしてから更新してステータスを確認してください。`,
       desktopTemplateReplaced: '以前のデスクトップテンプレートを削除し、再構築を開始しました。完了までお待ちください。CLIテンプレートは変更しません。',
       desktopTemplateTag: 'デスクトップ',
-      replaceDesktopTemplateConfirm: 'DNSを含む現在の設定でWeKnoraデスクトップテンプレートを再構築します。既存の起動可能なデスクトップテンプレートは、新しいテンプレートの準備が整うまで削除されません。CLIテンプレートは変更しません。',
+      replaceDesktopTemplateConfirm: `DNSを含む現在の設定で${productName}デスクトップテンプレートを再構築します。既存の起動可能なデスクトップテンプレートは、新しいテンプレートの準備が整うまで削除されません。CLIテンプレートは変更しません。`,
       templateLockedBySkills: 'このサンドボックスにはすでにスキルがあります。スキル環境は現在のスナップショットに紐づいているため、ランタイムテンプレートの変更や再構築はできません。新しいサンドボックスを作成し、新しいテンプレートからスキルをインストールしてください。',
       templateLockedByInFlight: 'スキルのインストールまたは削除が進行中です。完了するまでランタイムテンプレートの変更や再構築はできません。',
       templateUnnamed: '無題のテンプレート',
@@ -1538,7 +1540,7 @@ export default {
       cubeApiKeyOptional: '任意。認証なしのセルフホストCubeSandboxでは空欄のままにしてください',
       cubeApiKeyWhere: 'セルフホストクラスタで認証を有効にする方法',
       cubeDnsServers: 'DNSサーバ',
-      cubeDnsServersHelp: '任意。WeKnora標準テンプレートに書き込まれるネームサーバのIPです。空欄の場合はクラスタのデフォルト（通常は119.29.29.29）を使用します。パブリックリゾルバへのUDP/53がブロックされている場合は、Cubeホストの/etc/resolv.confから到達可能なアドレス（10/8、172.16/12、192.168/16を除く）を指定してください。既存の標準テンプレートには、テンプレートカードで「再構築」を実行した後にのみ反映されます。',
+      cubeDnsServersHelp: `任意。${productName}標準テンプレートに書き込まれるネームサーバのIPです。空欄の場合はクラスタのデフォルト（通常は119.29.29.29）を使用します。パブリックリゾルバへのUDP/53がブロックされている場合は、Cubeホストの/etc/resolv.confから到達可能なアドレス（10/8、172.16/12、192.168/16を除く）を指定してください。既存の標準テンプレートには、テンプレートカードで「再構築」を実行した後にのみ反映されます。`,
       cubeDnsServersPlaceholder: '例: 8.8.8.8（Enterで追加）',
       e2bApiKeyHelp: 'E2BダッシュボードのAPI Keysページで作成します。通常はe2b_で始まります。',
       e2bApiKeyWhere: 'E2BダッシュボードでAPIキーを取得',
@@ -1568,9 +1570,9 @@ export default {
       dockerHost: 'Dockerデーモンのエンドポイント',
       dockerHostHelp: '空欄の場合はローカルのdocker CLI（DOCKER_HOSTまたは現在のdockerコンテキスト）に従うため、/var/run/docker.sockを入力する必要はありません。リモートデーモンを使う場合はtcp://host:2376を指定してTLS証明書ディレクトリを入力し、RFC1918アドレスでは「プライベートエンドポイントを許可」を有効にしてください。',
       dockerTlsCertPath: 'TLS証明書ディレクトリ',
-      dockerTlsCertPathHelp: 'WeKnoraホスト上でca.pem、cert.pem、key.pemを格納しているディレクトリです。リモートデーモンでは必須です。証明書はデプロイ側でマウントされ、ここには保存されません。',
+      dockerTlsCertPathHelp: `${productName}ホスト上でca.pem、cert.pem、key.pemを格納しているディレクトリです。リモートデーモンでは必須です。証明書はデプロイ側でマウントされ、ここには保存されません。`,
       dockerIdleTtl: 'アイドル回収（秒）',
-      dockerIdleTtlHelp: 'Dockerデーモン自体にはアイドルタイムアウトがありません。この時間コマンドが実行されなかったコンテナはWeKnoraが回収し、セッションが続く場合は再作成します。空欄の場合は1800秒です。',
+      dockerIdleTtlHelp: `Dockerデーモン自体にはアイドルタイムアウトがありません。この時間コマンドが実行されなかったコンテナは${productName}が回収し、セッションが続く場合は再作成します。空欄の場合は1800秒です。`,
       dockerCpuLimit: 'CPUコア数の上限',
       dockerCpuLimitHelp: 'サンドボックス1つが使用できるCPUコア数です。0の場合は組み込みのデフォルトを使用します。',
       dockerMemoryLimit: 'メモリ上限（MB）',
@@ -1998,8 +2000,8 @@ export default {
       needsConfig: '設定が必要',
       configurable: '設定可能',
       pathPrefix: 'パスのプレフィックス（任意）',
-      pathPrefixPlaceholder: '例: weknora/images',
-      prefixPlaceholder: '例: weknora',
+      pathPrefixPlaceholder: `例: ${productSlug}/images`,
+      prefixPlaceholder: `例: ${productSlug}`,
       bucketName: 'バケット名',
       bucketPlaceholder: 'バケット名',
       minioDesc: 'S3互換のセルフホスト型オブジェクトストレージです。プライベートネットワークやプライベートクラウドでのデプロイに適しています。',
@@ -2265,7 +2267,7 @@ export default {
   },
   envVarSettings: {
     title: 'サンドボックスのシークレット',
-    description: 'スキルとサンドボックスで使う個人用のキーです。WeKnoraのシステム設定やデプロイ設定ではありません。',
+    description: `スキルとサンドボックスで使う個人用のキーです。${productName}のシステム設定やデプロイ設定ではありません。`,
     helpAria: 'サンドボックスのシークレットについて',
     introPersonalTitle: 'あなただけのもの',
     introPersonalBody: 'あなた自身のチャットや実行にのみ注入されます。他のメンバーからは見えず、他のメンバーの値があなたの値を上書きすることもありません。',
@@ -2487,11 +2489,11 @@ export default {
     haveAccount: 'すでにアカウントをお持ちですか？',
     backToLogin: 'ログインに戻る',
     loginHint: 'ログインして続行してください。初めての方は下からアカウントを作成できます。',
-    firstTime: 'WeKnoraは初めてですか？',
+    firstTime: `${productName}は初めてですか？`,
     registerSuccess: '登録が完了しました。ログインしてください',
     registerFailed: '登録に失敗しました',
     subtitle: 'RAG質問応答、ReActエージェント、Wiki。LLMが支える企業向けナレッジフレームワーク',
-    registerSubtitle: 'アカウントを作成してWeKnoraを使い始めましょう',
+    registerSubtitle: `アカウントを作成して${productName}を使い始めましょう`,
     emailPlaceholder: 'メールアドレスを入力',
     passwordPlaceholder: 'パスワードを入力',
     confirmPasswordPlaceholder: 'パスワードを再入力',
@@ -2785,7 +2787,7 @@ export default {
     goToAgentSettings: 'エージェント設定に移動'
   },
   createChat: {
-    title: 'こんにちは、WeKnoraです。あなたのナレッジを、すぐそばに',
+    title: `こんにちは、${productName}です。あなたのナレッジを、すぐそばに`,
     newSessionTitle: '新しいセッション',
     openProject: 'プロジェクトを選択',
     clearProject: '解除',
@@ -2897,7 +2899,7 @@ export default {
     welcomeMessageDesc: '訪問者が最初のメッセージを送る前に埋め込みチャットに表示されます。空欄にすると非表示になります',
     showSuggestedQuestions: '質問候補',
     showSuggestedQuestionsDesc: '訪問者の最初のメッセージの前に、エージェント設定と連携ナレッジベースをもとにした質問候補を表示します',
-    originsHint: 'WeKnora の URL（B）ではなく、埋め込みを許可するホストサイト（A）を入力します。1 行に 1 つの Origin（例: https://shop.example.com）。1 件以上必須。*.example.com に対応。',
+    originsHint: `${productName} の URL（B）ではなく、埋め込みを許可するホストサイト（A）を入力します。1 行に 1 つの Origin（例: https://shop.example.com）。1 件以上必須。*.example.com に対応。`,
     originsRequired: '許可オリジンを1件以上入力してください',
     originsInvalid: '無効なオリジン: {origin}',
     originsWildcardProd: '本番環境ではワイルドカードのオリジン「*」は使用できません',
@@ -2955,8 +2957,8 @@ export default {
     allowFileUpload: 'ファイルアップロードを表示',
     allowFileUploadDesc: '有効にすると、訪問者は画像やドキュメントの添付をアップロードできます。紐付けたエージェントが画像アップロードに対応している必要があります。',
     webhookUrl: 'Webhook URL',
-    webhookUrlPlaceholder: 'https://your-server.example.com/weknora/embed-events',
-    webhookUrlDesc: '任意。WeKnoraがmessage_sent / message_receivedイベントをこのHTTPSエンドポイントにPOSTします。',
+    webhookUrlPlaceholder: `https://your-server.example.com/${productSlug}/embed-events`,
+    webhookUrlDesc: `任意。${productName}がmessage_sent / message_receivedイベントをこのHTTPSエンドポイントにPOSTします。`,
     webhookSecret: 'Webhookシークレット',
     webhookSecretPlaceholder: 'HMAC-SHA256シークレット（X-WeKnora-Signatureヘッダー）',
     webhookSecretKeep: '空欄のままにすると保存済みのシークレットを維持します',
@@ -4045,9 +4047,9 @@ export default {
     loadingInfo: '情報を読み込み中...',
     retry: '再試行',
     versionLabel: 'アプリバージョン',
-    versionDescription: 'アプリケーションサービス（weknora-app）のバージョン',
+    versionDescription: 'アプリケーションサービスのバージョン',
     frontendVersionLabel: 'UIバージョン',
-    frontendVersionDescription: 'UI（weknora-ui）のビルドバージョン',
+    frontendVersionDescription: 'UIのビルドバージョン',
     versionMismatch: 'アプリバージョンと不一致',
     buildTimeLabel: 'ビルド日時',
     buildTimeDescription: 'システムがビルドされた日時',
@@ -6804,7 +6806,7 @@ export default {
   },
   integrations: {
     cli: {
-      title: 'WeKnora CLI',
+      title: `${productName} CLI`,
       subtitle: 'ターミナルからナレッジベースとドキュメントの管理、コンテンツの検索、質問ができます。CLIやMCPを通じてスクリプトやAIツールと連携できます。',
       docs: 'CLIドキュメント',
       docsHint: 'インストール手順と完全なコマンドリファレンス',
@@ -6983,7 +6985,7 @@ export default {
       capabilityMessageHistory: 'メッセージ履歴',
       capabilityMessageHistoryHint: 'ワークスペースのチャット履歴の検索と、チャット履歴の統計の読み取りができます。ワークスペース設定へのアクセス権は付与されません。',
       capabilityManageModels: 'モデルの管理',
-      capabilityManageModelsHint: 'モデル定義、認証情報、接続確認、WeKnoraCloudの認証情報を管理します。',
+      capabilityManageModelsHint: 'モデル定義、認証情報、接続確認、クラウドサービスの認証情報を管理します。',
       capabilityManageMcpServices: 'MCPサービスの管理',
       capabilityManageMcpServicesHint: 'このプリンシパルのMCPサービス、認証情報、ツール承認ポリシー、OAuth状態を管理します。',
       capabilityManageDatasources: 'データソースの管理',
@@ -7030,14 +7032,14 @@ export default {
       directWarning: 'ユーザIDの直接指定は、呼び出し元が渡すヘッダーを信頼します。信頼できるサーバ間通信でのみ使用してください。',
       directWarningDetail: 'APIキーを持つ人であれば誰でもユーザIDヘッダーを書き換えて他の外部ユーザになりすまし、そのユーザのMCP OAuth認可を再利用・乗っ取ることができます。ブラウザや信頼できないクライアントからは使用せず、エンドユーザ向けアプリでは署名付きトークンを使用してください。',
       signedRecommended: 'ユーザ向けアプリに推奨: 自社バックエンドで外部ユーザ用に有効期間の短いHS256 JWTを発行します。',
-      signedFlowDetail: 'HMACシークレットはWeKnoraと信頼できる自社バックエンドにのみ保存し、リクエストに含めたりブラウザに配布したりしないでください。リクエストヘッダーで送るのは、そのシークレットで署名したJWT文字列（発行ごと、または有効期限切れ後に変わります）であり、シークレット自体ではありません。JWTにはsub（外部ユーザID）、tenant_id、aud=weknora、exp（有効期間は最大24時間）を含める必要があります。',
+      signedFlowDetail: `HMACシークレットは${productName}と信頼できる自社バックエンドにのみ保存し、リクエストに含めたりブラウザに配布したりしないでください。リクエストヘッダーで送るのは、そのシークレットで署名したJWT文字列（発行ごと、または有効期限切れ後に変わります）であり、シークレット自体ではありません。JWTにはsub（外部ユーザID）、tenant_id、aud=weknora、exp（有効期間は最大24時間）を含める必要があります。`,
       directHeader: 'ユーザIDヘッダー',
       requireDirectHeader: 'ユーザIDヘッダーを必須にする',
       requireDirectHeaderDesc: '有効にすると、ユーザIDヘッダーのないAPIキーリクエストは拒否されます。無効の場合、すべてのリクエストはユーザを区別せずワークスペース全体として扱われます。',
       tokenHeader: 'トークンヘッダー',
       tokenHeaderDesc: 'クライアントはバックエンドで署名したJWTをこの固定ヘッダーで送信します。',
       hmacSecret: 'HMACシークレット',
-      hmacSecretDesc: 'WeKnoraに保存されているものと同じシークレットです。JWTの署名のためバックエンドでのみ使用し、リクエストヘッダーとして送信しないでください。',
+      hmacSecretDesc: `${productName}に保存されているものと同じシークレットです。JWTの署名のためバックエンドでのみ使用し、リクエストヘッダーとして送信しないでください。`,
       secretConfigured: 'シークレットは設定済みです（再表示されません）。ローテーションするには新しい値を入力してください',
       secretSavedCopyHint: 'シークレットを保存しました。このページを離れると再表示できないため、今すぐバックエンドにコピーしてください。',
       generateSecret: 'シークレットを生成',
@@ -7111,7 +7113,7 @@ export default {
     },
     chrome: {
       title: 'ナレッジアシスタント',
-      subtitle: 'セルフホスト版WeKnora向け: ブラウジング中にサイドバーで質問したり、Webページをクリップしたり、Markdownメモをナレッジベースに保存したりできます。',
+      subtitle: `セルフホスト版${productName}向け: ブラウジング中にサイドバーで質問したり、Webページをクリップしたり、Markdownメモをナレッジベースに保存したりできます。`,
       capabilitiesTitle: '主な機能',
       capabilities: {
         qa: {
@@ -7145,7 +7147,7 @@ export default {
         },
         port: {
           title: 'デスクトップ版: 固定ポートの設定（推奨）',
-          desc: 'WeKnoraデスクトップ版では、API情報で固定ポート（例: 37841）を設定すると、再起動してもURLが変わりません。'
+          desc: `${productName}デスクトップ版では、API情報で固定ポート（例: 37841）を設定すると、再起動してもURLが変わりません。`
         },
         install: {
           title: '拡張機能をインストール',
@@ -7164,8 +7166,8 @@ export default {
       storeMeta: 'Chromeウェブストア · v1.0.0'
     },
     claw: {
-      title: 'WeKnora Skill',
-      subtitle: 'WeKnora REST API経由でドキュメントをインポートし、ハイブリッド検索（ベクトル＋キーワード）を実行します。ファイルのアップロード、URLインポート、Markdownでの登録、ナレッジベース横断検索に対応します。',
+      title: `${productName} Skill`,
+      subtitle: `${productName} REST API経由でドキュメントをインポートし、ハイブリッド検索（ベクトル＋キーワード）を実行します。ファイルのアップロード、URLインポート、Markdownでの登録、ナレッジベース横断検索に対応します。`,
       capabilitiesTitle: 'スキルの機能',
       capabilities: {
         upload: {
@@ -7214,7 +7216,7 @@ export default {
       copyCmdSuccess: 'インストールコマンドをコピーしました',
       ecosystemNote: 'スキルはClawHub（{\'@\'}lyingbug/weknora）でホストされています。完全なAPIドキュメントとバージョン履歴はClawHubページをご覧ください。',
       installCta: 'ClawHubを開く',
-      installCtaHint: 'WeKnora Skillをインストール · 新しいタブで開きます',
+      installCtaHint: `${productName} Skillをインストール · 新しいタブで開きます`,
       hubMeta: 'ClawHub · {\'@\'}lyingbug/weknora · MIT-0'
     }
   },

@@ -159,7 +159,7 @@
           <div class="form-item">
             <label class="form-label">{{ $t('embedPublish.welcomeMessage') }}</label>
             <t-textarea v-model="form.welcome_message" :disabled="!isAdmin"
-              :placeholder="$t('embedPublish.welcomePlaceholder')" :autosize="{ minRows: 2, maxRows: 4 }" />
+              :placeholder="defaultWelcomeMessage" :autosize="{ minRows: 2, maxRows: 4 }" />
             <p class="form-desc">{{ $t('embedPublish.welcomeMessageDesc') }}</p>
           </div>
 
@@ -211,7 +211,7 @@
           <div class="form-item">
             <label class="form-label">{{ $t('embedPublish.pageTitle') }}</label>
             <t-input v-model="form.page_title" :disabled="!isAdmin"
-              :placeholder="$t('embedPublish.pageTitlePlaceholder')" />
+              :placeholder="productName" />
             <p class="form-desc">{{ $t('embedPublish.pageTitleDesc') }}</p>
           </div>
 
@@ -429,6 +429,7 @@ import {
 } from '@/utils/embedAllowedOrigins'
 import { listAgents, type CustomAgent } from '@/api/agent'
 import IntegrationsAgentFilter from '@/components/IntegrationsAgentFilter.vue'
+import { brand, productName } from '@/config/branding'
 
 const filterAgentId = defineModel<string>('filterAgentId', { default: '' })
 
@@ -489,23 +490,20 @@ const agentImageUploadEnabledEffective = computed(() =>
   drawerAgent.value?.config?.image_upload_enabled === true,
 )
 
-const WEKNORA_BRAND_COLOR = '#07C05F'
-
 function getDefaultEmbedPrimaryColor(): string {
-  if (typeof window === 'undefined') return WEKNORA_BRAND_COLOR
-  const css = getComputedStyle(document.documentElement).getPropertyValue('--td-brand-color').trim()
-  return css || WEKNORA_BRAND_COLOR
+  return brand.colors.action
 }
 
 const defaultPrimaryColor = getDefaultEmbedPrimaryColor()
+const defaultWelcomeMessage = computed(() => `${productName} · ${t('embedPublish.welcomePlaceholder')}`)
 
 const defaultForm = () => ({
   name: '',
-  welcome_message: '',
+  welcome_message: defaultWelcomeMessage.value,
   rate_limit_per_minute: 30,
   rate_limit_per_day: 10000,
   primary_color: getDefaultEmbedPrimaryColor(),
-  page_title: '',
+  page_title: productName,
   header_title_mode: 'channel' as HeaderTitleMode,
   show_suggested_questions: true,
   widget_position: 'bottom-right' as WidgetPosition,

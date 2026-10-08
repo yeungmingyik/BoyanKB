@@ -6,6 +6,7 @@ import { createRequire } from 'node:module'
 import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+import { brandingPlugin } from './branding-plugin'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
@@ -117,6 +118,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    brandingPlugin(),
     vue(),
     vueJsx(),
     embedHtmlDevFallback(),

@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n'
+import { productName } from '../config/branding.ts'
 
 const messages = {
   "zh-CN": {
@@ -66,7 +67,7 @@ const messages = {
       "previewIframeHint": "模拟第三方网站用 iframe 嵌入的效果（与复制代码一致）。",
       "previewWidgetHint": "模拟第三方网站加载浮窗脚本后的效果；真实站点由宿主页面通过 postMessage 传递 Token。",
       "previewMockPage": "模拟宿主页面",
-      "defaultChatTitle": "AI 助手",
+      "defaultChatTitle": productName,
       "newChat": "新建对话",
       "rotateConfirmTitle": "确认轮换 Token？",
       "rotateConfirmBody": "轮换后旧 Token 立即失效，已发布的嵌入代码需全部更新。",
@@ -652,7 +653,7 @@ const messages = {
       "previewIframeHint": "サードパーティのページにiframeで埋め込んだ場合の表示です（コピーしたコードと同じ）。",
       "previewWidgetHint": "疑似ホストページ上でフローティングウィジェットを表示します。実際のサイトでは、ホストページがpostMessageでトークンを渡します。",
       "previewMockPage": "疑似ホストページ",
-      "defaultChatTitle": "AIアシスタント",
+      "defaultChatTitle": productName,
       "newChat": "新しいチャット",
       "rotateConfirmTitle": "公開トークンをローテーションしますか？",
       "rotateConfirmBody": "以前のトークンは即座に使用できなくなります。デプロイ済みの埋め込みコードをすべて更新してください。",
@@ -1238,7 +1239,7 @@ const messages = {
       "previewIframeHint": "Shows how the iframe embed looks on a third-party page (same as the copied snippet).",
       "previewWidgetHint": "Shows the floating widget on a mock host page. On a real site the host passes the token via postMessage.",
       "previewMockPage": "Mock host page",
-      "defaultChatTitle": "AI Assistant",
+      "defaultChatTitle": productName,
       "newChat": "New chat",
       "rotateConfirmTitle": "Rotate publish token?",
       "rotateConfirmBody": "The old token stops working immediately. Update every deployed embed snippet.",
@@ -1793,7 +1794,7 @@ const koEmbedPublish = {
     unnamed: '이름 없는 채널',
     loading: '로딩 중...',
     awaitingToken: '호스트 페이지에서 토큰 제공 대기 중…',
-    defaultChatTitle: 'AI 어시스턴트',
+    defaultChatTitle: productName,
     newChat: '새 대화',
     preview: '미리보기',
     previewIframeHint: 'iframe 임베드가 외부 페이지에서 어떻게 보이는지 시뮬레이션합니다.',
@@ -1932,7 +1933,7 @@ const ruEmbedPublish = {
     unnamed: 'Без названия',
     loading: 'Загрузка...',
     awaitingToken: 'Ожидание токена от страницы-хоста…',
-    defaultChatTitle: 'AI-ассистент',
+    defaultChatTitle: productName,
     newChat: 'Новый чат',
     preview: 'Предпросмотр',
     previewIframeHint: 'Как iframe выглядит на сторонней странице.',

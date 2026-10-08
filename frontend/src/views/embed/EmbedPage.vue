@@ -5,7 +5,7 @@
       <header v-if="sessionId" class="embed-header">
         <span class="embed-header__badge" :style="badgeStyle">
           <span v-if="config.agent_avatar" class="embed-header__avatar">{{ config.agent_avatar }}</span>
-          <t-icon v-else :name="headerIcon" size="18px" />
+          <img v-else class="embed-header__logo" :src="brand.logoUrl" :alt="productName" />
         </span>
         <div class="embed-header__text">
           <h1 class="embed-header__title">{{ headerTitle }}</h1>
@@ -59,6 +59,7 @@ import { useI18n } from 'vue-i18n'
 import EmbedChatView from '@/views/embed/EmbedChatView.vue'
 import { useEmbedBridge } from '@/composables/useEmbedBridge'
 import { setDefaultProtectedFileAccess } from '@/utils/protectedFileAccess'
+import { brand, productName } from '@/config/branding'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -104,8 +105,7 @@ const handleNewChat = () => {
 const kbIds = computed(() => config.value?.knowledge_base_ids ?? [])
 
 const pageStyle = computed(() => {
-  const color = config.value?.primary_color
-  if (!color) return {}
+  const color = config.value?.primary_color || brand.colors.action
   return {
     '--embed-primary': color,
     '--td-brand-color': color,
@@ -115,8 +115,7 @@ const pageStyle = computed(() => {
 })
 
 const badgeStyle = computed(() => {
-  const color = config.value?.primary_color
-  if (!color) return {}
+  const color = config.value?.primary_color || brand.colors.action
   return {
     background: `color-mix(in srgb, ${color} 12%, transparent)`,
     color,
@@ -159,11 +158,6 @@ const headerSubtitle = computed(() => {
   const channelName = cfg.name?.trim()
   if (!channelName || channelName === channelDisplayTitle.value) return ''
   return cfg.agent_name
-})
-
-const headerIcon = computed(() => {
-  const agentId = config.value?.agent_id || ''
-  return agentId && agentId !== 'builtin-quick-answer' ? 'control-platform' : 'chat'
 })
 
 watch(headerTitle, (title) => {
@@ -222,6 +216,12 @@ watch(headerTitle, (title) => {
   &__avatar {
     font-size: var(--app-text-3xl);
     line-height: 1;
+  }
+
+  &__logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
   }
 
   &__text {

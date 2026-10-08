@@ -222,7 +222,7 @@
               <label class="form-label required">{{ t('vectorStoreSettings.engineTypeLabel') }}</label>
               <t-select v-model="form.engine_type" @change="onEngineTypeChange">
                 <t-option
-                  v-for="st in storeTypes"
+                  v-for="st in visibleStoreTypes"
                   :key="st.type"
                   :value="st.type"
                   :label="st.display_name"
@@ -350,6 +350,7 @@
 </template>
 
 <script setup lang="ts">
+import { isProviderHidden } from '@/config/branding'
 import { ref, computed, onMounted, watch, type WritableComputedRef } from 'vue'
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import { useI18n } from 'vue-i18n'
@@ -409,6 +410,7 @@ watch(
 // ===== Computed =====
 const envStores = computed(() => stores.value.filter(s => s.source === 'env'))
 const userStores = computed(() => stores.value.filter(s => s.source === 'user'))
+const visibleStoreTypes = computed(() => storeTypes.value.filter(storeType => !isProviderHidden(storeType.type) || editingStore.value?.engine_type === storeType.type))
 const selectedType = computed(() => storeTypes.value.find(st => st.type === form.value.engine_type))
 
 // Drawer header logo — 与列表 .store-card__badge 同源（providerLogo()），让
@@ -607,7 +609,7 @@ const openAddDialog = () => {
   showAdvanced.value = false
   form.value = {
     name: '',
-    engine_type: storeTypes.value[0]?.type || '',
+    engine_type: visibleStoreTypes.value[0]?.type || '',
     connection_config: {},
     index_config: {},
   }
