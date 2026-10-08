@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import type { Plugin } from 'vite'
 import { brand, productDescription } from './src/config/branding'
@@ -17,6 +18,13 @@ export function brandingPlugin(): Plugin {
     if (!/^\/branding\/[A-Za-z0-9._-]+\.svg$/.test(value)) throw new Error('Invalid brand SVG URL')
   }
   if (!/^\/branding\/[A-Za-z0-9._-]+\.png$/.test(brand.appleTouchIconUrl)) throw new Error('Invalid brand PNG URL')
+  if (!/^\/branding\/[A-Za-z0-9._-]+\.png$/.test(brand.faviconPngUrl)) throw new Error('Invalid favicon PNG URL')
+  if (brand.faviconIcoUrl !== '/favicon.ico') throw new Error('Invalid favicon ICO URL')
+  const favicons = () => [
+    { url: brand.faviconUrl, data: readFileSync(`${root}/branding/logo.svg`) },
+    { url: brand.faviconPngUrl, data: readFileSync(`${root}/branding/favicon-32.png`) },
+    { url: brand.faviconIcoUrl, data: readFileSync(`${root}/branding/favicon.ico`) },
+  ].map(icon => ({ ...icon, href: icon.url.replace(/(\.[a-z]+)$/, `-${createHash('sha256').update(icon.data).digest('hex').slice(0, 12)}$1`) }))
   const assets = () => {
     const logo = readFileSync(`${root}/branding/logo.svg`)
     const png = readFileSync(`${root}/branding/logo.png`)
@@ -25,6 +33,7 @@ export function brandingPlugin(): Plugin {
       [brand.faviconUrl.slice(1), logo],
       [brand.appleTouchIconUrl.slice(1), png],
       ['licenses/LICENSE', readFileSync(`${root}/LICENSE`)],
+      ...favicons().flatMap(icon => [[icon.url.slice(1), icon.data], [icon.href.slice(1), icon.data]] as [string, Buffer][]),
     ])
   }
   const widget = () => {
@@ -49,10 +58,13 @@ export function brandingPlugin(): Plugin {
       if (!brand.features.showcase && /\/assets\/img\/screenshot-[1-4]\.svg$/.test(pathname)) return 'export default ""'
     },
     transformIndexHtml(html) {
+      const icons = favicons()
       const replacements: Record<string, string> = {
         __BRAND_NAME__: brand.productName,
         __BRAND_DESCRIPTION__: productDescription,
-        __BRAND_FAVICON_URL__: brand.faviconUrl,
+        __BRAND_FAVICON_URL__: icons[0].href,
+        __BRAND_FAVICON_PNG_URL__: icons[1].href,
+        __BRAND_FAVICON_ICO_URL__: icons[2].href,
         __BRAND_APPLE_ICON_URL__: brand.appleTouchIconUrl,
       }
       return html.replace(/__BRAND_[A-Z_]+__/g, (token) => {
@@ -76,7 +88,8 @@ export function brandingPlugin(): Plugin {
         }
         const asset = assets().get(pathname.slice(1))
         if (asset !== undefined) {
-          response.setHeader('Content-Type', pathname.endsWith('.svg') ? 'image/svg+xml' : pathname.endsWith('.png') ? 'image/png' : 'text/plain; charset=utf-8')
+          response.setHeader('Content-Type', pathname.endsWith('.svg') ? 'image/svg+xml' : pathname.endsWith('.png') ? 'image/png' : pathname.endsWith('.ico') ? 'image/x-icon' : 'text/plain; charset=utf-8')
+          response.setHeader('Cache-Control', 'no-cache, must-revalidate')
           response.end(asset)
           return
         }

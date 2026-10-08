@@ -4,6 +4,8 @@
   "description": "企业知识库与智能问答平台",
   "logoUrl": "/branding/logo.svg",
   "faviconUrl": "/branding/logo.svg",
+  "faviconPngUrl": "/branding/favicon-32.png",
+  "faviconIcoUrl": "/favicon.ico",
   "appleTouchIconUrl": "/branding/logo.png",
   "colors": {
     "primary": "#60B9E8",

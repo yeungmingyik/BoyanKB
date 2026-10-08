@@ -5,6 +5,8 @@
 !branding/brand.json
 !branding/logo.svg
 !branding/logo.png
+!branding/favicon-32.png
+!branding/favicon.ico
 !LICENSE
 **/node_modules
 **/dist

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { checkDeployment, validateAllowlist } from './check-branding.mjs'
 
 const entry = { file: 'frontend/src/api/sample.ts', text: "const audience = 'weknora'", category: 'protocol_id', count: 1 }
@@ -31,20 +32,28 @@ async function deploymentFixture(t, override = {}) {
   const brand = JSON.parse(await readFile(new URL('../branding/brand.json', import.meta.url), 'utf8'))
   const logo = await readFile(new URL('../branding/logo.svg', import.meta.url))
   const png = await readFile(new URL('../branding/logo.png', import.meta.url))
+  const faviconPng = await readFile(new URL('../branding/favicon-32.png', import.meta.url))
+  const faviconIco = await readFile(new URL('../branding/favicon.ico', import.meta.url))
+  const icons = [
+    { url: brand.faviconUrl, data: logo, rel: 'icon', type: 'image/svg+xml', sizes: 'any' },
+    { url: brand.faviconPngUrl, data: faviconPng, rel: 'icon', type: 'image/png', sizes: '32x32' },
+    { url: brand.faviconIcoUrl, data: faviconIco, rel: 'shortcut icon', type: 'image/x-icon', sizes: '16x16 32x32 48x48' },
+  ].map(icon => ({ ...icon, href: icon.url.replace(/\.(svg|png|ico)$/, `-${createHash('sha256').update(icon.data).digest('hex').slice(0, 12)}.$1`) }))
   const license = await readFile(new URL('../LICENSE', import.meta.url))
   const template = await readFile(new URL('../frontend/public/weknora-widget.js', import.meta.url), 'utf8')
   const tokens = { __BRAND_NAME__: brand.productName, __BRAND_SLUG__: brand.productSlug, __BRAND_PRIMARY_COLOR__: brand.colors.action, __BRAND_LOGO_URL__: brand.logoUrl }
   const widget = template.replace(/__BRAND_[A-Z_]+__/g, token => JSON.stringify(tokens[token]).slice(1, -1).replace(/'/g, "\\'").replace(/</g, '\\u003c'))
-  const html = `<html><head><title>${brand.productName}</title><meta name="description" content="${brand.productName} ${brand.description}"><link rel="icon" href="${brand.faviconUrl}"><link rel="apple-touch-icon" href="${brand.appleTouchIconUrl}"></head></html>`
+  const html = `<html><head><title>${brand.productName}</title><meta name="description" content="${brand.productName} ${brand.description}">${icons.map(icon => `<link rel="${icon.rel}" type="${icon.type}" sizes="${icon.sizes}" href="${icon.href}">`).join('')}<link rel="apple-touch-icon" href="${brand.appleTouchIconUrl}"></head></html>`
   const routes = new Map([
-    ['/', ['text/html', html]], ['/login', ['text/html', html]],
+    ['/', ['text/html', html]], ['/login', ['text/html', html]], ['/platform/creatChat', ['text/html', html]],
     ['/embed/branding-check', ['text/plain', 'Forbidden', 403]],
     [`/embed/${channelId}`, ['text/html', html, 200, "frame-ancestors 'self'"]],
     [brand.logoUrl, ['image/svg+xml', logo]], [brand.faviconUrl, ['image/svg+xml', logo]],
     [brand.appleTouchIconUrl, ['image/png', png]],
+    ...icons.flatMap(icon => [[icon.url, [icon.type, icon.data]], [icon.href, [icon.type, icon.data]]]),
     [`/${brand.productSlug}-widget.js`, ['application/javascript', widget]],
     ['/weknora-widget.js', ['application/javascript', widget]], ['/licenses/LICENSE', ['text/plain', license]],
-    ...Object.entries(override),
+    ...Object.entries(override).map(([url, route]) => [url, typeof route === 'function' ? route(html) : route]),
   ])
   const server = createServer((req, res) => {
     const route = routes.get(req.url)
@@ -92,4 +101,13 @@ test('deployment checks reject stale widget content and cross-origin asset URLs'
   await assert.rejects(checkDeployment(widget.url, widget.brand), /widget differs/)
   const crossOrigin = await deploymentFixture(t)
   await assert.rejects(checkDeployment(crossOrigin.url, { ...crossOrigin.brand, logoUrl: 'https://example.invalid/logo.svg' }), /Cross-origin asset/)
+})
+
+test('favicon checks reject stable HTML links, HTML fallback and forged image signatures', async t => {
+  const stale = await deploymentFixture(t, { '/platform/creatChat': html => ['text/html', html.replace(/logo-[a-f0-9]{12}\.svg/, 'logo.svg')] })
+  await assert.rejects(checkDeployment(stale.url, stale.brand), /incorrect hashed favicon link/)
+  const fallback = await deploymentFixture(t, { '/favicon.ico': ['text/html', '<html><title>Application</title></html>'] })
+  await assert.rejects(checkDeployment(fallback.url, fallback.brand), /favicon Content-Type/)
+  const forged = await deploymentFixture(t, { '/favicon.ico': ['image/x-icon', '<html>not an icon</html>'] })
+  await assert.rejects(checkDeployment(forged.url, forged.brand), /invalid favicon signature/)
 })

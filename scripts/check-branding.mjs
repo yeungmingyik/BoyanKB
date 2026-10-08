@@ -96,10 +96,45 @@ function htmlDecode(value) {
   return value.replace(/&(amp|lt|gt|quot|#39);/g, entity => ({ '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'" })[entity])
 }
 
+function validIconSignature(data, format) {
+  if (format === 'svg') return /<svg\b/.test(data.toString('utf8'))
+  if (format === 'png') return data.length >= 33 && data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) && data.toString('ascii', 12, 16) === 'IHDR' && data.readUInt32BE(16) === 32 && data.readUInt32BE(20) === 32
+  if (data.length < 54 || data.readUInt16LE(0) !== 0 || data.readUInt16LE(2) !== 1 || data.readUInt16LE(4) !== 3) return false
+  const sizes = []
+  for (let index = 0; index < 3; index++) {
+    const entry = 6 + index * 16
+    const width = data[entry] || 256
+    const height = data[entry + 1] || 256
+    const length = data.readUInt32LE(entry + 8)
+    const offset = data.readUInt32LE(entry + 12)
+    if (width !== height || !length || offset < 54 || offset + length > data.length) return false
+    sizes.push(width)
+  }
+  return sizes.sort((a, b) => a - b).join(',') === '16,32,48'
+}
+
+export async function loadFaviconAssets(brand) {
+  const definitions = [
+    { key: 'faviconUrl', source: 'branding/logo.svg', format: 'svg', rel: 'icon', type: 'image/svg+xml', sizes: 'any' },
+    { key: 'faviconPngUrl', source: 'branding/favicon-32.png', format: 'png', rel: 'icon', type: 'image/png', sizes: '32x32' },
+    { key: 'faviconIcoUrl', source: 'branding/favicon.ico', format: 'ico', rel: 'shortcut icon', type: 'image/x-icon', sizes: '16x16 32x32 48x48' },
+  ]
+  return Promise.all(definitions.map(async definition => {
+    const stableUrl = brand[definition.key]
+    requireValue(typeof stableUrl === 'string' && /^\/[A-Za-z0-9/._-]+$/.test(stableUrl) && stableUrl.endsWith(`.${definition.format}`), `Invalid ${definition.key}`)
+    const data = await readFile(join(root, definition.source))
+    requireValue(validIconSignature(data, definition.format), `${definition.source}: invalid favicon signature or dimensions`)
+    const sha256 = digest(data)
+    const href = stableUrl.replace(/\.(svg|png|ico)$/, `-${sha256.slice(0, 12)}.$1`)
+    return { ...definition, stableUrl, href, data, sha256 }
+  }))
+}
+
 export async function checkDeployment(base, brand, { embedChannelId } = {}) {
   const origin = new URL(base)
   requireValue(['http:', 'https:'].includes(origin.protocol) && !origin.username && !origin.password && origin.pathname === '/' && !origin.search && !origin.hash, '--url must be an HTTP(S) origin without credentials')
   if (embedChannelId !== undefined) requireValue(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(embedChannelId), '--embed-channel-id must be a UUID')
+  const favicons = await loadFaviconAssets(brand)
   const downloaded = new Map()
   const get = async (path, statuses = [200]) => {
     const url = new URL(path, origin)
@@ -112,7 +147,7 @@ export async function checkDeployment(base, brand, { embedChannelId } = {}) {
     downloaded.set(url.pathname, result)
     return result
   }
-  const htmlPaths = ['/', '/login']
+  const htmlPaths = ['/', '/login', '/platform/creatChat']
   if (embedChannelId) htmlPaths.push(`/embed/${embedChannelId}`)
   for (const path of htmlPaths) {
     const { data, type, csp } = await get(path)
@@ -122,7 +157,9 @@ export async function checkDeployment(base, brand, { embedChannelId } = {}) {
     requireValue(!/__BRAND_[A-Z_]+__/.test(html), `${path}: unresolved brand token`)
     if (path.startsWith('/embed/')) requireValue(/(?:^|;)\s*frame-ancestors\s+/.test(csp), `${path}: missing frame-ancestors policy`)
     const links = html.match(/<link\b[^>]*>/gi) || []
-    requireValue(links.some(tag => attribute(tag, 'rel') === 'icon' && htmlDecode(attribute(tag, 'href')) === brand.faviconUrl), `${path}: incorrect favicon`)
+    const iconLinks = links.filter(tag => attribute(tag, 'rel').split(/\s+/).includes('icon'))
+    requireValue(iconLinks.length === favicons.length, `${path}: incorrect favicon link count`)
+    for (const icon of favicons) requireValue(iconLinks.some(tag => attribute(tag, 'rel') === icon.rel && htmlDecode(attribute(tag, 'href')) === icon.href && attribute(tag, 'type') === icon.type && attribute(tag, 'sizes') === icon.sizes), `${path}: incorrect hashed favicon link for ${icon.format}`)
     if (path === '/') {
       const metas = html.match(/<meta\b[^>]*>/gi) || []
       requireValue(metas.some(tag => attribute(tag, 'name') === 'description' && htmlDecode(attribute(tag, 'content')) === `${brand.productName} ${brand.description}`), 'Incorrect initial description')
@@ -133,11 +170,20 @@ export async function checkDeployment(base, brand, { embedChannelId } = {}) {
   requireValue(!/id\s*=\s*["']embed-app["']/.test(denied.data.toString('utf8')), 'Invalid embed entry returned the embed application')
   const logo = await readFile(join(root, 'branding/logo.svg'))
   const png = await readFile(join(root, 'branding/logo.png'))
-  for (const path of new Set([brand.logoUrl, brand.faviconUrl, brand.appleTouchIconUrl])) {
+  for (const path of new Set([brand.logoUrl, brand.appleTouchIconUrl])) {
     const { data, type } = await get(path)
     const expected = path.endsWith('.svg') ? logo : png
     requireValue(type.includes(path.endsWith('.svg') ? 'image/svg+xml' : 'image/png'), `${path}: incorrect image Content-Type`)
     requireValue(digest(data) === digest(expected), `${path}: deployed logo bytes differ from branding assets`)
+  }
+  for (const icon of favicons) {
+    for (const path of new Set([icon.stableUrl, icon.href])) {
+      const { data, type } = await get(path)
+      const contentType = type.split(';')[0].trim().toLowerCase()
+      requireValue(contentType === icon.type || icon.format === 'ico' && contentType === 'image/vnd.microsoft.icon', `${path}: incorrect favicon Content-Type`)
+      requireValue(validIconSignature(data, icon.format), `${path}: invalid favicon signature or dimensions`)
+      requireValue(digest(data) === icon.sha256, `${path}: deployed favicon bytes differ from branding assets`)
+    }
   }
   const template = await readFile(join(root, 'frontend/public/weknora-widget.js'), 'utf8')
   const tokens = { __BRAND_NAME__: brand.productName, __BRAND_SLUG__: brand.productSlug, __BRAND_PRIMARY_COLOR__: brand.colors.action, __BRAND_LOGO_URL__: brand.logoUrl }
@@ -156,7 +202,7 @@ export async function checkDeployment(base, brand, { embedChannelId } = {}) {
   const servedLicense = await get('/licenses/LICENSE')
   requireValue(servedLicense.type.includes('text/plain'), 'License endpoint returned non-text content')
   requireValue(digest(license) === digest(servedLicense.data), 'Deployed LICENSE differs from preserved source')
-  console.log(`通过：已部署初始 HTML、Logo、favicon、Apple 图标、新旧 widget 和 LICENSE（${downloaded.size} 个 URL）。`)
+  console.log(`通过：已部署首页、登录页、新建聊天页初始 HTML、Logo、三格式 favicon 的哈希链接和稳定地址、Apple 图标、新旧 widget 和 LICENSE（${downloaded.size} 个 URL）。`)
   console.log(`无效嵌入入口未返回应用页面：HTTP ${denied.status}${denied.status === 500 ? '（服务器错误；不据此判断有效渠道可用）' : ''}。`)
   console.log(embedChannelId ? '通过：指定既有渠道的嵌入 HTML 品牌及 frame-ancestors 响应头。' : '未验证有效嵌入 HTML；传入 --embed-channel-id UUID 可检查既有启用渠道。')
   console.log('部署检查范围：公开静态资源；不登录、不修改数据、不验证已有用户内容或交互后的页面状态。')
