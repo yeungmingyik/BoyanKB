@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import tempfile
@@ -79,7 +80,7 @@ class RenderV2Tests(unittest.TestCase):
         self.assertLessEqual(len(deck.slides), 80)
         for slide in deck.slides:
             for shape in slide.shapes:
-                if shape.has_text_frame and shape.name not in {"number-0", "number-1", "number-2"} and shape.text:
+                if shape.has_text_frame and shape.name in v2.LAYOUT_FIELDS[slide_layout(slide)] and shape.text:
                     self.assertTrue(v2.fits(shape, shape.text), shape.name)
                 if shape.has_table:
                     self.assertLessEqual(shape.height, v2.validate_template(self.root / "ppt-v2" / (value["scene"] + ".pptx")).slides[6].shapes[-1].height)
@@ -124,6 +125,27 @@ class RenderV2Tests(unittest.TestCase):
         deck.save(template)
         with self.assertRaisesRegex(render.RenderError, "invalid_presentation_layouts"):
             v2.validate_template(template)
+
+    def test_native_cjk_height_margin_splits_before_frame_boundary(self):
+        for slide_index, field in ((2, "body"), (7, "summary-body")):
+            with self.subTest(field=field):
+                deck = v2.validate_template(self.root / "ppt-v2/teaching.pptx")
+                shape = next(shape for shape in deck.slides[slide_index].shapes if shape.name == field)
+                size = v2.font_size(shape)
+                height = (shape.height - shape.text_frame.margin_top - shape.text_frame.margin_bottom) / 12700
+                line_count = math.floor(height / (size * 1.12))
+                value = "\n".join("教学目标45分钟" for _ in range(line_count))
+                render.fitted_text(shape, value)
+                self.assertFalse(v2.fits(shape, value))
+                with self.assertRaisesRegex(render.RenderError, "presentation_text_does_not_fit"):
+                    v2.fitted_text(shape, value)
+                pages = v2.text_pages(shape, value)
+                self.assertGreater(len(pages), 1)
+                self.assertEqual("".join(pages), value)
+                for part in pages:
+                    v2.fitted_text(shape, part)
+                    self.assertLessEqual(len(shape.text.splitlines()) * v2.font_size(shape) * 1.30, height)
+                    self.assertTrue(v2.fits(shape, shape.text))
 
     def test_cover_section_keeps_visible_content_tables_and_original_notes(self):
         for body, merged in (("这份课件说明目标受众与资料边界。", True), ("原始封面说明必须完整显示，不能以省略号代替。" * 20, False)):

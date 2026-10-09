@@ -16,9 +16,11 @@ PPT 模板与业务预设独立版本化。`BOYAN_PPT_TEMPLATE_VERSION` 缺省�
 
 v2 包含封面、目标议程、图文讲解、步骤流程、互动提问、双栏对比、原生表格和总结八类布局。服务端根据章节标题与内容结构确定布局；长内容按实际文本框宽高分页，不补写业务事实。首节明确为封面且正文可容纳时，将正文显示在封面副标题；否则保留为“课件说明”或“方案说明”正文页，原始章节标题和备注仍保存在讲师备注，表格另行保留。原生表格文字至少为 18pt，超出单页容量时分页。明确的资料来源章节合并到最后的来源组，其原有正文、项目、表格和备注保留，授权来源另由服务器追加。每页备注继续包含来源分块 ID，分组时长规则保持不变。
 
+v2 的正文容量与最终写入共用拟合结果，按字号的 1.30 倍预留行高，避免中文实际字形高度超出文本框。短尾行平衡也必须满足这一余量；不满足时分页或拒绝，不扩大文本框、不减少原文、不放宽原生 Office 溢出检查。v1 的排版算法保持原样。边界测试覆盖原 1.12 倍算法能容纳、而新版必须分页的正文和总结框；真实 A/B 提案的离线重放位于 `temp/ppt-design-chinese/height-replay/`，其合成租户标识仅供渲染，不代表鉴权或重新审批已经通过。
+
 渲染器健康接口保留 `template_version: boyan-v1` 与原有四格式字段，另返回 `template_versions` 和 `ppt_template_versions`。应用 readiness 还返回 `selected_ppt_template_version`，选择 v2 时必须确认渲染器确实支持它；模板摘要或八布局结构损坏时失败，不回退到旧版。本地 `docker-compose.presets.yml` 显式选择 v2，生产配置未改。
 
-在渲染器目录执行 `python -m unittest test_render test_template_versions test_render_v2 -v`，镜像内完整 24 项测试通过，覆盖旧版四格式、新版八布局、未知版本、模板篡改、长中文与英数、封面内容和表格分页。三场景合成样例与摘要保存在 `temp/ppt-design-chinese/renderer/`，每份 12 页；它们用于验证渲染，不作为真实业务事实或 LLM 验收结果。`internal/businessworkflow` 全包测试通过；设置 `BOYAN_PPT_V2_FIXTURES_DIR` 指向这些样例后运行 `TestActualPPTV2ArtifactsKeepReviewEvidence`，另验证真实文件类型、授权来源 ID、数值及正文抽取保全。原生 Office 的逐页视觉验收单独记录在 `docs/06-ppt-design.md`。
+在渲染器目录执行 `python -m unittest test_render test_template_versions test_render_v2 -v`，镜像内完整 25 项测试通过，覆盖旧版四格式、新版八布局、未知版本、模板篡改、长中文与英数、封面内容、中文字形行高边界和表格分页。三场景合成样例与摘要保存在 `temp/ppt-design-chinese/renderer/`，每份 12 页；它们用于验证渲染，不作为真实业务事实或 LLM 验收结果。`internal/businessworkflow` 全包测试通过；设置 `BOYAN_PPT_V2_FIXTURES_DIR` 指向这些样例后运行 `TestActualPPTV2ArtifactsKeepReviewEvidence`，另验证真实文件类型、授权来源 ID、数值及正文抽取保全。原生 Office 的逐页视觉验收单独记录在 `docs/06-ppt-design.md`。
 
 应用按格式核验渲染器检查项白名单，拒绝缺项、重复项、未知项及额外字段，并将结果绑定候选文件 SHA256，以独立的 `renderer_validation` 字段交给 C。正文、需求或来源中的同名文字不能构成检查证据。XLSX 证据包括当前文件经 LibreOffice 重算、公式错误扫描；含结构化预算时还包括逐项金额与合计和独立计算结果一致。该证据不代表执行过输入扰动、逐一验证全部未来输入或视觉排版验收，也不能自动将 C 的拒绝改为通过。
 

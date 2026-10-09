@@ -217,6 +217,7 @@
 | `deployment/document-renderer/render.py`、`test_render.py` | PPT 固定字符切割拆开数字并产生孤立续页 | 正文及来源标题按安全句读边界分段，数字/ASCII 词保持完整；三要点分页平衡尾页，保留原字、来源和备注；14 项渲染测试通过，含真实 PPT 重开、文本框尺寸和 LibreOffice PDF 导出 |
 | `deployment/document-renderer/render.py`、`test_render.py` | 短尾行平衡将可用两行变为三行，错误拒绝渲染 | 保留同字号的原始安全换行作为回退；15 项回归测试通过；真实 B 请求生成 18 页并导出 PDF，不改模板或原文 |
 | `deployment/document-renderer/render.py`、`render_pptx_v2.py`、`server.py`、`test_template_versions.py`、`test_render_v2.py` | 新视觉不能覆盖 v1 模板或只替换封面 | 双版本模板注册与摘要/布局校验；v2 按内容选择八类真实布局，保留正文、表格、来源和备注；旧版渲染分支保留 |
+| `deployment/document-renderer/render_pptx_v2.py`、`test_render_v2.py` | 真实 PowerPoint 中中文正文和总结字形略超文本框 | v2 拟合、分页与写入统一使用 1.30 倍行高余量，短尾平衡遵循同一门槛；真实提案离线重放并保留原生 Office 检查，v1 不变 |
 | `internal/businessworkflow/template_version*`、`service.go`、`renderer.go`、`readiness.go`、`docker-compose.presets.yml` | 视觉升级不能破坏既有确认、下载和开通幂等 | 服务器显式选择新 PPT 版本，版本写入确认哈希；未知版本拒绝；健康能力校验；本地镜像/配置使用 v2，生产与已安装预设不变 |
 | `docker/Dockerfile.app-boyankb`、`scripts/build-presets-images.sh` | 定制镜像需要带上预设和迁移 | 三个本机版本镜像，应用嵌入配置、指南及新增迁移 |
 | `scripts/onboard-partner*`、`scripts/test_onboard_partner.py` | 重复执行不重复资源，失败能恢复 | 默认本地计划，显式 apply、断点记录、readiness 通过才完成 |

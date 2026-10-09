@@ -46,16 +46,38 @@ def font_size(shape):
     return next((run.font.size.pt for paragraph in shape.text_frame.paragraphs for run in paragraph.runs if run.font.size), 24)
 
 
-def fits(shape, value, minimum=None):
+def fitted_lines(shape, value, minimum=None):
     existing = font_size(shape)
     width = (shape.width - shape.text_frame.margin_left - shape.text_frame.margin_right) / 12700
     height = (shape.height - shape.text_frame.margin_top - shape.text_frame.margin_bottom) / 12700
     for size in [existing] + ([minimum] if minimum and minimum < existing else []):
         capacity = width / (size * 1.08)
         lines = core.wrap_text(value, capacity)
-        if all(core.text_width(line) <= capacity for line in lines) and len(lines) * size * (1.24 if shape.name == "heading" else 1.12) <= height:
-            return True
-    return False
+        candidates = [lines]
+        if len(lines) > 1 and "\n" not in value and len(lines[-1]) < len(lines[0]) * .5:
+            candidates.insert(0, core.wrap_text(value, min(capacity, math.ceil(core.text_width(value) / len(lines)) + .5)))
+        for lines in candidates:
+            if all(core.text_width(line) <= capacity for line in lines) and len(lines) * size * 1.30 <= height:
+                return size, lines
+    return None
+
+
+def fits(shape, value, minimum=None):
+    return fitted_lines(shape, value, minimum) is not None
+
+
+def fitted_text(shape, value, minimum=None):
+    fitted = fitted_lines(shape, value, minimum)
+    if fitted is None:
+        core.fail("presentation_text_does_not_fit")
+    size, lines = fitted
+    core.set_text(shape, "\n".join(lines))
+    shape.text_frame.word_wrap = False
+    for paragraph in shape.text_frame.paragraphs:
+        paragraph.line_spacing = 1.05
+        paragraph.space_before = paragraph.space_after = Pt(0)
+        for run in paragraph.runs:
+            run.font.size = Pt(size)
 
 
 def text_pages(shape, value):
@@ -160,7 +182,7 @@ def render_pptx_v2(request, template, destination):
             if name != "content-table":
                 core.set_text(named[name], "")
         if index:
-            core.fitted_text(named["heading"], heading, font_size(named["heading"]) * .8)
+            fitted_text(named["heading"], heading, font_size(named["heading"]) * .8)
             core.set_text(named["section-label"], SCENE_LABELS[request["scene"]])
         return slide, named
 
@@ -179,7 +201,7 @@ def render_pptx_v2(request, template, destination):
         result = []
         for index, part in enumerate(text_pages(original_names[layout][field], text)):
             slide, named = create(layout, heading + ("（续）" if index else ""))
-            core.fitted_text(named[field], part)
+            fitted_text(named[field], part)
             result.append(slide)
         return result
 
@@ -196,17 +218,17 @@ def render_pptx_v2(request, template, destination):
             if not fits(original_names[4]["question-body"], units[0]):
                 return text_slides(heading, text)
             slide, named = create(4, heading)
-            core.fitted_text(named["question-body"], units[0])
+            fitted_text(named["question-body"], units[0])
             remaining = "\n".join(units[1:])
             if fits(named["question-hint"], remaining):
-                core.fitted_text(named["question-hint"], remaining)
+                fitted_text(named["question-hint"], remaining)
                 return [slide]
             return [slide] + text_slides(heading + "（续）", remaining)
         if layout == 5 and len(units) == 2 and all(fits(original_names[5][name], value) for name, value in zip(("left-body", "right-body"), units)):
             slide, named = create(5, heading)
             for index, side in enumerate(("left", "right")):
                 core.set_text(named[side + "-heading"], "对照" + ("一" if index == 0 else "二"))
-                core.fitted_text(named[side + "-body"], units[index])
+                fitted_text(named[side + "-body"], units[index])
             return [slide]
         if layout in (1, 3):
             prefix = "point-" if layout == 1 else "step-title-"
@@ -219,7 +241,7 @@ def render_pptx_v2(request, template, destination):
                         continue
                     slide, named = create(layout, page_heading)
                     for index, value in enumerate(group):
-                        core.fitted_text(named[prefix + str(index)], value)
+                        fitted_text(named[prefix + str(index)], value)
                     result.append(slide)
                 return result
         return text_slides(heading, text)
@@ -258,8 +280,8 @@ def render_pptx_v2(request, template, destination):
 
     cover, named = create(0)
     title = request["document"]["title"]
-    core.fitted_text(named["cover-title"], title, font_size(named["cover-title"]) * .75)
-    core.fitted_text(named["cover-subtitle"], SCENE_LABELS[request["scene"]])
+    fitted_text(named["cover-title"], title, font_size(named["cover-title"]) * .75)
+    fitted_text(named["cover-subtitle"], SCENE_LABELS[request["scene"]])
     notes([cover], "", timing=False)
     source_sections = []
     for section_index, original_section in enumerate(request["document"]["sections"]):
@@ -275,7 +297,7 @@ def render_pptx_v2(request, template, destination):
             content = "\n".join(content_units(section))
             if section_index == 0 and fits(named["cover-subtitle"], content):
                 if content:
-                    core.fitted_text(named["cover-subtitle"], content)
+                    fitted_text(named["cover-subtitle"], content)
                 merged_cover = True
         pages = [cover] if merged_cover else section_pages(section)
         for table in section.get("tables") or []:
