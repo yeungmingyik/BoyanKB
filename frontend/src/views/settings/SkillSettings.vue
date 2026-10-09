@@ -506,8 +506,8 @@ const installDrawerTitle = computed(() =>
 const installDrawerDesc = computed(() => {
   const item = installCatalog.value
   if (!item) return t('settings.skills.installToSandboxDesc')
-  if (installMode.value === 'upgrade') return t('settings.skills.upgradeDrawerDesc', { name: item.name })
-  return t('settings.skills.installDrawerDesc', { name: item.name })
+  if (installMode.value === 'upgrade') return t('settings.skills.upgradeDrawerDesc', { name: skillDisplayName(item.name) })
+  return t('settings.skills.installDrawerDesc', { name: skillDisplayName(item.name) })
 })
 
 const manageDesc = computed(() => {
@@ -865,7 +865,7 @@ function installTooltip(item: SkillCatalogItem, inst: SkillCatalogInstall): stri
 
 function openCatalogFiles(item: SkillCatalogItem) {
   filesCatalogId.value = item.id
-  filesCatalogName.value = item.name
+  filesCatalogName.value = skillDisplayName(item.name)
   filesDrawerVisible.value = true
 }
 
@@ -875,7 +875,7 @@ function askDelete(item: SkillCatalogItem) {
     return
   }
   confirmDelete({
-    body: t('settings.skills.deleteCatalogConfirm', { name: item.name }),
+    body: t('settings.skills.deleteCatalogConfirm', { name: skillDisplayName(item.name) }),
     onConfirm: () => removeCatalog(item),
   })
 }
@@ -957,7 +957,7 @@ function openManage(item: SkillCatalogItem, inst: SkillCatalogInstall) {
   manageRecord.value = record
   manageSkillId.value = inst.skill_id
   manageCatalogId.value = item.id
-  manageTitle.value = item.name
+  manageTitle.value = skillDisplayName(item.name)
   showManage.value = true
 }
 
