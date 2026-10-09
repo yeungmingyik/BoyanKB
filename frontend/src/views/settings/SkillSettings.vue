@@ -71,7 +71,7 @@
                   <code>{{ item.name }}</code>
                 </details>
               </div>
-              <div v-for="view in [installsView(item)]" :key="'installs'" class="skill-card__installs">
+              <div v-for="view in (allowsNativeSkillInstall(item.name) ? [installsView(item)] : [])" :key="'installs'" class="skill-card__installs">
                 <span v-if="view.installs.length === 0 && !view.canAdd" class="skill-card__installs-label">
                   {{ $t('settings.skills.noInstalls') }}
                 </span>
@@ -347,7 +347,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { AddIcon, DeleteIcon, FolderIcon } from 'tdesign-icons-vue-next'
 import { useI18n } from 'vue-i18n'
-import { businessSkillLabel } from '@/config/businessSkills'
+import { allowsNativeSkillInstall, businessSkillLabel } from '@/config/businessSkills'
 import SandboxSkillsPanel from '@/components/SandboxSkillsPanel.vue'
 import SkillFilesDrawer from '@/components/SkillFilesDrawer.vue'
 import SandboxBackendBadge from '@/components/settings/SandboxBackendBadge.vue'
@@ -525,6 +525,7 @@ function canDelete(item: SkillCatalogItem): boolean {
 }
 
 function targetsFor(item: SkillCatalogItem): SandboxConfigRecord[] {
+  if (!allowsNativeSkillInstall(item.name)) return []
   const taken = new Set(
     liveInstalls(item)
       .filter((inst) => inst.status === 'installing' || inst.status === 'ready' || inst.status === 'removing')
@@ -584,6 +585,7 @@ function sandboxPickRows(
   mode: 'remaining' | 'upgrade' | 'all',
   sessionIds: string[],
 ): SandboxPickRow[] {
+  if (item && !allowsNativeSkillInstall(item.name)) return []
   const byId = new Map(
     (item ? liveInstalls(item) : []).map((inst) => [inst.sandbox_config_id, inst]),
   )
@@ -743,6 +745,7 @@ function installPriority(item: SkillCatalogItem, inst: SkillCatalogInstall): num
 }
 
 function unusedTargets(item: SkillCatalogItem): SandboxConfigRecord[] {
+  if (!allowsNativeSkillInstall(item.name)) return []
   const live = new Set(liveInstalls(item).map((inst) => inst.sandbox_config_id))
   return skillConfigs.value
     .filter((cfg) => !live.has(cfg.id))
@@ -759,7 +762,7 @@ function installsView(item: SkillCatalogItem) {
   return {
     installs,
     available,
-    upgradable: installs.filter((inst) => installUpgradable(item, inst)),
+    upgradable: allowsNativeSkillInstall(item.name) ? installs.filter((inst) => installUpgradable(item, inst)) : [],
     canAdd: available.length > 0,
     needsPanel: installs.length + available.length > 1,
   }
@@ -827,6 +830,7 @@ function openManageFromPanel(item: SkillCatalogItem, inst: SkillCatalogInstall) 
 }
 
 function openInstallTo(item: SkillCatalogItem, cfg: SandboxConfigRecord) {
+  if (!allowsNativeSkillInstall(item.name)) return
   openPanelId.value = ''
   installMode.value = 'install'
   installCatalog.value = item
@@ -881,6 +885,7 @@ function askDelete(item: SkillCatalogItem) {
 }
 
 function defaultAddTargets(): string[] {
+  if (registeredCatalog.value && !allowsNativeSkillInstall(registeredCatalog.value.name)) return []
   const preferred = (props.initialSandboxId || '').trim()
   if (preferred && skillConfigs.value.some((cfg) => cfg.id === preferred)) return [preferred]
   if (skillConfigs.value.length === 1) return [skillConfigs.value[0].id]
@@ -929,6 +934,7 @@ function addPreviousStep() {
 }
 
 function openInstall(item: SkillCatalogItem) {
+  if (!allowsNativeSkillInstall(item.name)) return
   installMode.value = 'install'
   installCatalog.value = item
   installSessionIds.value = []
@@ -942,6 +948,7 @@ function openInstall(item: SkillCatalogItem) {
 // archive; the server treats a same-name install as an in-place upgrade. Every
 // outdated sandbox starts checked, so one confirm upgrades them all.
 function openUpgrade(item: SkillCatalogItem) {
+  if (!allowsNativeSkillInstall(item.name)) return
   openPanelId.value = ''
   installMode.value = 'upgrade'
   installCatalog.value = item
@@ -952,6 +959,7 @@ function openUpgrade(item: SkillCatalogItem) {
 }
 
 function openManage(item: SkillCatalogItem, inst: SkillCatalogInstall) {
+  if (!allowsNativeSkillInstall(item.name)) return
   const record = recordFor(inst.sandbox_config_id)
   if (!record) return
   manageRecord.value = record
@@ -1068,6 +1076,10 @@ async function handleAddPrimary() {
   }
   const catalogId = registeredCatalog.value?.id
   if (!catalogId) return
+  if (!allowsNativeSkillInstall(registeredCatalog.value!.name)) {
+    showAdd.value = false
+    return
+  }
   const targets = [...addTargetIds.value]
   if (targets.length === 0) {
     showAdd.value = false
@@ -1118,7 +1130,7 @@ function onInstallDrawerConfirm() {
 async function confirmInstall() {
   const item = installCatalog.value
   const targets = [...installTargetIds.value]
-  if (!item || targets.length === 0) return
+  if (!item || !allowsNativeSkillInstall(item.name) || targets.length === 0) return
   const upgrading = pickedOnlyUpgrades(installPickRows.value, targets)
   installing.value = true
   try {

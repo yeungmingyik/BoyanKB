@@ -16,6 +16,10 @@ export function businessSkillLabel(name: string): string | undefined {
   return Object.hasOwn(BUSINESS_SKILL_LABELS, name) ? BUSINESS_SKILL_LABELS[name] : undefined
 }
 
+export function allowsNativeSkillInstall(name: string): boolean {
+  return !businessSkillLabel(name)
+}
+
 export function canReadBusinessSkill(skill: BusinessSkill): boolean {
   return skill.installed && skill.available && skill.hash_verified && skill.status === 'ready'
 }
