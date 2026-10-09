@@ -157,59 +157,37 @@ var RequiredFields = map[string][]string{
 
 func ValidateProposal(p Proposal) error {
 	fields, ok := RequiredFields[p.Scene]
-	if !ok || len(p.OutlineMarkdown) < 10 || len(p.OutlineMarkdown) > 30000 || strings.TrimSpace(p.Document.Title) == "" || len(p.Document.Title) > 200 || len(p.Document.Sections) == 0 || len(p.Document.Sections) > 60 || len(p.Sources) == 0 || len(p.Sources) > 30 {
-		return ErrInvalid
+	if !ok {
+		return fmt.Errorf("%w: scene must be a supported business scene", ErrInvalid)
+	}
+	if len(p.OutlineMarkdown) < 10 || len(p.OutlineMarkdown) > 30000 {
+		return fmt.Errorf("%w: outline_markdown must contain 10 to 30000 UTF-8 bytes", ErrInvalid)
 	}
 	if p.Format != "docx" && p.Format != "pptx" && p.Format != "xlsx" && p.Format != "md" {
-		return ErrInvalid
+		return fmt.Errorf("%w: format must be docx, pptx, xlsx or md", ErrInvalid)
+	}
+	if len(p.Sources) < 1 || len(p.Sources) > 30 {
+		return fmt.Errorf("%w: sources must contain 1 to 30 retrieved chunk references", ErrInvalid)
+	}
+	for index, source := range p.Sources {
+		if err := validateRendererText(fmt.Sprintf("sources[%d].chunk_id", index), source.ChunkID, 100, true); err != nil {
+			return err
+		}
 	}
 	for _, field := range fields {
 		if strings.TrimSpace(p.Requirements[field]) == "" {
-			return ErrInvalid
+			return fmt.Errorf("%w: requirements.%s is required", ErrInvalid, field)
 		}
 	}
-	for _, section := range p.Document.Sections {
-		if strings.TrimSpace(section.Heading) == "" || len(section.Body) > 30000 || len(section.Notes) > 10000 {
-			return ErrInvalid
-		}
-		for _, table := range section.Tables {
-			if len(table.Headers) == 0 || len(table.Headers) > 20 || len(table.Rows) > 300 {
-				return ErrInvalid
-			}
-			for _, row := range table.Rows {
-				if len(row) != len(table.Headers) {
-					return ErrInvalid
-				}
-				if p.Format == "xlsx" {
-					for _, cell := range row {
-						if spreadsheetFormulaText(cell) {
-							return ErrTableFormula
-						}
-					}
-				}
-			}
-			if p.Format == "xlsx" {
-				for _, header := range table.Headers {
-					if spreadsheetFormulaText(header) {
-						return ErrTableFormula
-					}
-				}
-			}
-		}
+	if err := validateRendererDocument(p.Document, p.Format); err != nil {
+		return err
 	}
-	if p.Budget != nil {
-		if len(p.Budget.Items) == 0 || len(p.Budget.Items) > 300 {
-			return ErrInvalid
-		}
-		for _, item := range p.Budget.Items {
-			if item.Label == "" || item.Quantity < 0 || item.Quantity > 10000000 || item.UnitPrice < 0 || item.UnitPrice > 100000000 {
-				return ErrInvalid
-			}
-		}
+	if err := validateRendererBudget(p.Budget); err != nil {
+		return err
 	}
 	data, err := json.Marshal(p)
 	if err != nil || len(data) > 256*1024 {
-		return ErrInvalid
+		return fmt.Errorf("%w: reduce the complete proposal JSON to at most 256 KiB", ErrInvalid)
 	}
 	return nil
 }

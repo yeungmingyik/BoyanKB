@@ -202,7 +202,9 @@
 | `migrations/{versioned,sqlite}/000111_partner_provisioning*` | 保留开户步骤与安装登记 | 新增独立表；不改原业务数据 |
 | `internal/businessworkflow/*`、`internal/agent/tools/boyan_document.go`、`internal/handler/business_workflow.go`、`internal/router/routes_business_workflow.go` | 提示词不能强制用户确认或阻断文件发布 | 大纲哈希、权限复验、候选隔离、固定渲染、独立审校、通过后下载 |
 | `internal/businessworkflow/artifact_text*`、`reviewer.go`、`types.go`、`internal/agent/tools/boyan_document.go` | 审校必须读取真实文件结构，预算不能成为模型自写伪公式 | Excel地址/共享串/公式缓存，PPT实际播放页序及关联备注，DOCX正文和页眉页脚；服务器日期与受信固定规则；结构化预算输入门禁；真实生成Office文件抽取测试 |
+| `internal/businessworkflow/render_limits*`、`types.go`、`service.go` | 已确认内容不应因可预先检查的渲染限额而失败 | 提案阶段对齐 Unicode 字符数、章节/表格/预算数量、来源文本与数值范围；字段级纠正提示；边界与拒绝落库测试 |
 | `internal/businessworkflow/revision*`、`internal/modelcontext/boyan_revision.go`、`registry.go`、`boyan_document_test.go` | 跨轮修订不能丢失原稿及来源，也不能从任意正文伪造来源句柄 | 身份、摘要、当前共享权限和指南重新验证；仅服务器验证来源恢复映射；新稿重新确认；撤销、伪来源和跨空间测试 |
+| `internal/businessworkflow/reviewer_retry_test.go`、`reviewer.go`、`render_limits*`、`types.go`、`service.go` | 矛盾审校与确认后超限会使正常任务无法完成 | 同一 C 模型最多一次结论澄清，仍异常拒绝发布；Unicode 字符、集合、预算及来源限额提前校验；边界与失败关闭测试 |
 | `internal/application/service/boyan_runtime_policy.go`、`boyan_rerank*`、`session_agent_qa.go` | 真实对话出现重复追问、时长及风险结构遗漏 | ready 记录绑定的三名 Agent 附加运行约束；不能仅凭客户端开关生效；身份与状态门禁测试 |
 | `migrations/{versioned,sqlite}/000112_boyan_document_jobs*` | 文档状态和候选需持久化 | 每个租户/用户/会话独立记录、确认和发布约束、候选二进制留在受控表 |
 | `internal/container/container.go`、`internal/router/router.go`、`internal/application/service/agent_service.go`、`session_agent_qa.go`、`internal/types/agent.go`、`internal/modelcontext/tool_policy.go`、`internal/agent/tools/definitions.go` | 接入业务工具及可验证来源 | 依赖注入、路由、新工具显式允许、实际 Agent ID 与分块 ID 解码；保留其他 Agent 默认工具行为 |

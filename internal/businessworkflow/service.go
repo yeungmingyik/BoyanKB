@@ -105,8 +105,11 @@ func (s *Service) source(ctx context.Context, id string) (Source, error) {
 	if types.AuthorizeTenantAPIKeyKnowledgeBases(ctx, knowledge.KnowledgeBaseID) != nil {
 		return Source{}, ErrDenied
 	}
-	if len(chunk.Content) == 0 || len(chunk.Content) > 24000 {
-		return Source{}, ErrInvalid
+	if err := validateRendererText("source.title", knowledge.Title, 300, true); err != nil {
+		return Source{}, err
+	}
+	if err := validateRendererText("source.excerpt", chunk.Content, 24000, true); err != nil {
+		return Source{}, err
 	}
 	return Source{Authority: authority, ID: chunk.ID, ChunkID: chunk.ID, KnowledgeID: knowledge.ID, KnowledgeBaseID: knowledge.KnowledgeBaseID, Title: knowledge.Title, Excerpt: chunk.Content, SHA256: digest([]byte(chunk.Content))}, nil
 }

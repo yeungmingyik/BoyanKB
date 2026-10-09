@@ -132,6 +132,56 @@ class RenderTests(unittest.TestCase):
         with self.assertRaisesRegex(render.RenderError, "presentation_too_large"):
             render.generate(value)
 
+    def test_presentation_title_limit_is_checked_before_rendering(self):
+        value = request()
+        value["document"]["title"] = "课" * 35 + "😀"
+        render.validate(value)
+        value["document"]["title"] += "字"
+        with self.assertRaisesRegex(render.RenderError, "presentation_title_too_long"):
+            render.validate(value)
+
+    def test_presentation_notes_group_body_and_table_continuations(self):
+        value = request()
+        notes = "讲师说明：练习后讨论，预计时长8分钟。"
+        value["document"]["sections"] = [
+            {"heading": "综合教学章节", "body": "这是需要展开讲解的课程说明。" * 50, "notes": notes,
+             "tables": [{"headers": ["阶段", "练习任务"], "rows": [[str(i), "按要求记录练习结果"] for i in range(13)]}]},
+            {"heading": "单页总结", "body": "确认理解后结束本节。", "notes": "预计时长2分钟。"},
+        ]
+        value["budget"]["items"] = [{"label": "费用" + str(i), "quantity": 1, "unit_price": 10} for i in range(13)]
+        content = artifact(render.generate(value))
+        self.save(content, "teaching-grouped-notes.pptx")
+        deck = Presentation(io.BytesIO(content))
+        groups = {"综合教学章节": [], "单页总结": [], "预算测算": []}
+        for slide in deck.slides:
+            heading = next((shape.text.replace("\n", "") for shape in slide.shapes if shape.name == "heading"), "")
+            for key in groups:
+                if heading.startswith(key):
+                    groups[key].append(slide)
+        section = groups["综合教学章节"]
+        self.assertGreater(sum(any(shape.has_table for shape in slide.shapes) for slide in section), 1)
+        self.assertGreater(sum(not any(shape.has_table for shape in slide.shapes) for slide in section), 1)
+        for index, slide in enumerate(section, 1):
+            text = slide.notes_slide.notes_text_frame.text
+            self.assertIn(f"本节共 {len(section)} 页，当前第 {index}/{len(section)} 页。", text)
+            self.assertIn("预计时长为整节总时长，不逐页累加", text)
+            self.assertIn(notes, text)
+            self.assertIn("template-test-source", text)
+            self.assertEqual(text.count(notes), 1)
+        self.assertEqual(len(groups["单页总结"]), 1)
+        single = groups["单页总结"][0].notes_slide.notes_text_frame.text
+        self.assertIn("预计时长2分钟。", single)
+        self.assertNotIn("本节共", single)
+        self.assertNotIn("不逐页累加", single)
+        self.assertIn("template-test-source", single)
+        self.assertGreater(len(groups["预算测算"]), 1)
+        for index, slide in enumerate(groups["预算测算"], 1):
+            text = slide.notes_slide.notes_text_frame.text
+            self.assertIn(f"预算测算共 {len(groups['预算测算'])} 页，当前第 {index}/{len(groups['预算测算'])} 页。", text)
+            self.assertNotIn("时长", text)
+            self.assertIn("预算假设须核实", text)
+            self.assertIn("template-test-source", text)
+
     def test_markdown_preserves_code_as_literal_and_escapes_html(self):
         value = request("md")
         value["document"]["sections"][0]["body"] = "<script>run()</script> ![remote](https://example.test/pixel) __import__('os')"

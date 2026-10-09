@@ -77,6 +77,8 @@ def validate(request):
     if not isinstance(doc, dict):
         fail("invalid_document")
     string(doc.get("title"), 100, True)
+    if request["format"] == "pptx" and len(doc["title"]) > 36:
+        fail("presentation_title_too_long")
     sections = doc.get("sections")
     if not isinstance(sections, list) or not 1 <= len(sections) <= 40:
         fail("invalid_sections")
@@ -352,9 +354,22 @@ def render_pptx(request, template, destination):
         created.append(slide)
         return slide
 
-    def table_pages(heading, headers, rows, notes=""):
+    def group_notes(slides, notes, group="本节", section_timing=False):
+        sources = "\n".join(source_lines(request))
+        for index, slide in enumerate(slides, 1):
+            parts = []
+            if len(slides) > 1:
+                parts.append(f"{group}共 {len(slides)} 页，当前第 {index}/{len(slides)} 页。")
+                if section_timing and notes:
+                    parts.append("以下讲师备注中的预计时长为整节总时长，不逐页累加。")
+            parts.extend(value for value in (notes, sources) if value)
+            slide.notes_slide.notes_text_frame.text = "\n".join(parts)
+
+    def table_pages(heading, headers, rows):
+        slides = []
         for page_index, (page_rows, heights, size, capacity) in enumerate(presentation_table_pages(deck, headers, rows)):
             slide = create(4)
+            slides.append(slide)
             for shape in list(slide.shapes):
                 if shape.has_table:
                     shape.element.getparent().remove(shape.element)
@@ -379,7 +394,7 @@ def render_pptx(request, template, destination):
                             run.font.size = Pt(size)
                             run.font.bold = row_index == 0
                             run.font.color.rgb = RGBColor.from_string("FFFFFF" if row_index == 0 else "182A43")
-            slide.notes_slide.notes_text_frame.text = notes + "\n" + "\n".join(source_lines(request))
+        return slides
 
     cover = create(0)
     names = {s.name: s for s in cover.shapes}
@@ -390,24 +405,27 @@ def render_pptx(request, template, destination):
     set_text(names["cover-subtitle"], {"teaching": "教学课件", "business": "合作与沟通", "operations": "活动与执行"}[request["scene"]])
     set_text(names["cover-context"], "")
     for section in request["document"]["sections"]:
+        section_slides = []
         units = []
         for value in paragraphs(section.get("body", "")) + (section.get("bullets") or []):
             units.extend(chunks(value, 48))
         for start in range(0, max(1, len(units)), 3):
             slide = create(1)
+            section_slides.append(slide)
             named = {s.name: s for s in slide.shapes}
             fitted_text(named["heading"], section["heading"] + ("（续）" if start else ""), 27)
             for index in range(3):
                 text = units[start+index] if start+index < len(units) else ""
                 set_text(named["number-"+str(index)], str(start+index+1).zfill(2) if text else "")
                 fitted_text(named["point-"+str(index)], text)
-            slide.notes_slide.notes_text_frame.text = section.get("notes", "") + "\n" + "\n".join(source_lines(request))
         for table in section.get("tables") or []:
-            table_pages(section["heading"], table["headers"], table["rows"], section.get("notes", ""))
+            section_slides.extend(table_pages(section["heading"], table["headers"], table["rows"]))
+        group_notes(section_slides, section.get("notes", ""), section_timing=True)
     if request.get("budget"):
         rows = [[item["label"], str(item["quantity"]), f"{item['unit_price']:.2f}", str(line_amount(item))] for item in request["budget"]["items"]]
         rows.append(["预算合计", "", "", str(sum(line_amount(item) for item in request["budget"]["items"]))])
-        table_pages("预算测算", ["项目", "数量", "单价（元）", "金额（元）"], rows, "预算假设须核实，不能作为总部正式报价。")
+        budget_slides = table_pages("预算测算", ["项目", "数量", "单价（元）", "金额（元）"], rows)
+        group_notes(budget_slides, "预算假设须核实，不能作为总部正式报价。", group="预算测算")
     source_units = []
     for index, source in enumerate(request["sources"], 1):
         source_units.extend((index, value) for value in chunks(source["title"], 48))
