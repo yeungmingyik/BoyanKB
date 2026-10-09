@@ -49,7 +49,7 @@ export function agentRequiresRerankModel(
 export function getAgentNotReadyReasonKeys(
   config: Pick<
     CustomAgentConfig,
-    'model_id' | 'rerank_model_id' | 'kb_selection_mode' | 'allowed_tools' | 'agent_mode'
+    'model_id' | 'rerank_model_id' | 'kb_selection_mode' | 'allowed_tools' | 'agent_mode' | 'boyan_hybrid_search_without_rerank'
   > | undefined,
   models: Pick<ModelConfig, 'id' | 'type'>[],
   options: { isAgentMode: boolean; isSharedAgent: boolean },
@@ -62,11 +62,14 @@ export function getAgentNotReadyReasonKeys(
 
   if (options.isAgentMode && agentRequiresRerankModel(config)) {
     const rerankModelID = config?.rerank_model_id?.trim()
+    const pendingManagedValidation = !options.isSharedAgent
+      && config?.boyan_hybrid_search_without_rerank === true
+      && !config.rerank_model_id
     const rerankExists = !!rerankModelID && (
       options.isSharedAgent
       || models.some(model => model.type === 'Rerank' && model.id === rerankModelID)
     )
-    if (!rerankExists) {
+    if (!rerankExists && !pendingManagedValidation) {
       reasons.push('rerank_model')
     }
   }

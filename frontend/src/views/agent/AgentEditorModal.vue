@@ -653,7 +653,11 @@
               </label>
               <p class="desc">
                 {{ $t('agent.editor.rerankModelDesc') }}
-                <template v-if="!needsRerankModel">
+                <template v-if="formData.config.boyan_hybrid_search_without_rerank && !formData.config.rerank_model_id">
+                  <br />
+                  <span class="hint">未配置重排，受管预设由服务端校验</span>
+                </template>
+                <template v-else-if="!needsRerankModel">
                   <br />
                   <span class="hint">{{ $t('agent.editor.rerankModelOptionalHint') }}</span>
                 </template>
@@ -3467,6 +3471,7 @@ const contextTemplatePlaceholder = computed(() => {
 
 // 是否需要配置 ReRank 模型（仅当关联的知识库中有 RAG 类型时需要）
 const needsRerankModel = computed(() => {
+  if (formData.value.config.boyan_hybrid_search_without_rerank && !formData.value.config.rerank_model_id) return false;
   if (!hasKnowledgeBase.value) return false;
   const mode = kbSelectionMode.value;
   if (mode === 'all') {

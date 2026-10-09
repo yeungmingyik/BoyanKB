@@ -13,7 +13,6 @@ import (
 	"github.com/Tencent/WeKnora/internal/event"
 	"github.com/Tencent/WeKnora/internal/logger"
 	"github.com/Tencent/WeKnora/internal/models/chat"
-	"github.com/Tencent/WeKnora/internal/models/rerank"
 	"github.com/Tencent/WeKnora/internal/types"
 	secutils "github.com/Tencent/WeKnora/internal/utils"
 )
@@ -114,33 +113,9 @@ func (s *sessionService) AgentQA(
 	logger.Infof(ctx, "Agent context window: %d tokens (model %s declares %d)",
 		agentConfig.MaxContextTokens, effectiveModelID, modelContextWindow)
 
-	// Get rerank model from custom agent config only when knowledge_search can
-	// actually run. A disabled KB scope makes all KB tools ineffective, so it
-	// must not force users to configure an otherwise-unused rerank model.
-	var rerankModel rerank.Reranker
-	if agentRequiresRerankModel(req.CustomAgent) {
-		// Rerank model is resolved purely from the agent config now.
-		// We used to fall back to ConversationConfig.RerankModelID at
-		// the tenant level, but that path encouraged "leave rerank
-		// blank on the agent and inherit silently" which made debugging
-		// retrieval quality a guessing game across tenant settings vs
-		// agent settings. Forcing the agent to declare its own rerank
-		// model puts the configuration where the user actually edits
-		// the agent. If a Wiki-only agent doesn't need reranking,
-		// agentRequiresRerankModel() below already lets it pass.
-		rerankModelID := req.CustomAgent.Config.RerankModelID
-		if rerankModelID == "" {
-			logger.Warnf(ctx, "No rerank model configured for custom agent %s, but knowledge_search tool is enabled", req.CustomAgent.ID)
-			return errors.New("rerank model is not configured: please set rerank_model_id on the agent")
-		}
-
-		rerankModel, err = s.modelService.GetRerankModel(ctx, rerankModelID)
-		if err != nil {
-			logger.Warnf(ctx, "Failed to get rerank model: %v", err)
-			return fmt.Errorf("failed to get rerank model: %w", err)
-		}
-	} else {
-		logger.Infof(ctx, "knowledge_search is unavailable for the effective agent scope, skipping rerank model initialization")
+	rerankModel, err := s.resolveAgentReranker(ctx, req.CustomAgent)
+	if err != nil {
+		return err
 	}
 
 	// Load multi-turn history directly from DB (the single source of truth).
@@ -324,6 +299,7 @@ func (s *sessionService) buildAgentConfig(
 ) (*types.AgentConfig, error) {
 	customAgent := req.CustomAgent
 	agentConfig := &types.AgentConfig{
+		BusinessAgentID:             customAgent.ID,
 		MaxIterations:               customAgent.Config.MaxIterations,
 		Temperature:                 customAgent.Config.Temperature,
 		WebSearchEnabled:            customAgent.Config.WebSearchEnabled && req.WebSearchEnabled,

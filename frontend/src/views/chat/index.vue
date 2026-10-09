@@ -144,6 +144,7 @@
                                     @dismiss="(set) => dismissSuggestions(session, set)" />
                             </div>
                         </div>
+                        <BusinessDocumentPanel v-if="!embeddedMode && session_id" :key="session_id" :session-id="session_id" :busy="isReplying" />
                         <div v-if="showGlobalTypingIndicator" class="chat-global-wait" role="status"
                             :aria-label="t('chat.thinkingAlt')">
                             <span class="chat-global-wait__spinner" aria-hidden="true"></span>
@@ -241,6 +242,7 @@ import { useSessionActivityStore } from '@/stores/sessionActivity';
 import { provideChatSandboxPanel } from '@/composables/useChatSandboxPanel';
 import SandboxSidePanel from '@/components/chat/SandboxSidePanel.vue';
 import BrowserTaskPreview from './components/BrowserTaskPreview.vue';
+import BusinessDocumentPanel from './components/BusinessDocumentPanel.vue';
 import { collectSessionArtifacts, markSessionArtifactDeleted } from '@/utils/sessionArtifacts';
 import { isCollectingSkillArtifacts } from '@/utils/skillArtifacts';
 const referencesDrawer = provideChatReferencesDrawer();

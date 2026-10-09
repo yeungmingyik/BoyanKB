@@ -69,6 +69,7 @@ var toolHandlePolicies = map[string]toolHandlePolicy{
 	"discover_mcp_tools": {opaqueOutput: true, mcpRoutingKey: "server_id", mcpDirectoryOutput: true},
 	"call_mcp_tool":      {opaqueOutput: true, mcpRoutingKey: "tool_ref"},
 	"read_file":          {},
+	"boyan_document":     {sourceIDKeys: map[string]struct{}{"chunk_id": {}}},
 	"search_knowledge": {
 		sourceIDKeys: map[string]struct{}{"knowledge_base_ids": {}},
 		sourceOutput: true,

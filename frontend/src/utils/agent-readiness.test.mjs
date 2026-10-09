@@ -147,3 +147,23 @@ test('canLocallyConfigureAgent is false for shared agents', () => {
   assert.equal(canLocallyConfigureAgent(undefined), true)
   assert.equal(canLocallyConfigureAgent(''), true)
 })
+
+test('managed opt-in defers empty rerank verification to the server only for local agents', () => {
+  const config = {
+    model_id: 'chat-1',
+    kb_selection_mode: 'selected',
+    allowed_tools: ['search_knowledge'],
+    boyan_hybrid_search_without_rerank: true,
+  }
+  const models = [{ id: 'chat-1', type: 'KnowledgeQA' }]
+  assert.deepEqual(getAgentNotReadyReasonKeys(config, models,
+    { isAgentMode: true, isSharedAgent: false }), [])
+  assert.deepEqual(getAgentNotReadyReasonKeys(config, models,
+    { isAgentMode: true, isSharedAgent: true }), ['rerank_model'])
+  assert.deepEqual(getAgentNotReadyReasonKeys({ ...config, boyan_hybrid_search_without_rerank: false }, models,
+    { isAgentMode: true, isSharedAgent: false }), ['rerank_model'])
+  assert.deepEqual(getAgentNotReadyReasonKeys({ ...config, rerank_model_id: 'missing' }, models,
+    { isAgentMode: true, isSharedAgent: false }), ['rerank_model'])
+  assert.deepEqual(getAgentNotReadyReasonKeys({ ...config, rerank_model_id: ' ' }, models,
+    { isAgentMode: true, isSharedAgent: false }), ['rerank_model'])
+})

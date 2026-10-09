@@ -14,6 +14,7 @@ import (
 	"github.com/Tencent/WeKnora/internal/agent/tools"
 	"github.com/Tencent/WeKnora/internal/application/repository"
 	"github.com/Tencent/WeKnora/internal/browserskill"
+	"github.com/Tencent/WeKnora/internal/businessworkflow"
 	"github.com/Tencent/WeKnora/internal/config"
 	"github.com/Tencent/WeKnora/internal/event"
 	"github.com/Tencent/WeKnora/internal/logger"
@@ -93,6 +94,7 @@ func knowledgeBaseScopesForPrompt(config *types.AgentConfig) ([]string, map[stri
 
 // agentService implements agent-related business logic
 type agentService struct {
+	workflow             *businessworkflow.Service
 	browserSkill         *browserskill.Manager
 	userRepo             interfaces.UserRepository
 	cfg                  *config.Config
@@ -147,8 +149,10 @@ func NewAgentService(
 	hostSandbox HostSandboxManager,
 	browserSkill *browserskill.Manager,
 	userRepo interfaces.UserRepository,
+	workflow *businessworkflow.Service,
 ) interfaces.AgentService {
 	return &agentService{
+		workflow:             workflow,
 		browserSkill:         browserSkill,
 		userRepo:             userRepo,
 		cfg:                  cfg,
@@ -1151,6 +1155,8 @@ func (s *agentService) registerTools(
 		var toolToRegister types.Tool
 
 		switch toolName {
+		case "boyan_document":
+			toolToRegister = tools.NewBoyanDocumentTool(s.workflow, sessionID, config.BusinessAgentID, config.SearchTargets, s.knowledgeService, s.chunkService)
 		case tools.ToolThinking:
 			toolToRegister = tools.NewSequentialThinkingTool()
 		case tools.ToolTodoWrite:

@@ -44,6 +44,7 @@ export interface CustomAgentConfig {
   // ===== 模型设置 =====
   model_id?: string;
   rerank_model_id?: string;         // ReRank 模型 ID
+  boyan_hybrid_search_without_rerank?: boolean;
   temperature?: number;
   max_completion_tokens?: number;   // 0 = 跟随系统默认（快速问答 2048；智能推理 4096，绑沙箱可写文件时 24576）。大于 0 为自定义上限
   thinking?: boolean;                      // 是否启用思考模式（支持扩展思考的模型）

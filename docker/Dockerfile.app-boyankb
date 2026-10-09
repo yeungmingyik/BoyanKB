@@ -18,6 +18,9 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 FROM wechatopenai/weknora-app:v0.8.2@sha256:bc8a534799fcb54045100daf4bc5db86270b38ae45c5f761c410c50b4dcd6cdc
 COPY --from=builder --chown=appuser:appuser /app/WeKnora /app/WeKnora
 COPY --chown=appuser:appuser branding/brand.json /app/branding/brand.json
+COPY --chown=appuser:appuser presets/boyan/v1 /app/presets/boyan/v1
+COPY --chown=appuser:appuser skills/boyan /app/skills/boyan
+COPY --chown=appuser:appuser migrations /app/migrations
 COPY LICENSE /usr/share/licenses/upstream/LICENSE
 ENV BRANDING_CONFIG=/app/branding/brand.json
 LABEL io.weknora.feishu-guard="1" io.boyankb.branding="1"

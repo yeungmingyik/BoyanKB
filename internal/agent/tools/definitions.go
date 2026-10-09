@@ -91,6 +91,7 @@ func AvailableToolDefinitions() []AvailableTool {
 		{Name: ToolSearchKnowledge, Label: "检索知识库", Description: "语义、关键词或混合检索知识库分块"},
 		{Name: ToolReadDocument, Label: "阅读文档", Description: "读取文档元数据与分块内容，支持分页和文内查找"},
 		{Name: ToolListDocuments, Label: "浏览文档列表", Description: "分页列出知识库中的文档"},
+		{Name: ToolBoyanDocument, Label: "博研业务文件", Description: "确认大纲后生成并审校正式文件"},
 		{Name: ToolQueryKnowledgeGraph, Label: "查询知识图谱", Description: "从知识图谱中查询关系"},
 		{
 			Name:        ToolSearchConversations,

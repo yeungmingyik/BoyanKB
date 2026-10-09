@@ -202,7 +202,8 @@
 | `migrations/{versioned,sqlite}/000111_partner_provisioning*` | 保留开户步骤与安装登记 | 新增独立表；不改原业务数据 |
 | `internal/businessworkflow/*`、`internal/agent/tools/boyan_document.go`、`internal/handler/business_workflow.go`、`internal/router/routes_business_workflow.go` | 提示词不能强制用户确认或阻断文件发布 | 大纲哈希、权限复验、候选隔离、固定渲染、独立审校、通过后下载 |
 | `migrations/{versioned,sqlite}/000112_boyan_document_jobs*` | 文档状态和候选需持久化 | 每个租户/用户/会话独立记录、确认和发布约束、候选二进制留在受控表 |
-| `internal/container/container.go`、`internal/router/router.go`、`internal/application/service/agent_service.go`、`session_agent_qa.go`、`internal/types/agent.go`、`internal/modelcontext/tool_policy.go`、`internal/agent/tools/constants.go` | 接入业务工具及可验证来源 | 依赖注入、路由、新工具显式允许、实际 Agent ID 与分块 ID 解码；保留其他 Agent 默认工具行为 |
+| `internal/container/container.go`、`internal/router/router.go`、`internal/application/service/agent_service.go`、`session_agent_qa.go`、`internal/types/agent.go`、`internal/modelcontext/tool_policy.go`、`internal/agent/tools/definitions.go` | 接入业务工具及可验证来源 | 依赖注入、路由、新工具显式允许、实际 Agent ID 与分块 ID 解码；保留其他 Agent 默认工具行为 |
+| `internal/application/service/boyan_rerank*`、`internal/types/custom_agent.go`、`frontend/src/api/agent/index.ts`、`frontend/src/utils/agent-readiness*`、`frontend/src/components/Input-field.vue`、`frontend/src/views/agent/AgentEditorModal.vue` | 本机没有单独的重排服务，原 Agent 入口强制报错 | 受管 ready 预设显式允许已有混合检索路径，服务端校验绑定；非受管 Agent 默认要求不变，非空模型失败不降级 |
 | `frontend/src/api/business-workflow.ts`、`frontend/src/views/chat/components/BusinessDocumentPanel.vue`、`frontend/src/views/chat/index.vue` | 用户需看到并确认真实服务端大纲 | 会话任务卡、明确确认、生成与审校状态、授权下载 |
 | `deployment/document-renderer/*`、`docker-compose.presets.yml` | 不以任意代码执行实现 Office 生成 | 固定四种格式、模板摘要、预算公式重算；内部网络、只读根、非 root、资源限制 |
 | `docker/Dockerfile.app-boyankb`、`scripts/build-presets-images.sh` | 定制镜像需要带上预设和迁移 | 三个本机版本镜像，应用嵌入配置、指南及新增迁移 |

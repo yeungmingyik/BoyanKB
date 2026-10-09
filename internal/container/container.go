@@ -55,6 +55,7 @@ import (
 	"github.com/Tencent/WeKnora/internal/application/service/memory"
 	"github.com/Tencent/WeKnora/internal/application/service/retriever"
 	"github.com/Tencent/WeKnora/internal/browserskill"
+	"github.com/Tencent/WeKnora/internal/businessworkflow"
 	"github.com/Tencent/WeKnora/internal/common"
 	"github.com/Tencent/WeKnora/internal/config"
 	"github.com/Tencent/WeKnora/internal/database"
@@ -334,6 +335,8 @@ func BuildContainer(container *dig.Container) *dig.Container {
 		return manager, nil
 	}))
 	must(container.Provide(service.NewAgentService))
+	must(container.Provide(service.NewPartnerProvisioningService))
+	must(container.Provide(businessworkflow.NewService))
 
 	// Session service (depends on agent service)
 	// SessionService is created after AgentService and passes itself to AgentService.CreateAgentEngine when needed
@@ -570,6 +573,8 @@ func BuildContainer(container *dig.Container) *dig.Container {
 	must(container.Provide(handler.NewVectorStoreHandler))
 	must(container.Provide(handler.NewStorageBackendHandler))
 	must(container.Provide(handler.NewCustomAgentHandler))
+	must(container.Provide(handler.NewPartnerProvisioningHandler))
+	must(container.Provide(handler.NewBusinessWorkflowHandler))
 	must(container.Provide(handler.NewUserResourceFavoriteHandler))
 	must(container.Provide(func(
 		s *service.TenantSkillService, agents interfaces.AgentShareService,

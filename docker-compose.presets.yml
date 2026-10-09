@@ -1,0 +1,42 @@
+services:
+  app:
+    image: boyankb/app:v0.8.2-presets-v1
+    environment:
+      BOYAN_DOCUMENT_RENDERER_URL: http://document-renderer:8091
+      BOYAN_DOCUMENT_RENDERER_TOKEN: ${BOYAN_DOCUMENT_RENDERER_TOKEN:?Set BOYAN_DOCUMENT_RENDERER_TOKEN in .env}
+      BOYAN_PRESETS_ROOT: /app/presets/boyan/v1
+      BOYAN_SKILLS_ROOT: /app/skills/boyan
+    depends_on:
+      document-renderer:
+        condition: service_healthy
+    networks:
+      - boyan-render
+
+  frontend:
+    image: boyankb/frontend:v0.8.2-presets-v1
+
+  document-renderer:
+    image: boyankb/document-renderer:boyan-v1
+    build:
+      context: .
+      dockerfile: deployment/document-renderer/Dockerfile
+    environment:
+      BOYAN_DOCUMENT_RENDERER_TOKEN: ${BOYAN_DOCUMENT_RENDERER_TOKEN:?Set BOYAN_DOCUMENT_RENDERER_TOKEN in .env}
+    read_only: true
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=384m,mode=1777
+    mem_limit: 768m
+    cpus: 1.5
+    pids_limit: 96
+    networks:
+      - boyan-render
+    restart: unless-stopped
+
+networks:
+  boyan-render:
+    internal: true

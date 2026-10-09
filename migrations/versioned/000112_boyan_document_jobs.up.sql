@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS boyan_document_jobs (
+    id VARCHAR(36) PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    user_id VARCHAR(512) NOT NULL,
+    session_id VARCHAR(36) NOT NULL,
+    state VARCHAR(32) NOT NULL,
+    scene VARCHAR(40) NOT NULL,
+    outline_hash VARCHAR(64) NOT NULL,
+    outline_markdown TEXT NOT NULL,
+    format VARCHAR(8) NOT NULL,
+    payload BYTEA NOT NULL,
+    review_json BYTEA,
+    artifact BYTEA,
+    artifact_sha256 VARCHAR(64),
+    filename VARCHAR(255),
+    mime_type VARCHAR(128),
+    failure_code VARCHAR(64),
+    confirmed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT boyan_document_state CHECK (state IN ('awaiting_confirmation','approved','generating','reviewing','published','blocked','failed','superseded')),
+    CONSTRAINT boyan_document_format CHECK (format IN ('docx','pptx','xlsx','md')),
+    CONSTRAINT boyan_document_confirmation CHECK (state NOT IN ('approved','generating','reviewing','published') OR confirmed_at IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS idx_boyan_document_owner ON boyan_document_jobs(tenant_id,user_id,session_id,created_at DESC);
