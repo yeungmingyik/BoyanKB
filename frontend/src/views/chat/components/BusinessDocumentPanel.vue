@@ -14,10 +14,23 @@
       <p v-if="job.state === 'failed'">生成或审校未完成，文件尚不可交付。请重新提出方案；已有确认不会自动用于新版。</p>
       <div v-if="job.review?.issues.length" class="review-table-wrapper">
         <table class="review-table">
-          <thead><tr><th>位置</th><th>问题</th><th>严重程度</th><th>修改建议</th></tr></thead>
-          <tbody><tr v-for="(issue, index) in job.review.issues" :key="index"><td>{{ issue.location }}</td><td>{{ issue.problem }}</td><td>{{ issue.severity === 'blocking' ? '阻断' : '建议' }}</td><td>{{ issue.suggestion }}</td></tr></tbody>
+          <colgroup><col class="review-location-column" /><col class="review-problem-column" /><col class="review-severity-column" /><col /></colgroup>
+          <thead><tr><th scope="col">位置</th><th scope="col">问题</th><th scope="col" class="review-severity">严重程度</th><th scope="col">修改建议</th></tr></thead>
+          <tbody><tr v-for="(issue, index) in job.review.issues" :key="index"><td>{{ issue.location }}</td><td>{{ issue.problem }}</td><td class="review-severity" :data-severity="issue.severity">{{ issue.severity === 'blocking' ? '阻断' : '建议' }}</td><td>{{ issue.suggestion }}</td></tr></tbody>
         </table>
       </div>
+      <ol v-if="job.review?.issues.length" class="review-issues" aria-label="审校问题">
+        <li v-for="(issue, index) in job.review.issues" :key="index" class="review-issue">
+          <div class="review-issue-heading">
+            <strong>{{ issue.location }}</strong>
+            <span class="review-severity" :data-severity="issue.severity">{{ issue.severity === 'blocking' ? '阻断' : '建议' }}</span>
+          </div>
+          <dl>
+            <dt>问题</dt><dd>{{ issue.problem }}</dd>
+            <dt>修改建议</dt><dd>{{ issue.suggestion }}</dd>
+          </dl>
+        </li>
+      </ol>
       <div class="document-actions">
         <t-button v-if="job.state === 'awaiting_confirmation'" :loading="pending === job.id" :disabled="!!pending || busy" @click="confirmAndGenerate(job)">确认大纲并生成</t-button>
         <t-button v-else-if="job.state === 'approved'" :loading="pending === job.id" :disabled="!!pending || busy" @click="generate(job)">生成已确认方案</t-button>
@@ -102,15 +115,39 @@ onBeforeUnmount(() => { disposed = true; if (timer) clearInterval(timer) })
 </script>
 
 <style scoped>
-.business-documents { display: grid; gap: 16px; margin: 20px 0; color: var(--td-text-color-primary); }
-.document-job { padding: 20px; border: 1px solid var(--td-component-border); border-radius: 12px; background: var(--td-bg-color-container); }
+.business-documents { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; max-width: 100%; margin: 20px 0; color: var(--td-text-color-primary); container-type: inline-size; overflow-wrap: anywhere; }
+.document-job { box-sizing: border-box; min-width: 0; max-width: 100%; padding: 20px; border: 1px solid var(--td-component-border); border-radius: 12px; background: var(--td-bg-color-container); }
 .document-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-.document-heading span { color: var(--td-text-color-secondary); }
+.document-heading strong { min-width: 0; }
+.document-heading span { color: var(--td-text-color-secondary); white-space: nowrap; }
+.document-job details { min-width: 0; }
+.document-job summary { min-height: 44px; align-content: center; cursor: pointer; }
+.document-job summary:focus-visible { outline: 2px solid var(--td-brand-color); outline-offset: 2px; border-radius: 4px; }
 .document-outline { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.65; }
 .document-job p { line-height: 1.65; color: var(--td-text-color-secondary); }
-.document-actions { margin-top: 16px; }
-.review-table-wrapper { overflow-x: auto; }
-.review-table { border-collapse: collapse; width: 100%; text-align: left; }
-.review-table th, .review-table td { padding: 10px; border: 1px solid var(--td-component-border); vertical-align: top; }
+.document-actions:not(:empty) { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.review-table-wrapper { min-width: 0; max-width: 100%; overflow-x: auto; }
+.review-table { border-collapse: collapse; table-layout: fixed; width: 100%; text-align: left; line-height: 1.65; }
+.review-location-column { width: 18%; }
+.review-problem-column { width: 36%; }
+.review-severity-column { width: 6rem; }
+.review-table th, .review-table td { padding: 10px; border: 1px solid var(--td-component-border); vertical-align: top; overflow-wrap: anywhere; }
+.review-severity { white-space: nowrap; word-break: normal; overflow-wrap: normal; }
+.review-severity[data-severity="blocking"] { color: var(--td-error-color); font-weight: 600; }
+.review-issues { display: none; padding: 0; margin: 16px 0 0; list-style: none; }
+.review-issue { min-width: 0; padding: 16px 0; border-top: 1px solid var(--td-component-border); }
+.review-issue:last-child { padding-bottom: 0; }
+.review-issue-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; line-height: 1.65; }
+.review-issue-heading strong { min-width: 0; }
+.review-issue-heading .review-severity { flex-shrink: 0; }
+.review-issue dl { margin: 12px 0 0; line-height: 1.65; }
+.review-issue dt { margin-top: 12px; color: var(--td-text-color-secondary); }
+.review-issue dd { margin: 4px 0 0; }
 .document-error { color: var(--td-error-color); }
+@container (max-width: 640px) {
+  .document-job { padding: 16px; }
+  .review-table-wrapper { display: none; }
+  .review-issues { display: block; }
+  .document-actions :deep(.t-button) { max-width: 100%; min-height: 44px; height: auto; white-space: normal; }
+}
 </style>

@@ -93,6 +93,22 @@ python scripts/acceptance-presets.py --fixtures path/to/fixtures.json --env-file
 
 需要人工验证：业务结论是否准确、无依据问题是否充分拒答、教学难度是否适合对象、商务表达是否越过总部授权、PPT 逐页排版和表格可读性。操作：用普通伙伴账号执行 `presets/boyan/v1/tests/behavior-cases.json` 的正常／缺失／违规样例，核对引用原文，下载并在 Office 中逐页审阅；对问题记录会话、文件版本和复现输入。
 
+## 本机验收记录
+
+2026-10-09，普通 Contributor 验收伙伴 A、B 的空间分别为 `10003`、`10004`。各自安装三名 Agent、九个指南包，拥有独立私有库和总部 viewer 分享。对两者再次执行同一开通命令，报告及资源 ID 完全相同。开户前备份位于本机忽略目录 `temp/presets-acceptance/before-presets.dump`，已验证归档目录可读。
+
+| 验证 | 结果与证据 |
+| --- | --- |
+| 模板兼容性 | 十二份模板；九份 Office 模板实际打开。十八张 PPT、六页 Word 逐页检查；另用 LibreOffice 渲染三份 Word |
+| 渲染器独立验证 | 七项自动测试通过；生成后的四份 PPT（含长内容）、三份 Word、三份 Excel 在 Office 打开；预算 1480 元及舍入样例验证通过 |
+| 真实权限 API | `temp/presets-acceptance/access-audit.json`：74 通过、0 失败。包括自身 canary 正例、HQ 写入/分享拒绝、跨伙伴文档/Agent/组织与成员名隔离、伪造租户拒绝 |
+| 真实 Agent 对话 | `temp/presets-acceptance/behavior-live-03/report.json`：24 个用例、146 自动断言通过；业务语义仍需人工验证 |
+| 提示词注入与检索隔离 | `temp/presets-acceptance/isolation-live-01/report.json`：22 自动断言通过；双向自身 canary 可检索，对方 canary 未泄漏 |
+| 审校阻断 | 初批候选文件因来源缺失、无依据内容或预算表问题被 C 阻断，未提供下载；保留原任务记录，不把阻断文件记为成功产物 |
+| 新任务卡浏览器检查 | 桌面可查看审校结果；390px 视口下使用纵向问题列表，组件宽/滚动宽同为 350px。聊天页原有 400px 最小宽度仍有外层横向溢出，不代表整页移动适配已完成 |
+
+模板和独立渲染通过不能替代真实业务文件生成。真实产物的最终下载、审校及 Office 检查结果应单独登记；自动断言通过也不能替代业务负责人签字。
+
 ## 升级重放
 
 保留 `branding/templates/`、`presets/boyan/`、`skills/boyan/` 与渲染器独立目录。核心接入点登记于 [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md)。新上游先在隔离数据库副本上迁移、跑 Go/Python 测试，再重建三个镜像并执行真实伙伴验收。核对工具默认行为、KB 权限、路由参数名、Skill schema、模型 ID 和引用分块结构后才能发布。
