@@ -14,7 +14,11 @@ type boyanHybridSearchPolicy interface {
 }
 
 func (s *agentService) allowsBoyanHybridSearchWithoutRerank(ctx context.Context, agent *types.CustomAgent) bool {
-	if s.db == nil || agent == nil || !agent.Config.BoyanHybridSearchWithoutRerank || agent.Config.RerankModelID != "" || agent.ID == "" || agent.CreatedBy == "" {
+	return agent != nil && agent.Config.BoyanHybridSearchWithoutRerank && agent.Config.RerankModelID == "" && s.isReadyBoyanAgent(ctx, agent)
+}
+
+func (s *agentService) isReadyBoyanAgent(ctx context.Context, agent *types.CustomAgent) bool {
+	if s.db == nil || agent == nil || agent.ID == "" || agent.CreatedBy == "" {
 		return false
 	}
 	tenantID, ok := ctx.Value(types.TenantIDContextKey).(uint64)

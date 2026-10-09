@@ -201,6 +201,9 @@
 | `internal/types/partner_provisioning.go`、`internal/application/service/partner_provisioning*`、`internal/handler/partner_provisioning*`、`internal/router/routes_partner_provisioning.go` | 原开户 API 不提供受限、可恢复的标准预设事务 | 系统管理员 JWT 加总部 Owner、幂等 key、事务与执行租约、角色和资源读回校验 |
 | `migrations/{versioned,sqlite}/000111_partner_provisioning*` | 保留开户步骤与安装登记 | 新增独立表；不改原业务数据 |
 | `internal/businessworkflow/*`、`internal/agent/tools/boyan_document.go`、`internal/handler/business_workflow.go`、`internal/router/routes_business_workflow.go` | 提示词不能强制用户确认或阻断文件发布 | 大纲哈希、权限复验、候选隔离、固定渲染、独立审校、通过后下载 |
+| `internal/businessworkflow/artifact_text*`、`reviewer.go`、`types.go`、`internal/agent/tools/boyan_document.go` | 审校必须读取真实文件结构，预算不能成为模型自写伪公式 | Excel地址/共享串/公式缓存，PPT实际播放页序及关联备注，DOCX正文和页眉页脚；服务器日期与受信固定规则；结构化预算输入门禁；真实生成Office文件抽取测试 |
+| `internal/businessworkflow/revision*`、`internal/modelcontext/boyan_revision.go`、`registry.go`、`boyan_document_test.go` | 跨轮修订不能丢失原稿及来源，也不能从任意正文伪造来源句柄 | 身份、摘要、当前共享权限和指南重新验证；仅服务器验证来源恢复映射；新稿重新确认；撤销、伪来源和跨空间测试 |
+| `internal/application/service/boyan_runtime_policy.go`、`boyan_rerank*`、`session_agent_qa.go` | 真实对话出现重复追问、时长及风险结构遗漏 | ready 记录绑定的三名 Agent 附加运行约束；不能仅凭客户端开关生效；身份与状态门禁测试 |
 | `migrations/{versioned,sqlite}/000112_boyan_document_jobs*` | 文档状态和候选需持久化 | 每个租户/用户/会话独立记录、确认和发布约束、候选二进制留在受控表 |
 | `internal/container/container.go`、`internal/router/router.go`、`internal/application/service/agent_service.go`、`session_agent_qa.go`、`internal/types/agent.go`、`internal/modelcontext/tool_policy.go`、`internal/agent/tools/definitions.go` | 接入业务工具及可验证来源 | 依赖注入、路由、新工具显式允许、实际 Agent ID 与分块 ID 解码；保留其他 Agent 默认工具行为 |
 | `internal/application/service/boyan_rerank*`、`internal/types/custom_agent.go`、`frontend/src/api/agent/index.ts`、`frontend/src/utils/agent-readiness*`、`frontend/src/components/Input-field.vue`、`frontend/src/views/agent/AgentEditorModal.vue` | 本机没有单独的重排服务，原 Agent 入口强制报错 | 受管 ready 预设显式允许已有混合检索路径，服务端校验绑定；非受管 Agent 默认要求不变，非空模型失败不降级 |
@@ -209,6 +212,7 @@
 | `docker/Dockerfile.app-boyankb`、`scripts/build-presets-images.sh` | 定制镜像需要带上预设和迁移 | 三个本机版本镜像，应用嵌入配置、指南及新增迁移 |
 | `scripts/onboard-partner*`、`scripts/test_onboard_partner.py` | 重复执行不重复资源，失败能恢复 | 默认本地计划，显式 apply、断点记录、readiness 通过才完成 |
 | `scripts/check-presets.py`、`scripts/acceptance-presets.py`、`scripts/test_acceptance_presets.py` | 配置、工作流与真实行为要分开验证 | 静态检查、两个非管理员伙伴、真实文件与隔离测试、明确人工项 |
+| `scripts/verify-presets-office.ps1` | ZIP 检查不能代替 Office 真正打开 | PowerShell 7、实际下载摘要、只读打开、PPT 导出及溢出检查、Word/Excel PDF、Excel 原生重算与缓存值对比 |
 | `docs/04-presets.md`、`docs/partner-onboarding.md`、`docs/business/document-workflow.md` | 安装与升级可重复 | 方案取舍、执行命令、边界、验收与重放顺序 |
 
 升级时先重放独立资源，再逐项检查表中核心接入点；不得只复制提示词后宣称确认和权限约束仍然有效。重新构建并在隔离副本运行自动及人工验收。LICENSE 与上游版权声明保留。

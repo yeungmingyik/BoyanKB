@@ -300,6 +300,9 @@ func (r *Registry) ModelToolResultForTool(toolName string, result *types.ToolRes
 	// through the error branch of an otherwise handle-only tool.
 	copyResult.Output = r.resources.EncodeText(r.encodeToolPrivateResult(toolName, result.Output))
 	copyResult.Error = r.resources.EncodeText(r.encodeToolPrivateResult(toolName, result.Error))
+	if toolName == "boyan_document" && result.Success {
+		copyResult.Output = r.encodeBoyanRevisionResult(copyResult.Output)
+	}
 	var modelOutput string
 	if sourceOutputAllowed(toolName) {
 		modelOutput = r.sources.ModelOutput(&copyResult)

@@ -382,6 +382,10 @@ func (s *sessionService) buildAgentConfig(
 		agentConfig.UseCustomSystemPrompt = true
 		agentConfig.SystemPrompt = systemPrompt
 	}
+	if policy, ok := s.agentService.(boyanRuntimePolicy); ok && policy.isReadyBoyanAgent(ctx, customAgent) {
+		agentConfig.UseCustomSystemPrompt = true
+		agentConfig.SystemPrompt += boyanRuntimeConstraints
+	}
 
 	logger.Infof(ctx, "Custom agent config applied: MaxIterations=%d, Temperature=%.2f, AllowedTools=%v, WebSearchEnabled=%v",
 		agentConfig.MaxIterations, agentConfig.Temperature, agentConfig.AllowedTools, agentConfig.WebSearchEnabled)

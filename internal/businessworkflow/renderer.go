@@ -1,21 +1,17 @@
 package businessworkflow
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/xml"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
-	"sort"
 	"strings"
 	"time"
-	"unicode/utf8"
 )
 
 const maxArtifactSize = 20 * 1024 * 1024
@@ -42,94 +38,6 @@ func (a Artifact) Validate(format string) error {
 	}
 	_, err := artifactText(a.Bytes, format)
 	return err
-}
-
-func artifactText(data []byte, format string) (string, error) {
-	if format == "md" {
-		if !utf8.Valid(data) || len(data) > 512*1024 {
-			return "", ErrInvalid
-		}
-		return string(data), nil
-	}
-	z, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil || len(z.File) > 2000 {
-		return "", ErrInvalid
-	}
-	required := map[string]string{"docx": "word/document.xml", "pptx": "ppt/presentation.xml", "xlsx": "xl/workbook.xml"}[format]
-	if required == "" {
-		return "", ErrInvalid
-	}
-	found := false
-	var total uint64
-	parts := map[string]string{}
-	for _, file := range z.File {
-		if file.Name == required {
-			found = true
-		}
-		if strings.Contains(file.Name, "..") || strings.HasSuffix(strings.ToLower(file.Name), "vbaproject.bin") || strings.Contains(strings.ToLower(file.Name), "externallinks/") {
-			return "", ErrInvalid
-		}
-		total += file.UncompressedSize64
-		if total > 64*1024*1024 || file.UncompressedSize64 > 16*1024*1024 {
-			return "", ErrInvalid
-		}
-		if !strings.HasSuffix(file.Name, ".xml") && !strings.HasSuffix(file.Name, ".rels") {
-			continue
-		}
-		r, err := file.Open()
-		if err != nil {
-			return "", ErrInvalid
-		}
-		body, err := io.ReadAll(io.LimitReader(r, 16*1024*1024+1))
-		r.Close()
-		if err != nil || len(body) > 16*1024*1024 {
-			return "", ErrInvalid
-		}
-		decoder := xml.NewDecoder(bytes.NewReader(body))
-		var text strings.Builder
-		for {
-			token, err := decoder.Token()
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				return "", ErrInvalid
-			}
-			switch value := token.(type) {
-			case xml.StartElement:
-				for _, attr := range value.Attr {
-					if attr.Name.Local == "TargetMode" && attr.Value == "External" {
-						return "", ErrInvalid
-					}
-				}
-			case xml.CharData:
-				v := strings.TrimSpace(string(value))
-				if v != "" {
-					text.WriteString(v)
-					text.WriteByte('\n')
-				}
-			}
-		}
-		if strings.HasPrefix(file.Name, "word/") || strings.HasPrefix(file.Name, "ppt/slides/") || strings.HasPrefix(file.Name, "ppt/notesSlides/") || strings.HasPrefix(file.Name, "xl/worksheets/") || file.Name == "xl/sharedStrings.xml" {
-			parts[file.Name] = text.String()
-		}
-	}
-	if !found {
-		return "", ErrInvalid
-	}
-	keys := make([]string, 0, len(parts))
-	for key := range parts {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	var text strings.Builder
-	for _, key := range keys {
-		text.WriteString(parts[key])
-	}
-	if text.Len() == 0 || text.Len() > 512*1024 {
-		return "", ErrInvalid
-	}
-	return text.String(), nil
 }
 
 func renderHTTP(ctx context.Context, id string, tenant uint64, p Payload, hash string) (Artifact, error) {

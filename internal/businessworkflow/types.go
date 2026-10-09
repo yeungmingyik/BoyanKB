@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 var ErrDenied = errors.New("document_access_denied")
 var ErrInvalid = errors.New("document_request_invalid")
+var ErrTableFormula = fmt.Errorf("%w: xlsx table formulas are not supported; remove formula cells and provide numeric budget.items label, quantity, unit_price; the renderer calculates the budget automatically", ErrInvalid)
 var ErrConflict = errors.New("document_state_conflict")
 var ErrUnavailable = errors.New("document_service_unavailable")
 
@@ -178,6 +180,20 @@ func ValidateProposal(p Proposal) error {
 				if len(row) != len(table.Headers) {
 					return ErrInvalid
 				}
+				if p.Format == "xlsx" {
+					for _, cell := range row {
+						if spreadsheetFormulaText(cell) {
+							return ErrTableFormula
+						}
+					}
+				}
+			}
+			if p.Format == "xlsx" {
+				for _, header := range table.Headers {
+					if spreadsheetFormulaText(header) {
+						return ErrTableFormula
+					}
+				}
 			}
 		}
 	}
@@ -196,6 +212,12 @@ func ValidateProposal(p Proposal) error {
 		return ErrInvalid
 	}
 	return nil
+}
+
+func spreadsheetFormulaText(value string) bool {
+	value = strings.TrimSpace(value)
+	value = strings.TrimSpace(strings.TrimLeft(value, "'"))
+	return strings.HasPrefix(value, "=")
 }
 
 func ParseReview(data string) (Review, error) {

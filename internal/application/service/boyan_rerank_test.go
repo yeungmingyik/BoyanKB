@@ -31,6 +31,7 @@ func TestBoyanHybridSearchRequiresReadyBoundAgent(t *testing.T) {
 		agent := base
 		agent.ID = id
 		require.True(t, svc.allowsBoyanHybridSearchWithoutRerank(ctx, &agent))
+		require.True(t, svc.isReadyBoyanAgent(ctx, &agent))
 	}
 	for _, tc := range []struct {
 		name string
@@ -48,19 +49,26 @@ func TestBoyanHybridSearchRequiresReadyBoundAgent(t *testing.T) {
 			agent := base
 			tc.edit(&agent)
 			require.False(t, svc.allowsBoyanHybridSearchWithoutRerank(ctx, &agent))
+			require.Equal(t, tc.name == "flag required" || tc.name == "configured model", svc.isReadyBoyanAgent(ctx, &agent))
 		})
 	}
 	require.False(t, svc.allowsBoyanHybridSearchWithoutRerank(context.Background(), &base))
 	require.False(t, svc.allowsBoyanHybridSearchWithoutRerank(context.WithValue(ctx, types.TenantIDContextKey, uint64(43)), &base))
 	require.False(t, svc.allowsBoyanHybridSearchWithoutRerank(ctx, nil))
 	require.False(t, (&agentService{}).allowsBoyanHybridSearchWithoutRerank(ctx, &base))
+	require.False(t, svc.isReadyBoyanAgent(context.Background(), &base))
+	require.False(t, svc.isReadyBoyanAgent(context.WithValue(ctx, types.TenantIDContextKey, uint64(43)), &base))
+	require.False(t, svc.isReadyBoyanAgent(ctx, nil))
+	require.False(t, (&agentService{}).isReadyBoyanAgent(ctx, &base))
 	for _, status := range []string{"provisioning", "failed", "pending"} {
 		require.NoError(t, db.Model(&job).Update("status", status).Error)
 		require.False(t, svc.allowsBoyanHybridSearchWithoutRerank(ctx, &base))
+		require.False(t, svc.isReadyBoyanAgent(ctx, &base))
 	}
 	require.NoError(t, db.Model(&job).Update("status", "ready").Error)
 	require.NoError(t, sqlDB.Close())
 	require.False(t, svc.allowsBoyanHybridSearchWithoutRerank(ctx, &base))
+	require.False(t, svc.isReadyBoyanAgent(ctx, &base))
 }
 
 type boyanRerankPolicyStub struct {
