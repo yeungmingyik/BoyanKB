@@ -1,0 +1,28 @@
+{
+  "name": "production-offline-office-test",
+  "description": "boyankb-offline-sandbox-acceptance",
+  "config": {
+    "sandbox_type": "docker",
+    "default_timeout_sec": 120,
+    "terminal_idle_disconnect_sec": 300,
+    "desktop_enabled": false,
+    "allow_private_endpoints": true,
+    "env_vars": {},
+    "network": {
+      "deny_egress_by_default": true,
+      "allow_public_inbound": false
+    },
+    "docker": {
+      "image": "registry.example.invalid/boyankb/sandbox-office@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "host": "tcp://sandbox-runtime.example.internal:2376",
+      "tls_cert_path": "/run/sandbox-docker-tls",
+      "cpu_limit": 1,
+      "memory_limit_mb": 1024,
+      "pids_limit": 128,
+      "network_mode": "none",
+      "runtime": "runsc",
+      "idle_ttl_seconds": 900,
+      "http_timeout_sec": 30
+    }
+  }
+}
