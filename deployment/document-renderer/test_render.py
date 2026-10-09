@@ -3,6 +3,7 @@ import copy
 import hashlib
 import io
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -216,6 +217,27 @@ class RenderTests(unittest.TestCase):
         self.assertFalse(any(point in ("5分钟。", "红线。", "。") for point in points))
         self.assertEqual("".join(source_points), value["sources"][0]["title"])
         self.assertEqual(groups, {"四点分页": [2, 2], "七点分页": [3, 2, 2]})
+
+    def test_presentation_rebalance_falls_back_to_fitting_lines(self):
+        text = "目标二：掌握教学包三件套（PPT、逐字稿、导学视频）的使用要求"
+        deck = Presentation(TEMPLATES / "teaching.pptx")
+        shape = next(shape for shape in deck.slides[1].shapes if shape.name == "point-0")
+        size = next(run.font.size.pt for p in shape.text_frame.paragraphs for run in p.runs if run.font.size)
+        capacity = (shape.width - shape.text_frame.margin_left - shape.text_frame.margin_right) / 12700 / (size * 1.08)
+        original = render.wrap_text(text, capacity)
+        balanced = render.wrap_text(text, min(capacity, math.ceil(render.text_width(text) / len(original)) + .5))
+        self.assertEqual(len(original), 2)
+        self.assertEqual(len(balanced), 3)
+        render.fitted_text(shape, text)
+        self.assertEqual(shape.text.splitlines(), original)
+        self.assertEqual(shape.text.replace("\n", ""), text)
+        self.assertTrue(any("PPT" in line for line in shape.text.splitlines()))
+        value = request()
+        value["document"]["sections"] = [{"heading": "课程目标", "bullets": [text]}]
+        content = artifact(render.generate(value))
+        generated = Presentation(io.BytesIO(content))
+        actual = next(shape.text for shape in generated.slides[1].shapes if shape.name == "point-0")
+        self.assertEqual(actual.splitlines(), original)
 
     @unittest.skipUnless(shutil.which("libreoffice") or shutil.which("soffice"), "LibreOffice is unavailable on this test host")
     def test_presentation_semantic_native_pdf_opens(self):

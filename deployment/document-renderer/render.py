@@ -353,19 +353,21 @@ def fitted_text(shape, value, minimum=None):
     for size in choices:
         capacity = width / (size * 1.08)
         lines = wrap_text(value, capacity)
+        candidates = [lines]
         if len(lines) > 1 and "\n" not in value and len(lines[-1]) < len(lines[0]) * .5:
             units = text_width(value)
-            lines = wrap_text(value, min(capacity, math.ceil(units / len(lines)) + .5))
-        if all(text_width(line) <= capacity for line in lines) and len(lines) * size * (1.24 if shape.name == "heading" else 1.12) <= height:
-            set_text(shape, "\n".join(lines))
-            shape.text_frame.word_wrap = False
-            for paragraph in shape.text_frame.paragraphs:
-                paragraph.line_spacing = 1.05
-                paragraph.space_before = Pt(0)
-                paragraph.space_after = Pt(0)
-                for run in paragraph.runs:
-                    run.font.size = Pt(size)
-            return
+            candidates.insert(0, wrap_text(value, min(capacity, math.ceil(units / len(lines)) + .5)))
+        for lines in candidates:
+            if all(text_width(line) <= capacity for line in lines) and len(lines) * size * (1.24 if shape.name == "heading" else 1.12) <= height:
+                set_text(shape, "\n".join(lines))
+                shape.text_frame.word_wrap = False
+                for paragraph in shape.text_frame.paragraphs:
+                    paragraph.line_spacing = 1.05
+                    paragraph.space_before = Pt(0)
+                    paragraph.space_after = Pt(0)
+                    for run in paragraph.runs:
+                        run.font.size = Pt(size)
+                return
     fail("presentation_text_does_not_fit")
 
 

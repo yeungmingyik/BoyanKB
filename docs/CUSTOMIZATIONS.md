@@ -215,6 +215,7 @@
 | `deployment/document-renderer/*`、`docker-compose.presets.yml` | 不以任意代码执行实现 Office 生成 | 固定四种格式、模板摘要、预算公式重算；内部网络、只读根、非 root、资源限制 |
 | `deployment/document-renderer/render.py`、`test_render.py` | Markdown/Excel 标题重复品牌，商务 FAQ 被固定标为合作方案 | 两种格式共用标题前缀去重；商务 Markdown 省略固定类别，保留正文和来源；不改模板摘要；11 项渲染测试通过，覆盖三场景及 Excel 真实重算 |
 | `deployment/document-renderer/render.py`、`test_render.py` | PPT 固定字符切割拆开数字并产生孤立续页 | 正文及来源标题按安全句读边界分段，数字/ASCII 词保持完整；三要点分页平衡尾页，保留原字、来源和备注；14 项渲染测试通过，含真实 PPT 重开、文本框尺寸和 LibreOffice PDF 导出 |
+| `deployment/document-renderer/render.py`、`test_render.py` | 短尾行平衡将可用两行变为三行，错误拒绝渲染 | 保留同字号的原始安全换行作为回退；15 项回归测试通过；真实 B 请求生成 18 页并导出 PDF，不改模板或原文 |
 | `docker/Dockerfile.app-boyankb`、`scripts/build-presets-images.sh` | 定制镜像需要带上预设和迁移 | 三个本机版本镜像，应用嵌入配置、指南及新增迁移 |
 | `scripts/onboard-partner*`、`scripts/test_onboard_partner.py` | 重复执行不重复资源，失败能恢复 | 默认本地计划，显式 apply、断点记录、readiness 通过才完成 |
 | `scripts/check-presets.py`、`scripts/acceptance-presets.py`、`scripts/test_acceptance_presets.py` | 配置、工作流与真实行为要分开验证 | 静态检查、两个非管理员伙伴、真实文件与隔离测试、明确人工项 |
