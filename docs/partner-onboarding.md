@@ -124,6 +124,6 @@ docker run --rm -v D:/BoyanKB/WeKnora:/app -w /app -v boyan-presets-go-mod:/go/p
 
 自动测试覆盖无凭据计划、重跑资源 ID 保持、部分失败恢复、渲染依赖失败不就绪、成员与组织越权拒绝、JWT/API Key 边界、原子回滚、租约与 revision 冲突、Contributor 归属限制及错误脱敏。真实部署验收结果由执行记录补充；本文件不将离线 mock 测试当作真实租户隔离证明。
 
-2026-10-09 离线验证通过：Python 14 项，Go provisioning service 8 个及 handler 3 个顶层测试。回环 HTTP 边界、环境代理禁用、跨站重定向拒绝、可选重排真实模型校验和受管 Agent 标识均已覆盖；PostgreSQL 迁移及真实开通仍需在授权部署中验收。
+2026-10-09 离线验证通过：Python 14 项，Go provisioning service 8 个及 handler 3 个顶层测试。回环 HTTP 边界、环境代理禁用、跨站重定向拒绝、可选重排真实模型校验和受管 Agent 标识均已覆盖。本机 PostgreSQL 已应用迁移 111、112；创建模拟伙伴 A、B（空间 10003、10004）并重复执行开户，资源 ID 与报告保持相同。真实 API 隔离检查 74 项通过，证据见 [预设验收记录](04-presets.md)。云端部署继续暂停。
 
 需要人工验证：账号交付对象、伙伴间独立身份、撤销共享后的真实检索、普通用户无法改总部预设、真实业务事实与引用准确性，以及 Word/PPT/Excel 的分页、表格和品牌排版。删除伙伴、删除来源文档及移除既有业务配置不属于开通脚本。

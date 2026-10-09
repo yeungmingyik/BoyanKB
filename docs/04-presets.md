@@ -45,9 +45,9 @@
 
 1. B 读取对应场景和格式指南，检索白名单资料，最多一次追问三项关键信息。
 2. 工具保存结构化大纲、事实来源、文件类型及内容摘要。聊天中的文字“确认”不能伪造前端授权。
-3. 用户在会话确认卡中核对大纲并确认。每个格式各自确认，修改同场景同格式的大纲使旧稿失效。
+3. 用户在会话确认卡中核对大纲并确认。每个格式各自确认，修改同场景同格式的大纲使旧的待确认或已确认稿失效；历史已发布文件保留版本记录，最终验收只收集当前最新稿。
 4. 固定渲染器生成候选文件。无任意代码执行、Shell、路径或外部 URL 输入。
-5. C 使用固定提示词独立审校文件中实际提取的文本；模型错误、超时、结果无法解析或有阻断问题均不发布。
+5. C 使用固定提示词独立审校文件中实际提取的文本、公式及与文件摘要绑定的机械检查证据；模型错误、超时、结果无法解析或有阻断问题均不发布。
 6. 通过后显示下载。生成和下载时再次校验用户、工作空间、会话、来源可用性及权限。
 
 候选文件保存在数据库中，不放入通用沙箱产物目录。完整接口、状态机与限制见 [文件工作流](business/document-workflow.md)。审校模型不能提供数学意义上的“永不编造”保证；来源和权限由代码校验，内容准确性仍须用回归样例及人工审阅评估。
@@ -95,7 +95,15 @@ python scripts/acceptance-presets.py --fixtures path/to/fixtures.json --check-on
 python scripts/acceptance-presets.py --fixtures path/to/fixtures.json --env-file path/to/fixtures.env --mode all
 ```
 
-验收使用独立非管理员伙伴身份。检查大纲确认门槛、跨空间 API 拒绝、提示词注入、来源变化、两次开户资源 ID 一致、真实生成文件结构与公式。退出码 2 表示自动项通过但仍有人工项，不能当成全量人工验收通过。
+Windows 已安装 Microsoft Office 时，可对实际下载报告进行原生验证。先保存并关闭 Word、Excel、PowerPoint；脚本发现已有进程会停止，避免影响正在编辑的文件。使用 PowerShell 7，只读打开产物、禁用宏、不保存源文件，将预览另存到指定目录。
+
+```powershell
+pwsh -NoProfile -File scripts/verify-presets-office.ps1 -Report path/to/report.json -OutputDirectory temp/native-office
+```
+
+该脚本校验下载摘要、实际页数、PPT 文本框溢出与 Excel 原生重算，输出 PNG/PDF 和 `native-office.json`。预算表逐项在内存中修改数量和单价，核对行金额与总额同步变化，恢复输入后关闭且不保存原文件。仍需逐页查看预览，核对教学时长、表格可读性和商务用语。
+
+验收使用独立非管理员伙伴身份，由脚本为合成任务执行模拟用户确认。检查大纲确认门槛、跨空间 API 拒绝、提示词注入、来源变化、两次开户资源 ID 一致、真实生成文件结构与公式。退出码 2 表示自动项通过但仍有人工项，不能当成全量人工验收通过。
 
 需要人工验证：业务结论是否准确、无依据问题是否充分拒答、教学难度是否适合对象、商务表达是否越过总部授权、PPT 逐页排版和表格可读性。操作：用普通伙伴账号执行 `presets/boyan/v1/tests/behavior-cases.json` 的正常／缺失／违规样例，核对引用原文，下载并在 Office 中逐页审阅；对问题记录会话、文件版本和复现输入。
 
@@ -105,15 +113,47 @@ python scripts/acceptance-presets.py --fixtures path/to/fixtures.json --env-file
 
 | 验证 | 结果与证据 |
 | --- | --- |
+| 配置与脚本 | 静态检查 177 项通过；开户脚本 14 项、验收脚本 16 项离线测试通过；Go 文件工作流全包、开户相关测试及工具编译通过。这些与真实对话、Office 打开分别记录 |
 | 模板兼容性 | 十二份模板；九份 Office 模板实际打开。十八张 PPT、六页 Word 逐页检查；另用 LibreOffice 渲染三份 Word |
-| 渲染器独立验证 | 七项自动测试通过；生成后的四份 PPT（含长内容）、三份 Word、三份 Excel 在 Office 打开；预算 1480 元及舍入样例验证通过 |
+| 渲染器独立验证 | 15 项自动测试通过，含品牌去重、长内容分段、数字与 ASCII 词完整、平衡换行失败回退、真实 PPT 重开和 PDF 导出；此前独立生成的四份 PPT、三份 Word、三份 Excel 在 Office 打开，预算及舍入样例验证通过 |
 | 真实权限 API | `temp/presets-acceptance/access-audit.json`：74 通过、0 失败。包括自身 canary 正例、HQ 写入/分享拒绝、跨伙伴文档/Agent/组织与成员名隔离、伪造租户拒绝 |
-| 真实 Agent 对话 | `temp/presets-acceptance/behavior-live-03/report.json`：24 个用例、146 自动断言通过；逐条语义审阅为 15 通过、9 失败，涉及重复或过量追问、时间相加、风险应对及未检索便声称资料存在。记录见同目录 `semantic-review.json`，不能按 24 项业务通过计数 |
+| 真实 Agent 对话 | 首轮 24 个用例的 146 个自动断言通过，但语义审阅仅 15 通过、9 失败。修复运行约束后对失败项重测；`temp/presets-acceptance/semantic-review-final.json` 汇总每项最新样本为 24 通过，保留旧失败和修订历史。这不是首次全部通过，也不能替代业务负责人审阅 |
+| 完整输入回归 | `temp/presets-acceptance/behavior-complete-final/report.json`：14 个自动断言通过。学校提供场地设备没有被改写为免费；活动日程含休息合计 480 分钟；提案不因本次资料缺失而否认公司业务，180 分钟安排包含休息 |
 | 提示词注入与检索隔离 | `temp/presets-acceptance/isolation-live-01/report.json`：22 自动断言通过；双向自身 canary 可检索，对方 canary 未泄漏 |
 | 审校阻断 | 初批候选文件因来源缺失、无依据内容或预算表问题被 C 阻断，未提供下载；保留原任务记录，不把阻断文件记为成功产物 |
-| 新任务卡浏览器检查 | 桌面可查看审校结果；390px 视口下使用纵向问题列表，组件宽/滚动宽同为 350px。聊天页原有 400px 最小宽度仍有外层横向溢出，不代表整页移动适配已完成 |
+| 最终真实产物 | `temp/presets-acceptance/delivery-final/report.json`：18 个收集与隔离断言通过，集中保存七份当前已发布文件；使用 `--download-only`，没有重新调用模型、确认或生成 |
+| 原生 Office | `temp/presets-acceptance/delivery-final/native-office.json`：六份 Office 文件实际打开，35 张 PPT、10 页 Word 已逐页查看；PPT 无文本框溢出，两份课件备注各合计 45 分钟；MD 全文及 UTF-8 已检查。每项证据与最终文件 SHA-256 一致 |
+| Excel 动态公式 | 两份预算各含三条金额公式及一条合计公式，当前合计均为 1480 元；在 Microsoft Excel 中逐项修改数量和单价，共 12 次联动检查通过，恢复后关闭且不保存原文件。输入仅为合成预算假设，非总部报价 |
+| 新任务卡浏览器检查 | 点击“下载已审校文件”下载 A 最终 Excel，与验收文件字节及摘要一致；截图和记录位于 `temp/presets-acceptance/ui/`。390px 视口下组件宽/滚动宽同为 350px；聊天页原有 400px 最小宽度仍有外层横向溢出，不代表整页移动适配已完成 |
+| 本机运行 | 应用、前端、文档渲染器、docreader、Ollama、PostgreSQL、Redis 七个容器均健康；未改云端、生产、staging 或 restore 配置 |
 
-模板和独立渲染通过不能替代真实业务文件生成。真实产物的最终下载、审校及 Office 检查结果应单独登记；自动断言通过也不能替代业务负责人签字。
+最终文件保存在本机忽略目录；下表摘要为 SHA-256 前十二位，完整摘要和任务 ID 见集中报告。旧版失败、被阻断或后续发现问题的文件均保留为历史，不混入最终交付。
+
+| 伙伴 | 文件 | 验证 | 摘要前缀 |
+| --- | --- | --- | --- |
+| A | [教学课件 PPT](../temp/presets-acceptance/delivery-final/artifacts/a-artifact-courseware.pptx) | 17 页；讲师备注合计 45 分钟 | `195a095629f6` |
+| A | [合作提案 Word](../temp/presets-acceptance/delivery-final/artifacts/a-artifact-cooperation-proposal.docx) | 5 页；商务模板 | `b531ba0931b2` |
+| A | [活动预算 Excel](../temp/presets-acceptance/delivery-final/artifacts/a-artifact-event-plan.xlsx) | 1 张工作表；公式及六次输入联动检查 | `ba97e4b6f5eb` |
+| A | [教学 FAQ Markdown](../temp/presets-acceptance/delivery-final/artifacts/a-artifact-faq-guide.md) | 内部学习用途；未知项、品牌及来源已核对 | `6e9e091eafe1` |
+| B | [教学课件 PPT](../temp/presets-acceptance/delivery-final/artifacts/b-artifact-courseware.pptx) | 18 页；讲师备注与议程均合计 45 分钟 | `50386994c099` |
+| B | [合作提案 Word](../temp/presets-acceptance/delivery-final/artifacts/b-artifact-cooperation-proposal.docx) | 5 页；商务模板 | `bd5bb2161aff` |
+| B | [活动预算 Excel](../temp/presets-acceptance/delivery-final/artifacts/b-artifact-event-plan.xlsx) | 1 张工作表；公式及六次输入联动检查 | `935eaeaf0c95` |
+
+本机重新收集及原生检查：
+
+```bash
+python scripts/acceptance-presets.py --fixtures temp/presets-acceptance/fixtures.json --env-file temp/presets-acceptance/.env --mode artifacts --resume temp/presets-acceptance/resume-final-merged --download-only --output temp/presets-acceptance/delivery-recheck
+```
+
+```powershell
+pwsh -NoProfile -File scripts/verify-presets-office.ps1 -Report temp/presets-acceptance/delivery-recheck/report.json -OutputDirectory temp/presets-acceptance/native-recheck
+```
+
+`temp/` 不进入 Git，克隆仓库不会包含测试账号凭据或业务产物；其他环境须先用独立账号完成开户并准备 fixture。验收脚本仍保留“需要人工验证”结果，不自动代替业务负责人签字。
+
+需要人工验证：正式授课的难度与时长是否适合真实学员、知识库事实的业务解释是否准确、商务提案是否有总部授权。请业务负责人对照七份最终文件及其来源逐项签字后对外使用。Excel 原生打印会有来源续页，实际打印前还需按纸张与用途调整分页。
+
+C 曾误判真实公式，也漏掉过时长、重复预算表述及备注页号的问题；本次通过机械校验、真实文件复核和修订处理了最终样本中的这些问题，不能据此推断任意未来生成均无需审阅。模型超时、格式解析错误或渲染失败继续拒绝发布；遇到 `failure_code=render_failed`，检查渲染器健康、模板摘要和页面容量，修订或重新提交后必须重新确认。界面当前可能将渲染失败统一显示为服务不可用，应结合任务记录定位。
 
 ## 升级重放
 

@@ -218,8 +218,8 @@
 | `deployment/document-renderer/render.py`、`test_render.py` | 短尾行平衡将可用两行变为三行，错误拒绝渲染 | 保留同字号的原始安全换行作为回退；15 项回归测试通过；真实 B 请求生成 18 页并导出 PDF，不改模板或原文 |
 | `docker/Dockerfile.app-boyankb`、`scripts/build-presets-images.sh` | 定制镜像需要带上预设和迁移 | 三个本机版本镜像，应用嵌入配置、指南及新增迁移 |
 | `scripts/onboard-partner*`、`scripts/test_onboard_partner.py` | 重复执行不重复资源，失败能恢复 | 默认本地计划，显式 apply、断点记录、readiness 通过才完成 |
-| `scripts/check-presets.py`、`scripts/acceptance-presets.py`、`scripts/test_acceptance_presets.py` | 配置、工作流与真实行为要分开验证 | 静态检查、两个非管理员伙伴、真实文件与隔离测试、明确人工项 |
-| `scripts/verify-presets-office.ps1` | ZIP 检查不能代替 Office 真正打开 | PowerShell 7、实际下载摘要、只读打开、PPT 导出及溢出检查、Word/Excel PDF、Excel 原生重算与缓存值对比 |
+| `scripts/check-presets.py`、`scripts/acceptance-presets.py`、`scripts/test_acceptance_presets.py` | 配置、工作流与真实行为要分开验证 | 静态检查、两个非管理员伙伴、真实文件与隔离测试；下载模式仅收集当前已发布稿，不调用模型或确认；明确人工项 |
+| `scripts/verify-presets-office.ps1` | ZIP 检查不能代替 Office 真正打开 | PowerShell 7、实际下载摘要、只读打开、PPT 导出及溢出检查、Word/Excel PDF；Excel 原生重算、缓存值对比及数量/单价扰动验证，恢复输入、关闭且不保存后复核原文件摘要 |
 | `docs/04-presets.md`、`docs/partner-onboarding.md`、`docs/business/document-workflow.md` | 安装与升级可重复 | 方案取舍、执行命令、边界、验收与重放顺序 |
 
 升级时先重放独立资源，再逐项检查表中核心接入点；不得只复制提示词后宣称确认和权限约束仍然有效。重新构建并在隔离副本运行自动及人工验收。LICENSE 与上游版权声明保留。
