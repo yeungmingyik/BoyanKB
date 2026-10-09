@@ -1,4 +1,8 @@
 *.sh text eol=lf
+skills/boyan/** text eol=lf
+presets/boyan/** text eol=lf
+branding/templates/*.md text eol=lf
+branding/templates/*.json text eol=lf
 
 # Force LF on Go source + JSON golden fixtures so Windows checkouts
 # (with default core.autocrlf=true) don't trip byte-equal comparisons in

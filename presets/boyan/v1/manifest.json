@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "preset_version": "boyan/v1",
+  "document_brand": "博研文化",
+  "platform_brand": "BoyanKB",
+  "runtime": "restricted-guidance",
+  "template_manifest": "../../../branding/templates/manifest.json",
+  "template_version": "boyan-v1",
+  "agents": [
+    {
+      "key": "mentor",
+      "path": "agents/mentor.json",
+      "prompt_files": [
+        "common-rules.md",
+        "agents/mentor.md"
+      ]
+    },
+    {
+      "key": "planner",
+      "path": "agents/planner.json",
+      "prompt_files": [
+        "common-rules.md",
+        "agents/planner.md",
+        "workflow-guide.md"
+      ]
+    },
+    {
+      "key": "reviewer",
+      "path": "agents/reviewer.json",
+      "prompt_files": [
+        "common-rules.md",
+        "agents/reviewer.md"
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "key": "courseware",
+      "name": "boyan-courseware",
+      "path": "../../../skills/boyan/courseware",
+      "version": "boyan/v1",
+      "sha256": "b6660b7727894c05459c381d784e888a856c2d2d0ee4e1079a67103fe014171d"
+    },
+    {
+      "key": "event-plan",
+      "name": "boyan-event-plan",
+      "path": "../../../skills/boyan/event-plan",
+      "version": "boyan/v1",
+      "sha256": "ef1a18067eb34cd286f1ffc2959c48af0b02506f2c9412f5c6b1114ff2a67ffb"
+    },
+    {
+      "key": "local-promotion-plan",
+      "name": "boyan-local-promotion-plan",
+      "path": "../../../skills/boyan/local-promotion-plan",
+      "version": "boyan/v1",
+      "sha256": "909749be884fc53ebc1374c8b6de6d52579934be0f7cf4dc8473b162d7efd3be"
+    },
+    {
+      "key": "cooperation-proposal",
+      "name": "boyan-cooperation-proposal",
+      "path": "../../../skills/boyan/cooperation-proposal",
+      "version": "boyan/v1",
+      "sha256": "99cee5e430f2bb7eeb3dd80950960e76129d1f2672ada27f3c013eecd198df02"
+    },
+    {
+      "key": "faq-guide",
+      "name": "boyan-faq-guide",
+      "path": "../../../skills/boyan/faq-guide",
+      "version": "boyan/v1",
+      "sha256": "5a4256a5225d3314356503f94058f2a27da19ff4eeeaf8b27fcb27961ac4e49e"
+    },
+    {
+      "key": "docx",
+      "name": "boyan-docx",
+      "path": "../../../skills/boyan/docx",
+      "version": "boyan/v1",
+      "sha256": "9a4d7902a7866d3d80c3850a8287a5ee50c912836771516f67c59d2fddb6cee3"
+    },
+    {
+      "key": "pptx",
+      "name": "boyan-pptx",
+      "path": "../../../skills/boyan/pptx",
+      "version": "boyan/v1",
+      "sha256": "b602c570dd3225deca7c7bfc2ee9474b6942ee14455fa3e6be220dbd9dc9bd48"
+    },
+    {
+      "key": "xlsx",
+      "name": "boyan-xlsx",
+      "path": "../../../skills/boyan/xlsx",
+      "version": "boyan/v1",
+      "sha256": "139360406213ed5925e05f83a36c5119b503ec1e2c0e148f6525f8c35c7d0706"
+    },
+    {
+      "key": "md",
+      "name": "boyan-md",
+      "path": "../../../skills/boyan/md",
+      "version": "boyan/v1",
+      "sha256": "12b2dbaff4dc2e4a05718c01022c0598d0b8fb04825a51533d35bc56c315d2ab"
+    }
+  ],
+  "scene_templates": {
+    "courseware": "teaching",
+    "event-plan": "operations",
+    "local-promotion-plan": "business",
+    "cooperation-proposal": "business",
+    "faq-guide": "business"
+  }
+}

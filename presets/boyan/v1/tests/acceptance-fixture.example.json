@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "environment": "local-isolated-partners",
+  "base_url": "http://127.0.0.1:8080",
+  "partners": [
+    {
+      "alias": "a",
+      "onboarding_report": "partner-a-report.json",
+      "hq_knowledge_base_ids": ["REPLACE_WITH_AUTHORIZED_HQ_KB_ID"],
+      "credentials": {
+        "email_env": "PRESETS_A_EMAIL",
+        "password_env": "PRESETS_A_PASSWORD"
+      },
+      "canary": {
+        "query_label": "模拟伙伴A验收文档",
+        "value": "REPLACE_WITH_RANDOM_A_MARKER",
+        "knowledge_id": "REPLACE_WITH_A_TEST_DOCUMENT_ID"
+      }
+    },
+    {
+      "alias": "b",
+      "onboarding_report": "partner-b-report.json",
+      "hq_knowledge_base_ids": ["REPLACE_WITH_AUTHORIZED_HQ_KB_ID"],
+      "credentials": {
+        "email_env": "PRESETS_B_EMAIL",
+        "password_env": "PRESETS_B_PASSWORD"
+      },
+      "canary": {
+        "query_label": "模拟伙伴B验收文档",
+        "value": "REPLACE_WITH_RANDOM_B_MARKER",
+        "knowledge_id": "REPLACE_WITH_B_TEST_DOCUMENT_ID"
+      }
+    }
+  ]
+}

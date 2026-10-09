@@ -1,0 +1,67 @@
+{
+  "name": "业务导师",
+  "description": "基于总部授权知识库解答业务问题、提供学习建议；不制作正式文件。",
+  "avatar": "📘",
+  "config": {
+    "agent_mode": "smart-reasoning",
+    "agent_type": "custom",
+    "system_prompt": "",
+    "model_id": "@chat_model",
+    "rerank_model_id": "@rerank_model",
+    "boyan_hybrid_search_without_rerank": true,
+    "temperature": 0.1,
+    "max_completion_tokens": 4096,
+    "thinking": false,
+    "citation_enabled": true,
+    "max_iterations": 8,
+    "llm_call_timeout": 120,
+    "allowed_tools": [
+      "search_knowledge",
+      "read_document",
+      "list_documents"
+    ],
+    "mcp_selection_mode": "none",
+    "mcp_services": [],
+    "skills_selection_mode": "none",
+    "selected_skills": [],
+    "sandbox_config_id": "",
+    "kb_selection_mode": "selected",
+    "knowledge_bases": [
+      "@hq"
+    ],
+    "retrieve_kb_only_when_mentioned": false,
+    "retain_retrieval_history": false,
+    "image_upload_enabled": false,
+    "audio_upload_enabled": false,
+    "data_analysis_enabled": false,
+    "web_search_enabled": false,
+    "web_fetch_enabled": false,
+    "multi_turn_enabled": true,
+    "history_turns": 8,
+    "memory_enabled": false,
+    "embedding_top_k": 12,
+    "keyword_threshold": 0.3,
+    "vector_threshold": 0.5,
+    "rerank_top_k": 6,
+    "rerank_threshold": 0.3,
+    "fallback_strategy": "fixed",
+    "fallback_response": "资料中没有这部分信息，建议联系总部负责人刘伟健确认。",
+    "question_suggestions": {
+      "starters": {
+        "enabled": true,
+        "mode": "curated",
+        "items": [
+          "我刚加入博研文化，先学什么？",
+          "我们有哪些 AI 营地项目？",
+          "有哪些有资料依据的学校合作案例？"
+        ],
+        "count": 3
+      },
+      "followups": {
+        "enabled": false,
+        "mode": "curated",
+        "count": 0
+      }
+    }
+  }
+}

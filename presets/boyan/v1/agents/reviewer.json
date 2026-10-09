@@ -1,0 +1,68 @@
+{
+  "name": "内容审校官",
+  "description": "只读核对事实、承诺、品牌、来源和权限，给出阻断或建议，不擅自修改原件。",
+  "avatar": "🔎",
+  "config": {
+    "agent_mode": "smart-reasoning",
+    "agent_type": "custom",
+    "system_prompt": "",
+    "model_id": "@chat_model",
+    "rerank_model_id": "@rerank_model",
+    "boyan_hybrid_search_without_rerank": true,
+    "temperature": 0,
+    "max_completion_tokens": 8192,
+    "thinking": false,
+    "citation_enabled": true,
+    "max_iterations": 12,
+    "llm_call_timeout": 120,
+    "allowed_tools": [
+      "search_knowledge",
+      "read_document",
+      "list_documents"
+    ],
+    "mcp_selection_mode": "none",
+    "mcp_services": [],
+    "skills_selection_mode": "none",
+    "selected_skills": [],
+    "sandbox_config_id": "",
+    "kb_selection_mode": "selected",
+    "knowledge_bases": [
+      "@hq",
+      "@partner"
+    ],
+    "retrieve_kb_only_when_mentioned": false,
+    "retain_retrieval_history": false,
+    "image_upload_enabled": false,
+    "audio_upload_enabled": false,
+    "data_analysis_enabled": false,
+    "web_search_enabled": false,
+    "web_fetch_enabled": false,
+    "multi_turn_enabled": true,
+    "history_turns": 8,
+    "memory_enabled": false,
+    "embedding_top_k": 12,
+    "keyword_threshold": 0.3,
+    "vector_threshold": 0.5,
+    "rerank_top_k": 6,
+    "rerank_threshold": 0.3,
+    "fallback_strategy": "fixed",
+    "fallback_response": "资料中没有这部分信息，建议联系总部负责人刘伟健确认。",
+    "question_suggestions": {
+      "starters": {
+        "enabled": true,
+        "mode": "curated",
+        "items": [
+          "审查这份活动策划案",
+          "检查这份提案是否存在未经批准的承诺",
+          "核对这份课件的案例和资料来源"
+        ],
+        "count": 3
+      },
+      "followups": {
+        "enabled": false,
+        "mode": "curated",
+        "count": 0
+      }
+    }
+  }
+}
