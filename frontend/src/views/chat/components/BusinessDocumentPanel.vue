@@ -6,7 +6,7 @@
         <span role="status">{{ states[job.state] || job.state }}</span>
       </div>
       <details :open="job.state === 'awaiting_confirmation'">
-        <summary>查看待确认大纲</summary>
+        <summary>查看大纲</summary>
         <pre class="document-outline">{{ job.outline_markdown }}</pre>
       </details>
       <p v-if="job.state === 'awaiting_confirmation'">确认此版大纲后生成文件，并自动交由内容审校官检查。修改大纲请继续对话，修改后需要重新确认。</p>

@@ -205,12 +205,15 @@
 | `internal/businessworkflow/render_limits*`、`types.go`、`service.go` | 已确认内容不应因可预先检查的渲染限额而失败 | 提案阶段对齐 Unicode 字符数、章节/表格/预算数量、来源文本与数值范围；字段级纠正提示；边界与拒绝落库测试 |
 | `internal/businessworkflow/revision*`、`internal/modelcontext/boyan_revision.go`、`registry.go`、`boyan_document_test.go` | 跨轮修订不能丢失原稿及来源，也不能从任意正文伪造来源句柄 | 身份、摘要、当前共享权限和指南重新验证；仅服务器验证来源恢复映射；新稿重新确认；撤销、伪来源和跨空间测试 |
 | `internal/businessworkflow/reviewer_retry_test.go`、`reviewer.go`、`render_limits*`、`types.go`、`service.go` | 矛盾审校与确认后超限会使正常任务无法完成 | 同一 C 模型最多一次结论澄清，仍异常拒绝发布；Unicode 字符、集合、预算及来源限额提前校验；边界与失败关闭测试 |
+| `internal/businessworkflow/budget_tables*`、`types.go`、`reviewer.go`、`internal/agent/tools/boyan_document.go` | 两套未联动的 Excel 输入和静态汇总会误导修改者 | 普通表格不得重复结构化预算的数量与单价；真正公式与静态文本分开审校；中英文表头、单位和保留场景测试 |
 | `internal/application/service/boyan_runtime_policy.go`、`boyan_rerank*`、`session_agent_qa.go` | 真实对话出现重复追问、时长及风险结构遗漏 | ready 记录绑定的三名 Agent 附加运行约束；不能仅凭客户端开关生效；身份与状态门禁测试 |
 | `migrations/{versioned,sqlite}/000112_boyan_document_jobs*` | 文档状态和候选需持久化 | 每个租户/用户/会话独立记录、确认和发布约束、候选二进制留在受控表 |
 | `internal/container/container.go`、`internal/router/router.go`、`internal/application/service/agent_service.go`、`session_agent_qa.go`、`internal/types/agent.go`、`internal/modelcontext/tool_policy.go`、`internal/agent/tools/definitions.go` | 接入业务工具及可验证来源 | 依赖注入、路由、新工具显式允许、实际 Agent ID 与分块 ID 解码；保留其他 Agent 默认工具行为 |
 | `internal/application/service/boyan_rerank*`、`internal/types/custom_agent.go`、`frontend/src/api/agent/index.ts`、`frontend/src/utils/agent-readiness*`、`frontend/src/components/Input-field.vue`、`frontend/src/views/agent/AgentEditorModal.vue` | 本机没有单独的重排服务，原 Agent 入口强制报错 | 受管 ready 预设显式允许已有混合检索路径，服务端校验绑定；非受管 Agent 默认要求不变，非空模型失败不降级 |
 | `frontend/src/api/business-workflow.ts`、`frontend/src/views/chat/components/BusinessDocumentPanel.vue`、`frontend/src/views/chat/index.vue` | 用户需看到并确认真实服务端大纲 | 会话任务卡、明确确认、生成与审校状态、授权下载 |
 | `deployment/document-renderer/*`、`docker-compose.presets.yml` | 不以任意代码执行实现 Office 生成 | 固定四种格式、模板摘要、预算公式重算；内部网络、只读根、非 root、资源限制 |
+| `deployment/document-renderer/render.py`、`test_render.py` | Markdown/Excel 标题重复品牌，商务 FAQ 被固定标为合作方案 | 两种格式共用标题前缀去重；商务 Markdown 省略固定类别，保留正文和来源；不改模板摘要；11 项渲染测试通过，覆盖三场景及 Excel 真实重算 |
+| `deployment/document-renderer/render.py`、`test_render.py` | PPT 固定字符切割拆开数字并产生孤立续页 | 正文及来源标题按安全句读边界分段，数字/ASCII 词保持完整；三要点分页平衡尾页，保留原字、来源和备注；14 项渲染测试通过，含真实 PPT 重开、文本框尺寸和 LibreOffice PDF 导出 |
 | `docker/Dockerfile.app-boyankb`、`scripts/build-presets-images.sh` | 定制镜像需要带上预设和迁移 | 三个本机版本镜像，应用嵌入配置、指南及新增迁移 |
 | `scripts/onboard-partner*`、`scripts/test_onboard_partner.py` | 重复执行不重复资源，失败能恢复 | 默认本地计划，显式 apply、断点记录、readiness 通过才完成 |
 | `scripts/check-presets.py`、`scripts/acceptance-presets.py`、`scripts/test_acceptance_presets.py` | 配置、工作流与真实行为要分开验证 | 静态检查、两个非管理员伙伴、真实文件与隔离测试、明确人工项 |

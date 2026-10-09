@@ -5,7 +5,9 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -140,6 +142,100 @@ class RenderTests(unittest.TestCase):
         with self.assertRaisesRegex(render.RenderError, "presentation_title_too_long"):
             render.validate(value)
 
+    def test_presentation_semantic_chunks_and_balanced_pages(self):
+        values = [
+            "议程：背景介绍2分钟 + 三个模块30分钟 + 互动练习5分钟 + 总结与后续行动5分钟，合计45分钟。",
+            "课程目标与案例使用范围需要共同确认，所有伙伴必须理解并遵守教学质控红线。",
+            "知识库资料使用边界与教学实施质量检查" * 17,
+            "Session12345 duration 45.50 minutes; review Version2.10 with TeachingQualityChecklist and 2026-10-09 records.",
+            "预算口径需要核实，合计1,480.50元，不代表总部正式报价；预计时长45分钟，最终按已确认安排执行。",
+            "资料来源与实施边界" * 5 + " TeachingQualityChecklist2026 版本2.10；教学质控红线。",
+        ]
+        for value in values:
+            with self.subTest(value=value):
+                chunks = render.chunks(value, 48)
+                self.assertEqual("".join(chunks), value)
+                self.assertTrue(all(len(part) <= 48 for part in chunks))
+                self.assertTrue(all(len(part) >= 16 for part in chunks))
+                self.assertFalse(any(part[0] in "，。；：、！？,.!?;:" for part in chunks))
+                for match in re.finditer(r"[A-Za-z0-9]+(?:[._\-][A-Za-z0-9]+)*", value):
+                    self.assertTrue(any(match.group() in part for part in chunks))
+                wrapped = render.wrap_text(value, 22)
+                self.assertEqual("".join(wrapped), value)
+                for match in re.finditer(r"[A-Za-z0-9]+(?:[._\-][A-Za-z0-9]+)*", value):
+                    self.assertTrue(any(match.group() in line for line in wrapped))
+                for match in re.finditer(r"\d+(?:[.,]\d+)*(?:分钟|元)?", value):
+                    self.assertTrue(any(match.group() in part for part in chunks))
+                    self.assertTrue(any(match.group() in line for line in wrapped))
+        for count, sizes in ((1, [1]), (3, [3]), (4, [2, 2]), (7, [3, 2, 2]), (10, [3, 3, 2, 2])):
+            pages = list(render.point_pages(list(range(count))))
+            self.assertEqual([len(page) for _, page in pages], sizes)
+            self.assertEqual([item for _, page in pages for item in page], list(range(count)))
+        with self.assertRaisesRegex(render.RenderError, "presentation_token_too_long"):
+            render.chunks("A" * 49, 48)
+
+    def test_presentation_semantic_text_survives_real_rendering(self):
+        value = request()
+        agenda = "议程：背景介绍2分钟 + 三个模块30分钟 + 互动练习5分钟 + 总结与后续行动5分钟，合计45分钟。"
+        boundary = "课程内容与目标先确认，再讲解课程如何落地实施，解决‘课怎么上好’，所有伙伴必须理解并遵守教学质控红线。"
+        dense = "知识库资料使用边界与教学实施质量检查" * 7
+        english = "Session12345 duration 45.50 minutes; review TeachingQualityChecklist and 2026-10-09 records."
+        value["document"]["sections"] = [
+            {"heading": "议程和教学红线", "body": agenda, "bullets": [boundary, dense, english], "notes": "保持课程原有时长，预计时长45分钟。"},
+            {"heading": "四点分页", "bullets": ["完整教学要点" + str(i) for i in range(4)]},
+            {"heading": "七点分页", "bullets": ["完整质量要点" + str(i) for i in range(7)]},
+        ]
+        value["sources"][0]["title"] = "资料来源与实施边界" * 5 + " TeachingQualityChecklist2026 版本2.10；教学质控红线。"
+        value.pop("budget")
+        content = artifact(render.generate(value))
+        self.save(content, "teaching-semantic-pages.pptx")
+        deck = Presentation(io.BytesIO(content))
+        points, source_points, groups = [], [], {"四点分页": [], "七点分页": []}
+        for slide in deck.slides:
+            named = {shape.name: shape for shape in slide.shapes}
+            heading = named["heading"].text.replace("\n", "") if "heading" in named else ""
+            page_points = [named["point-" + str(i)].text.replace("\n", "") for i in range(3) if "point-" + str(i) in named and named["point-" + str(i)].text]
+            if heading.startswith("议程和教学红线"):
+                points.extend(page_points)
+                self.assertIn(value["document"]["sections"][0]["notes"], slide.notes_slide.notes_text_frame.text)
+                self.assertIn("template-test-source", slide.notes_slide.notes_text_frame.text)
+            if heading == "资料来源":
+                source_points.extend(page_points)
+            for group in groups:
+                if heading.startswith(group):
+                    groups[group].append(len(page_points))
+            for shape in slide.shapes:
+                if shape.has_text_frame and shape.name.startswith("point-"):
+                    size = max((run.font.size.pt for p in shape.text_frame.paragraphs for run in p.runs if run.font.size), default=0)
+                    capacity = (shape.width - shape.text_frame.margin_left - shape.text_frame.margin_right) / 12700 / (size * 1.08)
+                    self.assertTrue(all(render.text_width(line) <= capacity for line in shape.text.splitlines()))
+                    self.assertLessEqual(len(shape.text.splitlines()) * size * 1.12, (shape.height - shape.text_frame.margin_top - shape.text_frame.margin_bottom) / 12700)
+        self.assertEqual("".join(points), agenda + boundary + dense + english)
+        self.assertTrue(any("45分钟。" in point for point in points))
+        self.assertTrue(any("教学质控红线。" in point for point in points))
+        self.assertFalse(any(point in ("5分钟。", "红线。", "。") for point in points))
+        self.assertEqual("".join(source_points), value["sources"][0]["title"])
+        self.assertEqual(groups, {"四点分页": [2, 2], "七点分页": [3, 2, 2]})
+
+    @unittest.skipUnless(shutil.which("libreoffice") or shutil.which("soffice"), "LibreOffice is unavailable on this test host")
+    def test_presentation_semantic_native_pdf_opens(self):
+        self.test_presentation_semantic_text_survives_real_rendering()
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            result = subprocess.run([shutil.which("libreoffice") or shutil.which("soffice"), "-env:UserInstallation=" + (target / "profile").as_uri(), "--headless", "--convert-to", "pdf", "--outdir", str(target), str(OUTPUT / "teaching-semantic-pages.pptx")], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+            self.assertEqual(result.returncode, 0)
+            pdf = target / "teaching-semantic-pages.pdf"
+            self.assertTrue(pdf.is_file())
+            self.assertGreater(pdf.stat().st_size, 10000)
+            self.save(pdf.read_bytes(), pdf.name)
+            if shutil.which("pdftotext"):
+                result = subprocess.run(["pdftotext", "-layout", str(pdf), "-"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+                self.assertEqual(result.returncode, 0)
+                text = result.stdout.decode("utf-8")
+                self.assertRegex(text, r"合计[ \t]*45[ \t]*分钟")
+                self.assertIn("教学质控红线", text)
+                self.assertIn("TeachingQualityChecklist", text)
+
     def test_presentation_notes_group_body_and_table_continuations(self):
         value = request()
         notes = "讲师说明：练习后讨论，预计时长8分钟。"
@@ -191,6 +287,29 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("![remote]", result)
         self.assertIn("__import__('os')", result)
 
+    def test_markdown_heading_brand_and_scene_label(self):
+        for scene in ("teaching", "business", "operations"):
+            for title in ("教学核心套件内部学习 FAQ（新合作伙伴教学执行者）", "博研文化｜教学核心套件内部学习 FAQ（新合作伙伴教学执行者）", "博研文化 学习 FAQ", "博研文化"):
+                with self.subTest(scene=scene, title=title):
+                    value = request("md", scene)
+                    value["document"]["title"] = title
+                    value["document"]["sections"][0]["body"] = "正文提到合作方案时必须保留。"
+                    before = hashlib.sha256((TEMPLATES / (scene + ".md")).read_bytes()).hexdigest()
+                    content = artifact(render.generate(value)).decode("utf-8")
+                    heading = content.splitlines()[0]
+                    self.assertEqual(heading, "# " + (title if title.startswith("博研文化") else "博研文化 " + title))
+                    self.assertEqual(heading.count("博研文化"), 1)
+                    self.assertIn(title, heading)
+                    self.assertIn("正文提到合作方案时必须保留。", content)
+                    if scene == "business":
+                        self.assertNotIn("\n\n合作方案\n\n", content)
+                    else:
+                        self.assertIn("教学讲义" if scene == "teaching" else "活动执行方案", content)
+                    self.assertIn("## 资料来源", content)
+                    self.assertEqual(hashlib.sha256((TEMPLATES / (scene + ".md")).read_bytes()).hexdigest(), before)
+                    if scene == "business" and title.startswith("博研文化｜"):
+                        self.save(content.encode("utf-8"), "business-faq-brand-heading.md")
+
     def test_bad_template_hash_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory)
@@ -199,6 +318,22 @@ class RenderTests(unittest.TestCase):
             with patch.object(render, "ROOT", target):
                 with self.assertRaisesRegex(render.RenderError, "template_integrity_failed"):
                     render.generate(request("md"))
+
+    @unittest.skipUnless(shutil.which("libreoffice") or shutil.which("soffice"), "LibreOffice is unavailable on this test host")
+    def test_spreadsheet_heading_has_one_brand_prefix(self):
+        for title in ("东莞活动预算", "博研文化 | 东莞活动预算", "博研文化"):
+            with self.subTest(title=title):
+                value = request("xlsx", "operations")
+                value["document"]["title"] = title
+                content = artifact(render.generate(value))
+                workbook = load_workbook(io.BytesIO(content), data_only=True)
+                heading = workbook.active["A2"].value
+                self.assertEqual(heading, title if title.startswith("博研文化") else "博研文化 " + title)
+                self.assertEqual(heading.count("博研文化"), 1)
+                self.assertIn(title, heading)
+                self.assertTrue(any(cell.value == 1480 for row in workbook.active for cell in row))
+                if title.startswith("博研文化 |"):
+                    self.save(content, "operations-brand-heading.xlsx")
 
     @unittest.skipUnless(shutil.which("libreoffice") or shutil.which("soffice"), "LibreOffice is unavailable on this test host")
     def test_spreadsheets_recalculate_and_replace_template_validation(self):

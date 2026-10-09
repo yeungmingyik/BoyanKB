@@ -148,6 +148,11 @@ def paragraphs(value):
     return [line.strip() for line in value.splitlines() if line.strip()]
 
 
+def branded_title(title):
+    title = title.strip()
+    return title if title.startswith("博研文化") else "博研文化 " + title
+
+
 def source_lines(request):
     return [f"[{index}] {s['title']}　分块 {s.get('chunk_id', s.get('id'))}" for index, s in enumerate(request["sources"], 1)]
 
@@ -272,21 +277,70 @@ def clone_slide(deck, source):
     return slide
 
 
+def text_boundaries(text):
+    blocked = set()
+    for match in re.finditer(r"[A-Za-z0-9]+(?:[._:/@%+\-][A-Za-z0-9]+)*(?:分钟|小时|个月|天|周|月|年|元|人|次|%)?", text):
+        blocked.update(range(match.start() + 1, match.end()))
+    for match in re.finditer(r"\d+(?:[.,]\d+)*(?:分钟|小时|个月|天|周|月|年|元|人|次|%)?", text):
+        blocked.update(range(match.start() + 1, match.end()))
+    return [index for index in range(1, len(text) + 1) if index == len(text) or (
+        index not in blocked and not unicodedata.combining(text[index])
+        and text[index] not in "，。；：、！？,.!?;:%）】》”’"
+        and text[index - 1] not in "（【《“‘"
+    )]
+
+
 def chunks(text, size=50):
-    return [text[i:i + size] for i in range(0, len(text), size)] or [""]
+    result = []
+    while len(text) > size:
+        count = math.ceil(len(text) / size)
+        target = math.ceil(len(text) / count)
+        minimum = max(1, size // 3)
+        lower = max(minimum, len(text) - (count - 1) * size)
+        upper = min(size, len(text) - minimum)
+        boundaries = text_boundaries(text)
+        choices = [index for index in boundaries if lower <= index <= upper]
+        if not choices:
+            choices = [index for index in boundaries if index <= size]
+        if not choices:
+            fail("presentation_token_too_long")
+
+        def priority(index):
+            prefix = text[:index].rstrip()
+            boundary = 0 if re.search(r"[。！？.!?；;][）】》”’]*$", prefix) else 1 if re.search(r"[，：、,:][）】》”’]*$", prefix) else 2 if text[index - 1].isspace() else 3
+            return boundary, abs(index - target), index
+
+        index = min(choices, key=priority)
+        result.append(text[:index])
+        text = text[index:]
+    return result + [text]
+
+
+def point_pages(values):
+    count = max(1, math.ceil(len(values) / 3))
+    base, extra = divmod(len(values), count)
+    offset = 0
+    for index in range(count):
+        size = base + (index < extra)
+        yield offset, values[offset:offset + size]
+        offset += size
+
+
+def text_width(value):
+    return sum(0 if unicodedata.combining(char) else 1 if unicodedata.east_asian_width(char) in "WF" else .62 for char in value)
 
 
 def wrap_text(text, capacity):
     output = []
     for source in text.splitlines() or [""]:
-        line, width = "", 0
-        for char in source:
-            char_width = 0 if unicodedata.combining(char) else 1 if unicodedata.east_asian_width(char) in "WF" else .62
-            if line and width + char_width > capacity:
+        offset, line = 0, ""
+        for boundary in text_boundaries(source):
+            unit = source[offset:boundary]
+            if line and text_width(line + unit) > capacity:
                 output.append(line)
-                line, width = "", 0
-            line += char
-            width += char_width
+                line = ""
+            line += unit
+            offset = boundary
         output.append(line)
     return output
 
@@ -300,9 +354,9 @@ def fitted_text(shape, value, minimum=None):
         capacity = width / (size * 1.08)
         lines = wrap_text(value, capacity)
         if len(lines) > 1 and "\n" not in value and len(lines[-1]) < len(lines[0]) * .5:
-            units = sum(0 if unicodedata.combining(char) else 1 if unicodedata.east_asian_width(char) in "WF" else .62 for char in value)
+            units = text_width(value)
             lines = wrap_text(value, min(capacity, math.ceil(units / len(lines)) + .5))
-        if len(lines) * size * (1.24 if shape.name == "heading" else 1.12) <= height:
+        if all(text_width(line) <= capacity for line in lines) and len(lines) * size * (1.24 if shape.name == "heading" else 1.12) <= height:
             set_text(shape, "\n".join(lines))
             shape.text_frame.word_wrap = False
             for paragraph in shape.text_frame.paragraphs:
@@ -322,7 +376,10 @@ def presentation_table_pages(deck, headers, rows):
     available = deck.slide_height * .52 / 12700
 
     def height(values):
-        return max(len(wrap_text(value, capacity)) for value in values) * size * 1.15 + 12
+        lines = [wrap_text(value, capacity) for value in values]
+        if any(text_width(line) > capacity for group in lines for line in group):
+            fail("presentation_table_cell_too_long")
+        return max(len(group) for group in lines) * size * 1.15 + 12
 
     header_height = height(headers)
     if header_height > available * .4:
@@ -409,13 +466,13 @@ def render_pptx(request, template, destination):
         units = []
         for value in paragraphs(section.get("body", "")) + (section.get("bullets") or []):
             units.extend(chunks(value, 48))
-        for start in range(0, max(1, len(units)), 3):
+        for start, page_units in point_pages(units):
             slide = create(1)
             section_slides.append(slide)
             named = {s.name: s for s in slide.shapes}
             fitted_text(named["heading"], section["heading"] + ("（续）" if start else ""), 27)
             for index in range(3):
-                text = units[start+index] if start+index < len(units) else ""
+                text = page_units[index] if index < len(page_units) else ""
                 set_text(named["number-"+str(index)], str(start+index+1).zfill(2) if text else "")
                 fitted_text(named["point-"+str(index)], text)
         for table in section.get("tables") or []:
@@ -429,12 +486,12 @@ def render_pptx(request, template, destination):
     source_units = []
     for index, source in enumerate(request["sources"], 1):
         source_units.extend((index, value) for value in chunks(source["title"], 48))
-    for start in range(0, len(source_units), 3):
+    for _, page_units in point_pages(source_units):
         slide = create(1)
         named = {s.name:s for s in slide.shapes}
         set_text(named["heading"], "资料来源")
         for index in range(3):
-            item = source_units[start+index] if start+index < len(source_units) else None
+            item = page_units[index] if index < len(page_units) else None
             set_text(named["number-"+str(index)], str(item[0]).zfill(2) if item else "")
             fitted_text(named["point-"+str(index)], item[1] if item else "")
         slide.notes_slide.notes_text_frame.text = "\n".join(source_lines(request))
@@ -474,7 +531,7 @@ def render_xlsx(request, template, destination):
     for merged in list(sheet.merged_cells.ranges):
         sheet.unmerge_cells(str(merged))
     sheet.delete_rows(4, sheet.max_row)
-    sheet["A2"] = "博研文化 " + request["document"]["title"]
+    sheet["A2"] = branded_title(request["document"]["title"])
     sheet.merge_cells("A2:E2")
     sheet["A2"].font = Font(name=FONT,size=17,bold=True,color="1F4884")
     accent = ACCENTS[request["scene"]]
@@ -597,7 +654,11 @@ def render_md(request, template, destination):
             label=literal(item["label"]).replace("|", "\\|").replace("\n", " ")
             lines.append(f"| {label} | {item['quantity']} | {item['unit_price']:.2f} | {line_amount(item)} |")
         lines += ["", "预算合计："+str(sum(line_amount(v) for v in request["budget"]["items"]))+" 元。测算须核实，不能作为总部正式报价。", ""]
-    content=template.read_text(encoding="utf-8").replace("{{title}}",literal(doc["title"])).replace("{{content}}","\n".join(lines)).replace("{{sources}}","\n".join(literal(source) for source in source_lines(request)))
+    title = branded_title(doc["title"])
+    template_text = template.read_text(encoding="utf-8").replace("# 博研文化 {{title}}", "# {{title}}", 1)
+    if request["scene"] == "business":
+        template_text = template_text.replace("\n\n合作方案\n\n", "\n\n", 1)
+    content=template_text.replace("{{title}}",literal(title)).replace("{{content}}","\n".join(lines)).replace("{{sources}}","\n".join(literal(source) for source in source_lines(request)))
     if re.search(r"\{\{[^}]*\}\}",content):
         fail("unresolved_template_field")
     destination.write_text(content,encoding="utf-8")
