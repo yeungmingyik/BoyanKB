@@ -1,11 +1,12 @@
 services:
   app:
-    image: boyankb/app:v0.8.2-presets-v1
+    image: boyankb/app:v0.8.2-presets-v2
     environment:
       BOYAN_DOCUMENT_RENDERER_URL: http://document-renderer:8091
       BOYAN_DOCUMENT_RENDERER_TOKEN: ${BOYAN_DOCUMENT_RENDERER_TOKEN:?Set BOYAN_DOCUMENT_RENDERER_TOKEN in .env}
       BOYAN_PRESETS_ROOT: /app/presets/boyan/v1
       BOYAN_SKILLS_ROOT: /app/skills/boyan
+      BOYAN_PPT_TEMPLATE_VERSION: boyan-v2
     depends_on:
       document-renderer:
         condition: service_healthy
@@ -13,10 +14,10 @@ services:
       - boyan-render
 
   frontend:
-    image: boyankb/frontend:v0.8.2-presets-v1
+    image: boyankb/frontend:v0.8.2-presets-v2
 
   document-renderer:
-    image: boyankb/document-renderer:boyan-v1
+    image: boyankb/document-renderer:boyan-v2
     build:
       context: .
       dockerfile: deployment/document-renderer/Dockerfile

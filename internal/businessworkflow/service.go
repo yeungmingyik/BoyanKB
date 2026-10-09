@@ -144,8 +144,12 @@ func (s *Service) Propose(ctx context.Context, sessionID string, p Proposal) (*J
 	if err := ValidateProposal(p); err != nil {
 		return nil, err
 	}
+	version, err := selectedTemplateVersion(p.Format)
+	if err != nil {
+		return nil, err
+	}
 	c := types.CallerFromContext(ctx)
-	payload := Payload{Proposal: p, TemplateVersion: "boyan-v1"}
+	payload := Payload{Proposal: p, TemplateVersion: version}
 	hashes, err := s.Skills(ctx, p.Scene, p.Format)
 	if err != nil {
 		return nil, err

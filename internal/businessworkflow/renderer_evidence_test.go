@@ -37,7 +37,7 @@ func TestRendererEvidenceFormatContracts(t *testing.T) {
 			}
 			t.Run(name, func(t *testing.T) {
 				checks := append([]string(nil), tc.checks...)
-				p := Payload{Proposal: Proposal{Format: tc.format, Scene: "event-plan"}}
+				p := Payload{Proposal: Proposal{Format: tc.format, Scene: "event-plan"}, TemplateVersion: templateV1}
 				if hasBudget {
 					p.Budget = &Budget{Items: []BudgetItem{{Label: "物料", Quantity: 1, UnitPrice: 1}}}
 					if tc.format == "xlsx" {
@@ -72,7 +72,7 @@ func TestRendererEvidenceFormatContracts(t *testing.T) {
 
 func spreadsheetRendererFixture(t *testing.T, mutate func(map[string]interface{})) (Payload, Artifact, error) {
 	t.Helper()
-	p := Payload{Proposal: proposalForLimits()}
+	p := Payload{Proposal: proposalForLimits(), TemplateVersion: templateV1}
 	p.Format = "xlsx"
 	p.Budget = &Budget{Items: []BudgetItem{{Label: "讲义", Quantity: 12, UnitPrice: 10}, {Label: "场地", Quantity: 1, UnitPrice: 1000}, {Label: "耗材", Quantity: 12, UnitPrice: 30}}}
 	data := zipDocument(t, spreadsheetFixture(`<worksheet><sheetData>

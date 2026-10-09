@@ -1,27 +1,18 @@
 import hmac
 import json
 import os
-import hashlib
-import pathlib
 import signal
 import shutil
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from render import ROOT, RenderError, generate
+from render import RenderError, generate, template_capabilities
 
 
 def readiness():
-    manifest=json.loads((ROOT/"manifest.json").read_text(encoding="utf-8"))
-    expected={scene+"-"+kind for scene in ("teaching","business","operations") for kind in ("docx","pptx","xlsx","md")}
-    if manifest.get("version")!="boyan-v1" or manifest.get("brand_id")!="boyan-culture" or len(manifest.get("templates",[]))!=12 or {entry.get("id") for entry in manifest["templates"]}!=expected:
-        raise ValueError("invalid_template_manifest")
-    for entry in manifest["templates"]:
-        file=ROOT/entry["file"]
-        if file.resolve().parent!=ROOT.resolve() or hashlib.sha256(file.read_bytes()).hexdigest()!=entry["sha256"]:
-            raise ValueError("invalid_template_hash")
+    versions=template_capabilities()
     if not shutil.which("libreoffice") and not shutil.which("soffice"):
         raise ValueError("spreadsheet_recalculation_unavailable")
-    return {"status":"ok","template_version":"boyan-v1","formats":["docx","pptx","xlsx","md"],"template_integrity":True,"spreadsheet_recalculation":True}
+    return {"status":"ok","template_version":"boyan-v1","template_versions":versions,"ppt_template_versions":[version for version,formats in versions.items() if "pptx" in formats],"formats":["docx","pptx","xlsx","md"],"template_integrity":True,"spreadsheet_recalculation":True}
 
 
 def render_timeout(signum, frame):

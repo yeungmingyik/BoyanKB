@@ -12,6 +12,14 @@
 
 固定渲染器位于管理员配置的 `BOYAN_DOCUMENT_RENDERER_URL`，使用 `BOYAN_DOCUMENT_RENDERER_TOKEN` 鉴权。它接收结构化 JSON，返回文件字节、摘要、文件类型和机械检查结果。应用禁止跟随重定向，再次核对字节摘要、实际 OOXML 类型、宏和外部关系。渲染器不接收模型密钥或任意命令。
 
+PPT 模板与业务预设独立版本化。`BOYAN_PPT_TEMPLATE_VERSION` 缺省或为 `boyan-v1` 时使用原模板，设为 `boyan-v2` 后仅新建 PPT 任务采用 `branding/templates/ppt-v2/`；其他格式继续使用 v1。未知值拒绝创建 PPT 任务。任务保存的模板版本进入确认哈希，后续配置变化不会改变已有确认；已发布文件下载原有存档字节，仍执行原有来源与 Skill 授权复验。v1 模板、预设和 Skill 字节不因这次视觉升级改变，无须重跑伙伴开通或覆盖 `spec_hash`。
+
+v2 包含封面、目标议程、图文讲解、步骤流程、互动提问、双栏对比、原生表格和总结八类布局。服务端根据章节标题与内容结构确定布局；长内容按实际文本框宽高分页，不补写业务事实。首节明确为封面且正文可容纳时，将正文显示在封面副标题；否则保留为“课件说明”或“方案说明”正文页，原始章节标题和备注仍保存在讲师备注，表格另行保留。原生表格文字至少为 18pt，超出单页容量时分页。明确的资料来源章节合并到最后的来源组，其原有正文、项目、表格和备注保留，授权来源另由服务器追加。每页备注继续包含来源分块 ID，分组时长规则保持不变。
+
+渲染器健康接口保留 `template_version: boyan-v1` 与原有四格式字段，另返回 `template_versions` 和 `ppt_template_versions`。应用 readiness 还返回 `selected_ppt_template_version`，选择 v2 时必须确认渲染器确实支持它；模板摘要或八布局结构损坏时失败，不回退到旧版。本地 `docker-compose.presets.yml` 显式选择 v2，生产配置未改。
+
+在渲染器目录执行 `python -m unittest test_render test_template_versions test_render_v2 -v`，镜像内完整 24 项测试通过，覆盖旧版四格式、新版八布局、未知版本、模板篡改、长中文与英数、封面内容和表格分页。三场景合成样例与摘要保存在 `temp/ppt-design-chinese/renderer/`，每份 12 页；它们用于验证渲染，不作为真实业务事实或 LLM 验收结果。`internal/businessworkflow` 全包测试通过；设置 `BOYAN_PPT_V2_FIXTURES_DIR` 指向这些样例后运行 `TestActualPPTV2ArtifactsKeepReviewEvidence`，另验证真实文件类型、授权来源 ID、数值及正文抽取保全。原生 Office 的逐页视觉验收单独记录在 `docs/06-ppt-design.md`。
+
 应用按格式核验渲染器检查项白名单，拒绝缺项、重复项、未知项及额外字段，并将结果绑定候选文件 SHA256，以独立的 `renderer_validation` 字段交给 C。正文、需求或来源中的同名文字不能构成检查证据。XLSX 证据包括当前文件经 LibreOffice 重算、公式错误扫描；含结构化预算时还包括逐项金额与合计和独立计算结果一致。该证据不代表执行过输入扰动、逐一验证全部未来输入或视觉排版验收，也不能自动将 C 的拒绝改为通过。
 
 Excel 的数量和单价以可编辑数值保存；`ROUND(B44*C44,2)` 和 `SUM(D44:D46)` 是引用输入或金额单元格的真实公式，缓存值只是当前重算结果。C 不应将这种结构误判为静态正文或要求改称一次性计算。余额、利用率和超支提醒仅在用户明确要求或正文声称提供时验收，预算上限输入本身不隐含这些附加要求。静态正文冒充动态汇总及未联动的重复预算输入仍属于阻断问题。

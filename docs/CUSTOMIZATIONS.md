@@ -216,6 +216,8 @@
 | `deployment/document-renderer/render.py`、`test_render.py` | Markdown/Excel 标题重复品牌，商务 FAQ 被固定标为合作方案 | 两种格式共用标题前缀去重；商务 Markdown 省略固定类别，保留正文和来源；不改模板摘要；11 项渲染测试通过，覆盖三场景及 Excel 真实重算 |
 | `deployment/document-renderer/render.py`、`test_render.py` | PPT 固定字符切割拆开数字并产生孤立续页 | 正文及来源标题按安全句读边界分段，数字/ASCII 词保持完整；三要点分页平衡尾页，保留原字、来源和备注；14 项渲染测试通过，含真实 PPT 重开、文本框尺寸和 LibreOffice PDF 导出 |
 | `deployment/document-renderer/render.py`、`test_render.py` | 短尾行平衡将可用两行变为三行，错误拒绝渲染 | 保留同字号的原始安全换行作为回退；15 项回归测试通过；真实 B 请求生成 18 页并导出 PDF，不改模板或原文 |
+| `deployment/document-renderer/render.py`、`render_pptx_v2.py`、`server.py`、`test_template_versions.py`、`test_render_v2.py` | 新视觉不能覆盖 v1 模板或只替换封面 | 双版本模板注册与摘要/布局校验；v2 按内容选择八类真实布局，保留正文、表格、来源和备注；旧版渲染分支保留 |
+| `internal/businessworkflow/template_version*`、`service.go`、`renderer.go`、`readiness.go`、`docker-compose.presets.yml` | 视觉升级不能破坏既有确认、下载和开通幂等 | 服务器显式选择新 PPT 版本，版本写入确认哈希；未知版本拒绝；健康能力校验；本地镜像/配置使用 v2，生产与已安装预设不变 |
 | `docker/Dockerfile.app-boyankb`、`scripts/build-presets-images.sh` | 定制镜像需要带上预设和迁移 | 三个本机版本镜像，应用嵌入配置、指南及新增迁移 |
 | `scripts/onboard-partner*`、`scripts/test_onboard_partner.py` | 重复执行不重复资源，失败能恢复 | 默认本地计划，显式 apply、断点记录、readiness 通过才完成 |
 | `scripts/check-presets.py`、`scripts/acceptance-presets.py`、`scripts/test_acceptance_presets.py` | 配置、工作流与真实行为要分开验证 | 静态检查、两个非管理员伙伴、真实文件与隔离测试；下载模式仅收集当前已发布稿，不调用模型或确认；明确人工项 |
@@ -223,3 +225,20 @@
 | `docs/04-presets.md`、`docs/partner-onboarding.md`、`docs/business/document-workflow.md` | 安装与升级可重复 | 方案取舍、执行命令、边界、验收与重放顺序 |
 
 升级时先重放独立资源，再逐项检查表中核心接入点；不得只复制提示词后宣称确认和权限约束仍然有效。重新构建并在隔离副本运行自动及人工验收。LICENSE 与上游版权声明保留。
+
+## PPT 设计、业务技能入口与中文提示词
+
+日期：2026-10-09。分支：`feat/ppt-design-chinese`。本机功能优化，云端部署继续暂停。
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `branding/templates/ppt-v2/*`、`scripts/build-ppt-templates.mjs`、`docs/assets/ppt-v2/*` | 原生成课件版式单一 | 三场景、八布局、原创透明插画、原生文字及表格；单独版本与摘要，不覆盖 v1；原生 PowerPoint 打开并逐页检查 |
+| `scripts/build-presets-images.sh` | 构建命令需要匹配本机视觉版本 | 默认三个镜像标签升级为 v2；应用、前端、文档渲染器分别构建 |
+| `internal/businessworkflow/skills_catalog*`、`internal/handler/business_skills*`、`internal/router/routes_business_workflow.go` | 普通伙伴无法查看受限业务技能，目录状态与原生沙箱不同 | 当前空间 JWT 成员读取，真实预设/安装/摘要校验，只读正文；未开通与异常不伪装为可用；成员、跨空间与篡改测试 |
+| `frontend/src/api/business-skills.ts`、`frontend/src/composables/businessSkillCatalog*`、`frontend/src/config/businessSkills.ts`、`frontend/src/views/toolbox/{BusinessSkills,Toolbox}.vue`、`frontend/src/config/toolbox*` | 工具箱需要清晰的业务入口 | 成员可见业务技能页、五场景和四格式、只读说明、关联落地方案官；切换空间清空旧数据，丢弃过期响应 |
+| `frontend/src/views/settings/SkillSettings.vue`、`frontend/src/i18n/businessSkills.ts`、`frontend/src/i18n/locales/*` | 已知业务技能仍显示英文技术标识 | 九项业务技能中文显示与状态区分；标识保留在技术详情，不改变存储与调用参数；安装入口保护和界面测试 |
+| `branding/prompt_templates/{agent_system_prompt,system_prompt}.yaml`、`docker/Dockerfile.app-boyankb`、`internal/config/branding_prompt_templates_test.go` | 内置 Agent 编辑器正文仍是英文 | 13 个中文配置覆盖，保持 ID/变量/规则/非中文元数据；启动加载及语义边界测试；不批量覆盖用户已保存的自定义提示词 |
+| `scripts/verify-branding.mjs` | 旧品牌测试 Agent 的英文名字容易与业务 Agent 混淆 | 兼容中文名与旧标记，避免重复创建；现有指定对象完整读写后，仅名称及更新时间变化，配置摘要一致 |
+| `docs/06-ppt-design.md`、`docs/06-agent-skill-validation.md`、`docs/business/{skills-catalog,chinese-prompts}.md` | 需要区分模板、指南安装、真实任务和人工验收 | 操作入口、可重复命令、正反例、权限与专业审校边界 |
+
+重新合入上游时先保留 `branding/` 独立资源及 Dockerfile 的覆盖 COPY；检查模板配置目录、工具箱路由、成员校验和业务工作流的版本字段是否变化。运行本文对应测试，再进行真实任务和 Office 验证。对已有确认记录使用过的模板版本不原地覆盖，新设计发布新版本；旧版资源继续保留。运行时预设与技能仍为 v1，与 PPT 视觉 v2 分开管理。

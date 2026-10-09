@@ -90,6 +90,9 @@ func (a Artifact) Validate(format string) error {
 }
 
 func renderHTTP(ctx context.Context, id string, tenant uint64, p Payload, hash string) (Artifact, error) {
+	if !supportedTemplateVersion(p.TemplateVersion, p.Format) {
+		return Artifact{}, ErrInvalid
+	}
 	endpoint := strings.TrimRight(os.Getenv("BOYAN_DOCUMENT_RENDERER_URL"), "/")
 	token := os.Getenv("BOYAN_DOCUMENT_RENDERER_TOKEN")
 	u, err := url.Parse(endpoint)

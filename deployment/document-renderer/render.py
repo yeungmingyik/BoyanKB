@@ -40,6 +40,7 @@ MIME = {
 }
 ACCENTS = {"teaching": "2D64B0", "business": "1F4884", "operations": "379CB7"}
 FONT = "Microsoft YaHei"
+TEMPLATE_FORMATS = {"boyan-v1": tuple(MIME), "boyan-v2": ("pptx",)}
 
 
 class RenderError(Exception):
@@ -58,12 +59,53 @@ def string(value, limit, required=False):
     return value
 
 
+def template_directory(version):
+    if version == "boyan-v1":
+        return ROOT
+    if version == "boyan-v2":
+        return ROOT / "ppt-v2"
+    fail("invalid_brand_version")
+
+
+def verified_templates(version):
+    root = template_directory(version)
+    try:
+        manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+        expected = {scene + "-" + kind for scene in ACCENTS for kind in TEMPLATE_FORMATS[version]}
+        entries = manifest["templates"]
+        if manifest.get("schema_version") != 1 or manifest.get("version") != version or manifest.get("brand_id") != "boyan-culture" or len(entries) != len(expected) or {entry["id"] for entry in entries} != expected:
+            fail("template_integrity_failed")
+        paths = {}
+        for entry in entries:
+            if entry["scene"] not in ACCENTS or entry["format"] not in TEMPLATE_FORMATS[version] or entry["id"] != entry["scene"] + "-" + entry["format"] or entry["file"] != entry["scene"] + "." + entry["format"]:
+                fail("template_integrity_failed")
+            path = root / entry["file"]
+            if path.resolve().parent != root.resolve() or hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
+                fail("template_integrity_failed")
+            paths[entry["id"]] = path
+        return paths
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        fail("template_integrity_failed")
+
+
+def template_capabilities():
+    versions = {"boyan-v1": list(TEMPLATE_FORMATS["boyan-v1"])}
+    verified_templates("boyan-v1")
+    if template_directory("boyan-v2").exists():
+        from render_pptx_v2 import validate_template
+        for path in verified_templates("boyan-v2").values():
+            validate_template(path)
+        versions["boyan-v2"] = list(TEMPLATE_FORMATS["boyan-v2"])
+    return versions
+
+
 def validate(request):
     if not isinstance(request, dict) or not isinstance(request.get("format"), str) or not isinstance(request.get("scene"), str) or request["format"] not in MIME or request["scene"] not in ACCENTS:
         fail("invalid_format_or_scene")
     if set(request) - {"format", "scene", "brand_id", "template_version", "job_id", "tenant_id", "outline_hash", "document", "sources", "budget"}:
         fail("unknown_request_field")
-    if request.get("brand_id") != "boyan-culture" or request.get("template_version") != "boyan-v1":
+    version = request.get("template_version")
+    if request.get("brand_id") != "boyan-culture" or not isinstance(version, str) or version not in TEMPLATE_FORMATS or request["format"] not in TEMPLATE_FORMATS[version]:
         fail("invalid_brand_version")
     try:
         uuid.UUID(request["job_id"])
@@ -132,16 +174,7 @@ def validate(request):
                 value = item.get(field)
                 if type(value) not in (int, float) or not math.isfinite(value) or value < 0 or value > 100000000:
                     fail("invalid_budget_number")
-    template = ROOT / (request["scene"] + "." + request["format"])
-    try:
-        manifest = json.loads((ROOT / "manifest.json").read_text(encoding="utf-8"))
-        entry = next((v for v in manifest["templates"] if v["id"] == request["scene"] + "-" + request["format"]), None)
-        valid = manifest.get("version") == "boyan-v1" and manifest.get("brand_id") == "boyan-culture" and entry and entry.get("file") == template.name and template.resolve().parent == ROOT.resolve() and hashlib.sha256(template.read_bytes()).hexdigest() == entry["sha256"]
-    except (OSError, ValueError, KeyError, TypeError):
-        valid = False
-    if not valid:
-        fail("template_integrity_failed")
-    return template
+    return verified_templates(version)[request["scene"] + "-" + request["format"]]
 
 
 def paragraphs(value):
@@ -674,7 +707,11 @@ def generate(request):
     filename="博研文化-"+request["job_id"][:8]+"."+kind
     with tempfile.TemporaryDirectory(prefix="boyan-render-") as temp:
         destination=pathlib.Path(temp)/filename
-        {"docx":render_docx,"pptx":render_pptx,"xlsx":render_xlsx,"md":render_md}[kind](request,template,destination)
+        if request["template_version"] == "boyan-v2":
+            from render_pptx_v2 import render_pptx_v2
+            render_pptx_v2(request, template, destination)
+        else:
+            {"docx":render_docx,"pptx":render_pptx,"xlsx":render_xlsx,"md":render_md}[kind](request,template,destination)
         data=destination.read_bytes()
         if len(data)>20*1024*1024:
             fail("artifact_too_large")

@@ -5,7 +5,7 @@ WORKDIR /app
 COPY deployment/document-renderer/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY branding/templates /app/branding/templates
-COPY deployment/document-renderer/render.py deployment/document-renderer/server.py /app/
+COPY deployment/document-renderer/render.py deployment/document-renderer/render_pptx_v2.py deployment/document-renderer/server.py /app/
 USER 65532:65532
 EXPOSE 8091
 HEALTHCHECK --interval=15s --timeout=5s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8091/health', timeout=3).read()"

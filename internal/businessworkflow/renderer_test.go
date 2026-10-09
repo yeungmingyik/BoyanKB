@@ -33,7 +33,7 @@ func TestRendererTransportRejectsRedirectAndInvalidValidation(t *testing.T) {
 			defer server.Close()
 			t.Setenv("BOYAN_DOCUMENT_RENDERER_URL", server.URL)
 			t.Setenv("BOYAN_DOCUMENT_RENDERER_TOKEN", "test-only-secret")
-			_, err := renderHTTP(context.Background(), "job", 1, Payload{Proposal: Proposal{Format: "md", Scene: "faq-guide"}}, "hash")
+			_, err := renderHTTP(context.Background(), "job", 1, Payload{Proposal: Proposal{Format: "md", Scene: "faq-guide"}, TemplateVersion: templateV1}, "hash")
 			if (err == nil) != (mode == "valid") {
 				t.Fatalf("unexpected acceptance: %v", err)
 			}

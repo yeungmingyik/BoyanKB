@@ -15,6 +15,10 @@ import (
 )
 
 func Readiness(ctx context.Context) (map[string]interface{}, error) {
+	selectedPPT, err := selectedTemplateVersion("pptx")
+	if err != nil {
+		return nil, err
+	}
 	names := []string{"courseware", "event-plan", "local-promotion-plan", "cooperation-proposal", "faq-guide", "docx", "pptx", "xlsx", "md"}
 	for _, name := range names {
 		if _, err := boyanskills.Fixed("boyan-" + name); err != nil {
@@ -46,10 +50,12 @@ func Readiness(ctx context.Context) (map[string]interface{}, error) {
 		return nil, ErrUnavailable
 	}
 	var health struct {
-		Status            string   `json:"status"`
-		TemplateVersion   string   `json:"template_version"`
-		Formats           []string `json:"formats"`
-		TemplateIntegrity bool     `json:"template_integrity"`
+		Status            string              `json:"status"`
+		TemplateVersion   string              `json:"template_version"`
+		TemplateVersions  map[string][]string `json:"template_versions"`
+		PPTVersions       []string            `json:"ppt_template_versions"`
+		Formats           []string            `json:"formats"`
+		TemplateIntegrity bool                `json:"template_integrity"`
 	}
 	if json.Unmarshal(body, &health) != nil || health.Status != "ok" || health.TemplateVersion != "boyan-v1" || !health.TemplateIntegrity {
 		return nil, ErrUnavailable
@@ -59,5 +65,14 @@ func Readiness(ctx context.Context) (map[string]interface{}, error) {
 			return nil, ErrUnavailable
 		}
 	}
-	return map[string]interface{}{"ready": true, "template_version": health.TemplateVersion, "template_integrity": true, "formats": health.Formats, "restricted_skill_count": len(names)}, nil
+	if selectedPPT != templateV1 && (!slices.Contains(health.TemplateVersions[selectedPPT], "pptx") || !slices.Contains(health.PPTVersions, selectedPPT)) {
+		return nil, ErrUnavailable
+	}
+	if health.TemplateVersions == nil {
+		health.TemplateVersions = map[string][]string{templateV1: health.Formats}
+	}
+	if health.PPTVersions == nil {
+		health.PPTVersions = []string{templateV1}
+	}
+	return map[string]interface{}{"ready": true, "template_version": health.TemplateVersion, "template_versions": health.TemplateVersions, "ppt_template_versions": health.PPTVersions, "selected_ppt_template_version": selectedPPT, "template_integrity": true, "formats": health.Formats, "restricted_skill_count": len(names)}, nil
 }
