@@ -185,6 +185,9 @@ func ValidateProposal(p Proposal) error {
 	if err := validateRendererBudget(p.Budget); err != nil {
 		return err
 	}
+	if err := validateBudgetTables(p); err != nil {
+		return err
+	}
 	data, err := json.Marshal(p)
 	if err != nil || len(data) > 256*1024 {
 		return fmt.Errorf("%w: reduce the complete proposal JSON to at most 256 KiB", ErrInvalid)
