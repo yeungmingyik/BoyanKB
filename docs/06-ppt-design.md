@@ -55,4 +55,55 @@ node scripts/build-ppt-templates.mjs
 
 Agent 和 Skill 的操作方法、负例与通过标准见 [Agent 与业务技能验证](06-agent-skill-validation.md)。模板视觉检查与真实生成任务是两层验证；模板可打开不代表 Agent 产出已通过内容审校。
 
-本次实际检查结果在完成本机部署和复测后追加。需要人工验证：讲师逐页检查知识点、授课节奏、课堂器材与年龄适配；商务负责人确认合作条款和对外表述；活动负责人确认当地条件和预算。自动审校不能替代这些专业判断。
+## 本次实际验证
+
+2026-10-09，本机三个定制服务已更新；app、frontend、document-renderer、docreader、PostgreSQL、Redis、Ollama 共七个容器均为 healthy。没有连接阿里云或更新生产配置。
+
+| 层次 | 结果 | 本机证据 |
+| --- | --- | --- |
+| 旧预设和指南 | 177 项静态检查通过，v1 文件保持原摘要 | `python scripts/check-presets.py` |
+| 模板实物 | 三套共 24 页，完整性、字体、原生表格、PowerPoint 打开及逐页视觉检查通过 | `temp/ppt-design-chinese/native-templates/native-office.json` |
+| 渲染器 | 最终镜像 25 项测试通过；覆盖双版本、八布局、原生表格、内容保全和长中文高度 | `temp/ppt-design-chinese/renderer-height-image-tests.log` |
+| 场景样例 | 三份合成输入共 36 页，八版式均覆盖，原生 Office 打开及逐页检查通过 | `temp/ppt-design-chinese/native-renderer-final/native-office.json` |
+| 真实长文重放 | A/B 原提案经修复后的渲染器输出 13/24 页，135 项内容保全检查通过；原生 Office 均无文字溢出 | `temp/ppt-design-chinese/height-replay/report.json`、`native-height-replay/native-office.json` |
+| 真实 Agent 任务 | A/B 各完成检索、读取指南、提交大纲、系统确认、生成、C 审校及下载；最终两轮各 14 项自动检查通过 | `temp/ppt-design-chinese/live-ppt-a-final/report.json`、`live-ppt-b-revised/report.json` |
+| 旧文件兼容 | 原 A/B 的 17/18 页 v1 PPT 仍能下载，摘要与旧交付一致；8 项检查通过 | `temp/ppt-design-chinese/old-downloads-verified/report.json` |
+| 新入口与中文配置 | 83 项实际 API 检查、34 项浏览器检查通过；13 份提示词逐字匹配运行实例 | `temp/presets-acceptance/business-skills-audit.json`、`temp/business-skills-ui/2026-10-09T15-18-51-074Z/report.json` |
+
+最终可下载的两份真实任务如下。数据库只读核对均为 `published`、`boyan-v2`，下载摘要与记录一致；两者均为 45 分钟。PowerPoint 原生打开、全部 37 页视觉检查及文本框溢出检查通过，另一伙伴下载同一任务得到拒绝。
+
+| 伙伴 | 实际文件 | 页数 | SHA256 |
+| --- | --- | --- | --- |
+| A | [教学执行者入门培训](../temp/ppt-design-chinese/live-ppt-a-final/artifacts/a-artifact-courseware.pptx) | 13 | `4198446929e07469b5180b06f20e654e3e7f64c1103a737f314bcbc3b3762697` |
+| B | [教学执行者入门培训](../temp/ppt-design-chinese/live-ppt-b-revised/artifacts/b-artifact-courseware.pptx) | 24 | `c0252f20ea5ca41e33f15baa6ad9ecd0f69651c4d1f657396f40f1a8e00c97ce` |
+
+原生检查记录为 `temp/ppt-design-chinese/native-live-a-final/native-office.json` 和 `native-live-b/native-office.json`。B 的已发布文件在最后一次行高修复前生成，本身已经通过原生检查；修复后又对同一结构化正文离线重放并检查通过，未替换其已发布二进制。Word、Excel、Markdown 本轮没有重做真实任务，原验收记录仍在 `docs/04-presets.md`，不可将其旧结果称为新版重跑。
+
+首次真实验收并非全部通过：A 的两个长中文框在原生 PowerPoint 中略超框，已修复 v2 行高估算、分页与实际写入使用不同计算的问题，重新确认并生成最终稿；B 首稿的逐节备注为 47 分钟，虽然模型 C 判通过，独立验收仍将其判失败，修订后为 45 分钟。旧报告保留在 `temp/ppt-design-chinese/live-ppt/report.json`，没有删除失败证据或放宽检查。这说明模型审校不能代替机械检查与讲师复核。
+
+重新验证已有文件，不调用模型：
+
+```powershell
+pwsh -NoProfile -File scripts/verify-presets-office.ps1 -Report temp/ppt-design-chinese/live-ppt-a-final/report.json -OutputDirectory temp/ppt-design-chinese/office-recheck-a
+pwsh -NoProfile -File scripts/verify-presets-office.ps1 -Report temp/ppt-design-chinese/live-ppt-b-revised/report.json -OutputDirectory temp/ppt-design-chinese/office-recheck-b
+```
+
+从头跑两个伙伴的真实任务会新增对话并调用当前模型；使用尚不存在的输出目录：
+
+```powershell
+python scripts/acceptance-presets.py --fixtures temp/presets-acceptance/fixtures.json --mode artifacts --artifact-case a-artifact-courseware --artifact-case b-artifact-courseware --output temp/ppt-design-chinese/new-live-run --stop-on-artifact-error --timeout 600
+```
+
+退出码 2 表示自动项通过但人工项未完成；退出码 1 表示存在失败，不能直接交付。真实模型输出存在随机性，不能保证每次无需修订。
+
+需要人工验证：讲师逐页检查知识点、授课节奏、课堂器材与年龄适配；商务负责人确认合作条款和对外表述；活动负责人确认当地条件和预算。自动审校不能替代这些专业判断。
+
+## 本机镜像记录
+
+下列为本次 `docker image inspect` 返回的本机镜像 ID，不是已推送仓库的生产 digest 锁定记录。
+
+| 镜像 | 本机 ID |
+| --- | --- |
+| `boyankb/app:v0.8.2-presets-v2` | `sha256:fd1655af909cd02f188da309adec3ab2e48083f8594bf35fc3e401fe2023feb4` |
+| `boyankb/frontend:v0.8.2-presets-v2` | `sha256:b65cc328054f8bff332db185abc506b494aa0f55228ead5b93497ef493cfdaff` |
+| `boyankb/document-renderer:boyan-v2` | `sha256:2bd6bdfbc30920d3c3f1fa44833d603e2906dc52cd52676419d152b8766cdcc3` |

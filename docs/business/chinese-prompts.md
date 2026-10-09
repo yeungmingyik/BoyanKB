@@ -49,4 +49,8 @@
 go test -ldflags="-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=warn" ./internal/config -run ChinesePromptOverrides -count=1
 ```
 
-需要人工验证：完成镜像构建和部署后，在内置智能体编辑页及新建智能体模板选择中检查名称、描述和正文；确认快速问答的知识库模板和智能推理模板均为中文。不要仅根据仓库覆盖文件存在就认定运行实例已加载。测试智能体改名及业务技能目录的独立验收见 [业务技能目录接口](skills-catalog.md)。
+本机新镜像部署后，已通过 `GET /api/v1/tenants/kv/prompt-templates` 实测在线加载结果：两个分组共 13 个模板 ID 完整一致，逐条核对名称、描述和完整正文均与中文覆盖文件匹配，包含快速问答引用的 `default_kb` 和智能推理模板。响应正文包含中文及 BoyanKB 身份，不包含旧产品身份。该验证使用 API 返回的运行实例数据，不是仅检查仓库文件。
+
+定向只读验收脚本为 `temp/presets-acceptance/audit-business-skills.py`，结果保存在 `temp/presets-acceptance/business-skills-audit.json`。本轮总计 83 项通过、0 项失败，包含模板加载、业务技能目录、内容摘要与访问范围检查；未调用业务模型、未创建业务资源、未改动生产环境。登录会产生认证会话及审计记录。
+
+需要人工验证：内置智能体编辑页及新建智能体模板选择的界面展示和操作体验。API 已证明运行实例加载了中文内容，不能据此替代浏览器交互检查。测试智能体改名及业务技能目录的独立验收见 [业务技能目录接口](skills-catalog.md)。
