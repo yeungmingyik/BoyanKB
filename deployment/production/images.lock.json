@@ -1,0 +1,23 @@
+{
+  "upstream": {
+    "repository": "https://github.com/Tencent/WeKnora",
+    "version": "v0.8.2",
+    "commit": "3e8b0bfc80b845b2d4b2ed683994748741450a97"
+  },
+  "platform": "linux/amd64",
+  "images": {
+    "frontend": "boyankb/frontend:v0.8.2@sha256:723c9c143c701ea536ed06981b6b875cb2c5b42e638025a53e64f0ab56ed41ae",
+    "app": "boyankb/app:v0.8.2@sha256:e54849dbe6894af518c17f833786b8c4bd42541909ba163bd34213f6b3f32cd2",
+    "docreader": "wechatopenai/weknora-docreader:v0.8.2@sha256:3c36e7e738ba515315523876d8041f9bb02809145a4e3b331e2550e4bff98b7a",
+    "postgres": "paradedb/paradedb:v0.22.6-pg17@sha256:58bf87d2a6f1e72f56590b0f0ae1467e82c3f99ca203dde646672c8ac13148b2",
+    "redis": "redis:7.0-alpine@sha256:c9d92d840fd011c908f040592857c724ae6d877f2aba5c40ad963276507386b2",
+    "ollama": "ollama/ollama:0.18.2@sha256:5a5d014aa774f78ebe1340c0d4afc2e35afc12a2c3b34c84e71f78ea20af4ba3",
+    "caddy": "caddy:2.11.7-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f"
+  },
+  "embedding": {
+    "name": "bge-m3:latest",
+    "manifest": "/root/.ollama/models/manifests/registry.ollama.ai/library/bge-m3/latest",
+    "sha256": "7907646426070047a77226ac3e684fbbe8410524f7b4a74d02837e43f2146bab",
+    "dimensions": 1024
+  }
+}

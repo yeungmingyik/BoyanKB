@@ -1,0 +1,293 @@
+name: ${COMPOSE_PROJECT_NAME:-boyankb-prod}
+
+x-runtime: &runtime
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  caddy:
+    <<: *runtime
+    image: caddy:2.11.7-alpine@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?PUBLIC_HOST required}
+      PUBLIC_ORIGIN: https://${PUBLIC_HOST}
+    volumes:
+      - ./deployment/production/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deployment/production/Caddyfile.common:/etc/caddy/Caddyfile.common:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      edge: {}
+      web:
+        ipv4_address: ${PROD_PROXY_IP:?PROD_PROXY_IP required}
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    cpus: 0.5
+    mem_limit: 256m
+    pids_limit: 128
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+  frontend:
+    <<: *runtime
+    image: boyankb/frontend:v0.8.2@sha256:723c9c143c701ea536ed06981b6b875cb2c5b42e638025a53e64f0ab56ed41ae
+    pull_policy: never
+    entrypoint: ["/bin/sh", "/etc/boyankb/frontend-entrypoint.sh"]
+    environment:
+      APP_HOST: app
+      APP_PORT: "8080"
+      APP_SCHEME: http
+      MAX_FILE_SIZE_MB: "50"
+      MAX_SKILL_BUNDLE_SIZE_MB: "50"
+      DEFAULT_LOCALE: zh-CN
+      PROD_PROXY_IP: ${PROD_PROXY_IP:?PROD_PROXY_IP required}
+    volumes:
+      - ./deployment/production/frontend-entrypoint.sh:/etc/boyankb/frontend-entrypoint.sh:ro
+    networks:
+      web:
+        ipv4_address: ${PROD_FRONTEND_IP:?PROD_FRONTEND_IP required}
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE, SETUID, SETGID, CHOWN]
+    cpus: 0.5
+    mem_limit: 256m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      app:
+        condition: service_healthy
+
+  app:
+    <<: *runtime
+    image: boyankb/app:v0.8.2@sha256:e54849dbe6894af518c17f833786b8c4bd42541909ba163bd34213f6b3f32cd2
+    pull_policy: never
+    environment:
+      GIN_MODE: release
+      TZ: Asia/Shanghai
+      LOG_LEVEL: warn
+      LOG_PATH: ""
+      LOG_FORMAT: "%d %level [%traceId] %msg"
+      LLM_DEBUG_LOG: "false"
+      WEKNORA_LLM_STREAM_RAW_DUMP: ""
+      LANGFUSE_ENABLED: "false"
+      DISABLE_REGISTRATION: "true"
+      OIDC_AUTH_ENABLE: "false"
+      WEKNORA_AUTH_COMPLEX_PASSWORD_ENABLED: "true"
+      WEKNORA_AUTH_DEFAULT_TENANT_MODE: tenantless
+      WEKNORA_TENANT_SELF_SERVICE_CREATION_ENABLED: "false"
+      WEKNORA_TENANT_ENABLE_RBAC: "true"
+      WEKNORA_TENANT_ENABLE_CROSS_TENANT_ACCESS: "false"
+      WEKNORA_TENANT_AUTO_CREATE_API_KEY: "false"
+      WEKNORA_TENANT_AUTO_ACCEPT_INVITATION: "false"
+      WEKNORA_INVITATION_TTL: 24h
+      WEKNORA_AUDIT_RETENTION_DAYS: "180"
+      WEKNORA_TENANT_DEFAULT_STORAGE_QUOTA_GB: "5"
+      WEKNORA_SANDBOX_DOCKER_ENABLED: "false"
+      WEKNORA_AGENT_TOOL_APPROVAL_FAIL_OPEN: "false"
+      BROWSERSKILL_BINARY: ""
+      DOCKER_HOST: ""
+      AUTO_MIGRATE: "false"
+      AUTO_RECOVER_DIRTY: "false"
+      DB_DRIVER: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:?DB_USER required}
+      DB_NAME: ${DB_NAME:?DB_NAME required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      RETRIEVE_DRIVER: postgres
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+      REDIS_DB: "0"
+      STREAM_MANAGER_TYPE: redis
+      STORAGE_TYPE: local
+      LOCAL_STORAGE_BASE_DIR: /data/files
+      DOCREADER_ADDR: docreader:50051
+      DOCREADER_TRANSPORT: grpc
+      OLLAMA_BASE_URL: http://ollama:11434
+      ENABLE_OLLAMA: "true"
+      NEO4J_ENABLE: "false"
+      CONCURRENCY_POOL_SIZE: "2"
+      MAX_FILE_SIZE_MB: "50"
+      GRPC_AUTH_TOKEN: ${GRPC_AUTH_TOKEN:?GRPC_AUTH_TOKEN required}
+      SYSTEM_AES_KEY: ${SYSTEM_AES_KEY:?SYSTEM_AES_KEY required}
+      SYSTEM_SIGNING_KEY: ${SYSTEM_SIGNING_KEY:?SYSTEM_SIGNING_KEY required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
+      SSRF_DNS_WHITELIST_ONLY: "true"
+      SSRF_WHITELIST: ""
+      SSRF_WHITELIST_EXTRA: ${PROD_OUTBOUND_HOSTS:-api.deepseek.com,open.feishu.cn,ollama}
+      WEKNORA_TRUSTED_PROXIES: ${PROD_FRONTEND_IP:?PROD_FRONTEND_IP required}/32
+      APP_EXTERNAL_URL: https://${PUBLIC_HOST}
+      FRONTEND_BASE_URL: https://${PUBLIC_HOST}
+      BRANDING_CONFIG: /app/branding/brand.json
+      BUILTIN_MODELS_CONFIG: /app/config/builtin_models.local.yaml
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY required}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL_NAME: ${DEEPSEEK_MODEL_NAME:-deepseek-chat}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-bge-m3:latest}
+      WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL: ${WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL:?bootstrap email required}
+      CONVERSATION_FALLBACK_STRATEGY: fixed
+      CONVERSATION_FALLBACK_RESPONSE: 当前可访问的知识库中没有足够依据，无法回答此问题。请联系管理员补充资料。
+      FEISHU_DOCX_PARSE_MODE: export
+    volumes:
+      - data-files:/data/files
+      - docreader-tmp:/tmp/docreader:ro
+      - ./config/builtin_models.local.yaml:/app/config/builtin_models.local.yaml:ro
+      - ./deployment/production/builtin_agents.yaml:/app/config/builtin_agents.yaml:ro
+    networks:
+      web:
+        ipv4_address: ${PROD_APP_IP:?PROD_APP_IP required}
+      backend: {}
+      outbound: {}
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]
+    cpus: 2
+    mem_limit: 2g
+    pids_limit: 256
+    stop_grace_period: 2m
+    healthcheck:
+      test: [CMD, curl, -fsS, http://127.0.0.1:8080/health]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      docreader:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  docreader:
+    <<: *runtime
+    image: wechatopenai/weknora-docreader:v0.8.2@sha256:3c36e7e738ba515315523876d8041f9bb02809145a4e3b331e2550e4bff98b7a
+    environment:
+      TZ: Asia/Shanghai
+      LOG_LEVEL: WARNING
+      DOCREADER_IMAGE_OUTPUT_DIR: /tmp/docreader
+      MAX_FILE_SIZE_MB: "50"
+      DOCREADER_GRPC_MAX_WORKERS: "2"
+      DOCREADER_PDF_RENDER_MAX_WORKERS: "1"
+      DOCREADER_PDF_RENDER_PARALLELISM: "1"
+      DOCREADER_MARKITDOWN_MAX_WORKERS: "1"
+      DOCREADER_ODL_HYBRID: "off"
+      GRPC_AUTH_TOKEN: ${GRPC_AUTH_TOKEN:?GRPC_AUTH_TOKEN required}
+      SSRF_DNS_WHITELIST_ONLY: "true"
+      SSRF_WHITELIST_EXTRA: open.feishu.cn
+    volumes:
+      - docreader-tmp:/tmp/docreader
+    networks: [backend]
+    cap_drop: [ALL]
+    cpus: 1
+    mem_limit: 1536m
+    pids_limit: 192
+    healthcheck:
+      test: [CMD, grpc_health_probe, -addr=localhost:50051]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 40s
+
+  postgres:
+    <<: *runtime
+    image: paradedb/paradedb:v0.22.6-pg17@sha256:58bf87d2a6f1e72f56590b0f0ae1467e82c3f99ca203dde646672c8ac13148b2
+    environment:
+      POSTGRES_USER: ${DB_USER:?DB_USER required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME required}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [backend]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    cpus: 2
+    mem_limit: 2g
+    pids_limit: 256
+    shm_size: 256m
+    stop_grace_period: 2m
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  redis:
+    <<: *runtime
+    image: redis:7.0-alpine@sha256:c9d92d840fd011c908f040592857c724ae6d877f2aba5c40ad963276507386b2
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+    entrypoint: ["/bin/sh", "/etc/boyankb/redis-entrypoint.sh"]
+    volumes:
+      - redis-data:/data
+      - ./deployment/production/redis-entrypoint.sh:/etc/boyankb/redis-entrypoint.sh:ro
+    tmpfs:
+      - /run:mode=1777,size=4m
+    networks: [backend]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID]
+    cpus: 0.5
+    mem_limit: 256m
+    pids_limit: 64
+    stop_grace_period: 1m
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  ollama:
+    <<: *runtime
+    image: ollama/ollama:0.18.2@sha256:5a5d014aa774f78ebe1340c0d4afc2e35afc12a2c3b34c84e71f78ea20af4ba3
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: 5m
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks: [backend, outbound]
+    cap_drop: [ALL]
+    cpus: 2
+    mem_limit: 3g
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+networks:
+  edge: {}
+  web:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${PROD_WEB_SUBNET:?PROD_WEB_SUBNET required}
+  backend:
+    internal: true
+  outbound: {}
+
+volumes:
+  postgres-data: {}
+  redis-data: {}
+  data-files: {}
+  docreader-tmp: {}
+  ollama-data: {}
+  caddy-data: {}
+  caddy-config: {}

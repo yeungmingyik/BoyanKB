@@ -1,0 +1,13 @@
+{
+    admin off
+    auto_https disable_redirects
+}
+
+http://localhost {
+    redir {$PUBLIC_ORIGIN}{uri} 308
+}
+
+https://localhost {
+    tls internal
+    import /etc/caddy/Caddyfile.common
+}

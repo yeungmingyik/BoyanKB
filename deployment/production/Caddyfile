@@ -1,0 +1,7 @@
+{
+    admin off
+}
+
+{$PUBLIC_HOST} {
+    import /etc/caddy/Caddyfile.common
+}

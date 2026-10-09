@@ -1,0 +1,37 @@
+header {
+    Strict-Transport-Security "max-age=31536000"
+    X-Content-Type-Options nosniff
+    Referrer-Policy same-origin
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    -Server
+}
+
+request_body {
+    max_size 52MB
+}
+
+@registration {
+    method POST
+    path /api/v1/auth/register
+}
+respond @registration "Public registration is disabled" 403
+
+@private path /swagger* /metrics /debug/* /api/v1/local-browser/* /api/v1/auth/oidc/login /api/v1/auth/oidc/callback
+respond @private 404
+
+@sandbox path /api/v1/sessions/*/sandbox/* /api/v1/skills/*
+respond @sandbox "Sandbox execution is unavailable" 403
+
+@sandboxBackends {
+    method POST PUT PATCH DELETE
+    path /api/v1/sandbox-configs /api/v1/sandbox-configs/*
+    not path /api/v1/sandbox-configs/workspace-policy
+}
+respond @sandboxBackends "Sandbox configuration is unavailable" 403
+
+reverse_proxy frontend:80 {
+    header_up Host {hostport}
+    header_up X-Forwarded-Proto https
+    header_up X-Forwarded-For {remote_host}
+    flush_interval -1
+}

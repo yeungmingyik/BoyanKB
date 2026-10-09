@@ -1,0 +1,38 @@
+services:
+  caddy:
+    ports: !override
+      - "127.0.0.1:9089:80"
+      - "127.0.0.1:9443:443"
+    environment:
+      PUBLIC_HOST: localhost
+      PUBLIC_ORIGIN: https://localhost:9443
+    volumes:
+      - ./deployment/production/Caddyfile.staging:/etc/caddy/Caddyfile:ro
+    networks:
+      web:
+        ipv4_address: 10.239.60.2
+  frontend:
+    environment:
+      PROD_PROXY_IP: 10.239.60.2
+    networks:
+      web:
+        ipv4_address: 10.239.60.3
+  app:
+    environment:
+      APP_EXTERNAL_URL: https://localhost:9443
+      FRONTEND_BASE_URL: https://localhost:9443
+      WEKNORA_TRUSTED_PROXIES: 10.239.60.3/32
+      AUTO_MIGRATE: "false"
+      AUTO_RECOVER_DIRTY: "false"
+    networks:
+      web:
+        ipv4_address: 10.239.60.4
+networks:
+  edge:
+    internal: true
+  web:
+    ipam:
+      config: !override
+        - subnet: 10.239.60.0/24
+  outbound:
+    internal: true
