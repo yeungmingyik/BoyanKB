@@ -162,3 +162,29 @@
 未全局改变 success token、真实厂商图标、状态语义或业务数据。保留 LICENSE 及上游版权声明。
 
 最终镜像已在本机替换 frontend；15 个 HTTP URL 与 133 项浏览器检查通过，六个容器健康。升级时按 [03-branding.md](03-branding.md) 的分支顺序重放，并运行 [05-ui-polish.md](05-ui-polish.md) 的检查命令；尤其确认 TDesign 类名与图标资源字节。200% 缩放及用户既有标签栏外观未验证。
+## 邀请制生产部署与恢复验收
+
+日期：2026-10-09。分支：`feat/production-deployment`。目标域名 `kb.boyantech.com`，阿里云服务器信息待补全；没有连接或修改云端生产。采用现有 BoyanKB 镜像的配置覆盖，不修改上游认证、检索或沙箱核心。LICENSE 和版权声明保留。
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `docker-compose.prod.yml` | 独立生产拓扑与版本锁 | 仅 Caddy 发布 80/443，内部 DB/Redis，邀请制、RBAC、无运行时凭据、资源限制、禁止自动迁移；`check-production.py` 验证实际运行参数 |
+| `docker-compose.staging.yml`、`docker-compose.restore.yml` | 本机演练不能接管业务栈 | 各用回环端口与独立网段；恢复所有网络 internal；通过隔离报告及恢复后检索检查 |
+| `deployment/production/images.lock.json` | 标签可能漂移 | 保存上游提交、七个运行镜像 digest、embedding manifest 哈希；启动检查内容一致 |
+| `deployment/production/Caddyfile`、`Caddyfile.staging`、`Caddyfile.common` | TLS 与敏感入口控制 | 公网自动 HTTPS、本地 CA、注册/OIDC/沙箱/调试入口限制、可信代理头；真实 TLS/HTTP 请求验证 |
+| `deployment/production/frontend-entrypoint.sh` | 两层代理需保留 HTTPS 与客户端地址 | 仅在容器内生成代理覆盖，精确信任 Caddy IP；不重新改动上游 Nginx 源文件 |
+| `deployment/production/redis-entrypoint.sh` | Redis 密码不能出现在命令行 | 从环境写入 tmpfs 配置，限制格式；认证健康检查与恢复验证 |
+| `deployment/production/builtin_agents.yaml` | 合作伙伴需要基于依据回答 | 唯一 quick-answer、BoyanKB 名称、禁止联网补答、固定无依据回复；实际配置与合成问答验证 |
+| `scripts/init-production.py` | 新环境需要独立秘密和受保护文件 | 只创建忽略目录下新 `.env`，生成密钥、可选择导入模型凭据，限制 ACL，不输出值 |
+| `scripts/bootstrap-production.py` | 关闭注册后仍需首位管理员 | 仅空库、无公开入口临时初始化与开户，结束后恢复邀请制；拒绝既有 schema |
+| `scripts/check-production.py` | 配置文件不代表实际生效 | 检查运行镜像、资源、环境策略、端口、TLS、品牌与入口；报告只含状态 |
+| `scripts/acceptance-prod.py` | 验证多伙伴与检索边界 | 默认只读，显式隔离模式创建合成样本；维护窗口/邀请/角色/Key/注入/拒答检查；独立离线测试 |
+| `scripts/backup-prod.py`、`scripts/restore-prod.py`、`scripts/test_prod_backup.py` | 数据、对象与密钥必须一起恢复 | age 双层认证加密、停写快照、新目标保护、配置哈希与行数/文件校验；不覆盖现有卷 |
+| `scripts/check-restored.py` | 存储恢复不代表应用可用 | 恢复管理员登录、原资源 ID、片段、文件下载与本地关键词/向量检索；不调用外部服务 |
+| `scripts/restore-tunnel.py` | internal 网络下 Docker 未实际发布恢复测试端口 | 仅本机回环、固定目标 Caddy/端口、有限时长/并发的 TCP 字节转发；不解密 TLS、不改变容器网络 |
+| `scripts/check-sandbox-isolation.py`、`deployment/sandbox/test_isolation.py` | app 与代码沙箱不能混同 | app 无运行时表面检查；专用远端容器严格前检与显式授权网络探针；mock 测试不代替远端验收 |
+| `deployment/sandbox/offline-config.example.json`、`daemon.example.json`、`office-smoke.py` | 为将来受控 Office 能力留明确门槛 | 离线网络/mTLS/资源配置样例及 OOXML 探针；当前未启用远端执行，后续限制见沙箱文档 |
+| `docs/05-deploy-production.md`、`05-upgrade-runbook.md`、`05-acceptance.md` | 部署、升级、回滚需要同一证据标准 | 固定镜像/配置重放流程、备份恢复命令、人工验收清单及本机证据 |
+| `docs/production-auth.md`、`production-backup.md`、`production-sandbox.md` | 记录实现边界，避免误用开关 | 邀请和 OIDC 差异、原始跨空间标志、加密恢复保护、禁用执行与未来沙箱门槛 |
+
+升级时保留上述独立文件，先在新上游上验证覆盖文件路径及配置优先级；重新构建品牌镜像后更新 Compose 与锁文件完整 digest。按 [05-upgrade-runbook.md](05-upgrade-runbook.md) 恢复旧数据到隔离副本、迁移、回归，再决定发布。不得把旧版本测试结果直接套用到新镜像；公网 HTTPS、Office 生成、真实飞书删除与真实伙伴授权仍需相应人工验收。
