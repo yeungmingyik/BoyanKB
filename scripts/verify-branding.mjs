@@ -607,7 +607,8 @@ async function prepareEmbedChannel(brand) {
     const channelId = ${JSON.stringify(channelId)}
     const create = ${JSON.stringify(prepareEmbed)}
     const marker = 'managed-branding-verification-v1'
-    const name = productName + ' Branding Verification'
+    const name = '品牌验收（测试专用）'
+    const acceptedNames = [name, productName + ' Branding Verification']
     const api = async (url, body, method) => {
       const response = await fetch('/api/v1' + url, {
         method: method || (body ? 'POST' : 'GET'), redirect: 'error',
@@ -627,7 +628,7 @@ async function prepareEmbedChannel(brand) {
       const knowledgeBaseId = matches[0].id
       const agents = await api('/agents')
       if (!Array.isArray(agents)) return { error: 'TEST_AGENT_LIST_INVALID' }
-      const candidates = agents.filter(item => item.name === name || item.description === marker)
+      const candidates = agents.filter(item => acceptedNames.includes(item.name) || item.description === marker)
       if (candidates.length > 1) return { error: 'TEST_AGENT_NOT_UNIQUE' }
       let agent = candidates[0]
       if (!agent) {
@@ -643,7 +644,7 @@ async function prepareEmbedChannel(brand) {
         })
       }
       const cfg = agent?.config
-      if (agent?.name !== name || agent?.description !== marker || agent?.is_builtin || cfg?.kb_selection_mode !== 'selected' || cfg.knowledge_bases?.length !== 1 || cfg.knowledge_bases[0] !== knowledgeBaseId || cfg.agent_mode !== 'quick-answer' || cfg.mcp_selection_mode !== 'none' || cfg.skills_selection_mode !== 'none' || cfg.web_search_enabled || cfg.web_fetch_enabled || cfg.memory_enabled || cfg.question_suggestions?.starters?.enabled !== false || cfg.question_suggestions?.follow_ups?.enabled !== false) return { error: 'TEST_AGENT_SCOPE_MISMATCH' }
+      if (!acceptedNames.includes(agent?.name) || agent?.description !== marker || agent?.is_builtin || cfg?.kb_selection_mode !== 'selected' || cfg.knowledge_bases?.length !== 1 || cfg.knowledge_bases[0] !== knowledgeBaseId || cfg.agent_mode !== 'quick-answer' || cfg.mcp_selection_mode !== 'none' || cfg.skills_selection_mode !== 'none' || cfg.web_search_enabled || cfg.web_fetch_enabled || cfg.memory_enabled || cfg.question_suggestions?.starters?.enabled !== false || cfg.question_suggestions?.follow_ups?.enabled !== false) return { error: 'TEST_AGENT_SCOPE_MISMATCH' }
       const channels = await api('/agents/' + encodeURIComponent(agent.id) + '/embed-channels')
       if (!Array.isArray(channels)) return { error: 'TEST_CHANNEL_LIST_INVALID' }
       const matchingChannels = channels.filter(item => item.name === 'branding-verification-v1' || (channelId && item.id === channelId))
