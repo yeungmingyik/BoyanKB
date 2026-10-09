@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "version": "boyan-v2",
+  "brand_id": "boyan-culture",
+  "brand_name": "博研文化",
+  "font_family": "Microsoft YaHei",
+  "font_fallback": "Noto Sans CJK SC",
+  "templates": [
+    {
+      "id": "teaching-pptx",
+      "scene": "teaching",
+      "format": "pptx",
+      "file": "teaching.pptx",
+      "sha256": "acbfed9773b9af1e04f227ea64625bdce6cb1dfe75ff061a3a6a6389824816b7"
+    },
+    {
+      "id": "business-pptx",
+      "scene": "business",
+      "format": "pptx",
+      "file": "business.pptx",
+      "sha256": "3a10e451ee62aa965f95c8a01094a751577f117c58e415590dcf07bb9fe31898"
+    },
+    {
+      "id": "operations-pptx",
+      "scene": "operations",
+      "format": "pptx",
+      "file": "operations.pptx",
+      "sha256": "644ead2d0104b0774a106c91d873eb2d4261a5f8a50b4a23956424562ec4c5b7"
+    }
+  ]
+}

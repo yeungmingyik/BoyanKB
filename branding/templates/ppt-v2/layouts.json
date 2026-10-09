@@ -1,0 +1,18 @@
+{
+  "version": "boyan-v2",
+  "slide_size": [1280, 720],
+  "heading": [64, 108, 1148, 100],
+  "layouts": [
+    {"index": 0, "id": "cover", "name": "封面", "fields": ["cover-title", "cover-subtitle", "cover-context"]},
+    {"index": 1, "id": "overview", "name": "目标与议程", "fields": ["heading", "point-0", "point-1", "point-2"]},
+    {"index": 2, "id": "explain", "name": "图文讲解", "fields": ["heading", "body"]},
+    {"index": 3, "id": "steps", "name": "步骤与流程", "fields": ["heading", "step-title-0", "step-title-1", "step-title-2", "process-note"]},
+    {"index": 4, "id": "question", "name": "互动与提问", "fields": ["heading", "question-body", "question-hint"]},
+    {"index": 5, "id": "compare", "name": "对比与分工", "fields": ["heading", "left-heading", "right-heading", "left-body", "right-body"]},
+    {"index": 6, "id": "table", "name": "任务与数据表", "fields": ["heading", "table-note"], "native_table": true},
+    {"index": 7, "id": "closing", "name": "总结与下一步", "fields": ["heading", "summary-body", "closing-note"]}
+  ],
+  "fonts": ["Microsoft YaHei", "Noto Sans CJK SC"],
+  "text_editable": true,
+  "source_notes_required": true
+}
