@@ -206,6 +206,7 @@
 | `internal/businessworkflow/revision*`、`internal/modelcontext/boyan_revision.go`、`registry.go`、`boyan_document_test.go` | 跨轮修订不能丢失原稿及来源，也不能从任意正文伪造来源句柄 | 身份、摘要、当前共享权限和指南重新验证；仅服务器验证来源恢复映射；新稿重新确认；撤销、伪来源和跨空间测试 |
 | `internal/businessworkflow/reviewer_retry_test.go`、`reviewer.go`、`render_limits*`、`types.go`、`service.go` | 矛盾审校与确认后超限会使正常任务无法完成 | 同一 C 模型最多一次结论澄清，仍异常拒绝发布；Unicode 字符、集合、预算及来源限额提前校验；边界与失败关闭测试 |
 | `internal/businessworkflow/budget_tables*`、`types.go`、`reviewer.go`、`internal/agent/tools/boyan_document.go` | 两套未联动的 Excel 输入和静态汇总会误导修改者 | 普通表格不得重复结构化预算的数量与单价；真正公式与静态文本分开审校；中英文表头、单位和保留场景测试 |
+| `internal/businessworkflow/renderer.go`、`renderer*_test.go`、`reviewer.go` | C 缺失机械检查证据并误判真实 Excel 公式 | 按格式白名单核验内部渲染检查并绑定文件摘要，独立传递给 C；明确输入、公式和缓存含义及未执行扰动边界；伪造、缺项、摘要和拒绝不被覆盖测试 |
 | `internal/application/service/boyan_runtime_policy.go`、`boyan_rerank*`、`session_agent_qa.go` | 真实对话出现重复追问、时长及风险结构遗漏 | ready 记录绑定的三名 Agent 附加运行约束；不能仅凭客户端开关生效；身份与状态门禁测试 |
 | `migrations/{versioned,sqlite}/000112_boyan_document_jobs*` | 文档状态和候选需持久化 | 每个租户/用户/会话独立记录、确认和发布约束、候选二进制留在受控表 |
 | `internal/container/container.go`、`internal/router/router.go`、`internal/application/service/agent_service.go`、`session_agent_qa.go`、`internal/types/agent.go`、`internal/modelcontext/tool_policy.go`、`internal/agent/tools/definitions.go` | 接入业务工具及可验证来源 | 依赖注入、路由、新工具显式允许、实际 Agent ID 与分块 ID 解码；保留其他 Agent 默认工具行为 |

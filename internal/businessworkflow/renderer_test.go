@@ -28,7 +28,7 @@ func TestRendererTransportRejectsRedirectAndInvalidValidation(t *testing.T) {
 				if mode == "wrong_digest" {
 					artifact.SHA256 = "wrong"
 				}
-				json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "artifact": artifact, "validation": map[string]interface{}{"passed": mode != "not_validated", "checks": []string{"format"}}})
+				json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "artifact": artifact, "validation": map[string]interface{}{"passed": mode != "not_validated", "checks": []string{"request_schema", "template_sha256", "utf8_roundtrip"}, "requires_visual_review": true}})
 			}))
 			defer server.Close()
 			t.Setenv("BOYAN_DOCUMENT_RENDERER_URL", server.URL)

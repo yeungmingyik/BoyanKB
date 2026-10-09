@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"slices"
 	"strings"
 	"time"
 )
@@ -30,6 +31,54 @@ type Artifact struct {
 	Size          int    `json:"size"`
 	ContentBase64 string `json:"content_base64,omitempty"`
 	Bytes         []byte `json:"-"`
+	validation    *rendererValidationEvidence
+}
+
+type rendererValidationReport struct {
+	Passed               bool     `json:"passed"`
+	Checks               []string `json:"checks"`
+	RequiresVisualReview bool     `json:"requires_visual_review"`
+}
+
+type rendererValidationEvidence struct {
+	rendererValidationReport
+	Authority                string `json:"authority"`
+	ArtifactSHA256           string `json:"artifact_sha256"`
+	Format                   string `json:"format"`
+	InputPerturbationsTested bool   `json:"input_perturbations_tested"`
+}
+
+func validatedRendererEvidence(report rendererValidationReport, format string, hasBudget bool, sha256 string) (*rendererValidationEvidence, error) {
+	expected := []string{"request_schema", "template_sha256"}
+	switch format {
+	case "md":
+		expected = append(expected, "utf8_roundtrip")
+	case "docx":
+		expected = append(expected, "office_package_reopened")
+	case "pptx":
+		expected = append(expected, "office_package_reopened", "text_capacity_bounds", "table_pagination")
+	case "xlsx":
+		expected = append(expected, "office_package_reopened", "libreoffice_recalculated", "formula_error_scan")
+		if hasBudget {
+			expected = append(expected, "budget_line_amounts", "budget_total")
+		}
+	default:
+		return nil, ErrInvalid
+	}
+	if !report.Passed || !report.RequiresVisualReview || len(report.Checks) != len(expected) {
+		return nil, ErrInvalid
+	}
+	seen := make(map[string]bool, len(expected))
+	for _, check := range report.Checks {
+		if seen[check] || !slices.Contains(expected, check) {
+			return nil, ErrInvalid
+		}
+		seen[check] = true
+	}
+	return &rendererValidationEvidence{
+		rendererValidationReport: rendererValidationReport{Passed: true, Checks: expected, RequiresVisualReview: true},
+		Authority:                "configured_internal_renderer", ArtifactSHA256: sha256, Format: format,
+	}, nil
 }
 
 func (a Artifact) Validate(format string) error {
@@ -78,20 +127,27 @@ func renderHTTP(ctx context.Context, id string, tenant uint64, p Payload, hash s
 		return Artifact{}, ErrInvalid
 	}
 	var result struct {
-		Success    bool     `json:"success"`
-		Artifact   Artifact `json:"artifact"`
-		Validation struct {
-			Passed bool     `json:"passed"`
-			Checks []string `json:"checks"`
-		} `json:"validation"`
+		Success    bool                     `json:"success"`
+		Artifact   Artifact                 `json:"artifact"`
+		Validation rendererValidationReport `json:"validation"`
 	}
-	if json.Unmarshal(data, &result) != nil || !result.Success || !result.Validation.Passed || len(result.Validation.Checks) == 0 {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&result) != nil || !result.Success {
+		return Artifact{}, ErrInvalid
+	}
+	var extra interface{}
+	if decoder.Decode(&extra) != io.EOF {
 		return Artifact{}, ErrInvalid
 	}
 	result.Artifact.Bytes, err = base64.StdEncoding.DecodeString(result.Artifact.ContentBase64)
 	result.Artifact.ContentBase64 = ""
 	if err != nil || result.Artifact.Validate(p.Format) != nil {
 		return Artifact{}, ErrInvalid
+	}
+	result.Artifact.validation, err = validatedRendererEvidence(result.Validation, p.Format, p.Budget != nil, result.Artifact.SHA256)
+	if err != nil {
+		return Artifact{}, err
 	}
 	return result.Artifact, nil
 }
