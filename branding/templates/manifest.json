@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "version": "boyan-v1",
+  "brand_id": "boyan-culture",
+  "brand_name": "博研文化",
+  "font_family": "Microsoft YaHei",
+  "font_fallback": "Noto Sans CJK SC",
+  "source_knowledge_base_id": "d9285ed1-0760-474b-ba82-a13347598176",
+  "templates": [
+    {
+      "id": "teaching-pptx",
+      "scene": "teaching",
+      "format": "pptx",
+      "file": "teaching.pptx",
+      "sha256": "06c9acc5c73ef60d7c3e9ab0a787f69b034a74fe87af656dc51a978ba5307356"
+    },
+    {
+      "id": "teaching-docx",
+      "scene": "teaching",
+      "format": "docx",
+      "file": "teaching.docx",
+      "sha256": "b386d0885222e07fb00ef91432fb4b4b1665b92d05dc4cacf598c658aaf365a3"
+    },
+    {
+      "id": "teaching-xlsx",
+      "scene": "teaching",
+      "format": "xlsx",
+      "file": "teaching.xlsx",
+      "sha256": "13a075da2c44622e8927beae6adcdd1ad55ebb5f983f7ecdf264a9080176629d"
+    },
+    {
+      "id": "teaching-md",
+      "scene": "teaching",
+      "format": "md",
+      "file": "teaching.md",
+      "sha256": "96a003a28d2bc2006f41e15baee38d55b56cf22c056b4c11b94b575622cf371a"
+    },
+    {
+      "id": "business-pptx",
+      "scene": "business",
+      "format": "pptx",
+      "file": "business.pptx",
+      "sha256": "9d95942e6661ab4679020e44012a502e181ddf90e802f603b2dd4198dbc81dc7"
+    },
+    {
+      "id": "business-docx",
+      "scene": "business",
+      "format": "docx",
+      "file": "business.docx",
+      "sha256": "d0b44950dcb719072c2551b6a45f52dc39f046e54d602b735601b9a494c8358c"
+    },
+    {
+      "id": "business-xlsx",
+      "scene": "business",
+      "format": "xlsx",
+      "file": "business.xlsx",
+      "sha256": "d8e5388abc46459b8e3c073283febe84ae697d3e95320255a03a933774fec731"
+    },
+    {
+      "id": "business-md",
+      "scene": "business",
+      "format": "md",
+      "file": "business.md",
+      "sha256": "67bc01ba2e92147171be50f5fc5e5ed422b733429c6f1c09660698888e8d8c7f"
+    },
+    {
+      "id": "operations-pptx",
+      "scene": "operations",
+      "format": "pptx",
+      "file": "operations.pptx",
+      "sha256": "8129901f9fe7ffbdcbc1453cb43f5425212dcd8b0481aff688b4546a3847e6cf"
+    },
+    {
+      "id": "operations-docx",
+      "scene": "operations",
+      "format": "docx",
+      "file": "operations.docx",
+      "sha256": "304ce88fdae97b9da62c8ad9cadbfb79deb65dc527203080c22316365bd5da56"
+    },
+    {
+      "id": "operations-xlsx",
+      "scene": "operations",
+      "format": "xlsx",
+      "file": "operations.xlsx",
+      "sha256": "4be4c42a5d768a20ae68311645964c030376b65361be21b0e2d1bd546e9bc26a"
+    },
+    {
+      "id": "operations-md",
+      "scene": "operations",
+      "format": "md",
+      "file": "operations.md",
+      "sha256": "fedd553e6e426eaf4106f9127b3e8720bc08abe671817f41e760c7496a22b9a9"
+    }
+  ]
+}

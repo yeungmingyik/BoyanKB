@@ -188,3 +188,26 @@
 | `docs/production-auth.md`、`production-backup.md`、`production-sandbox.md` | 记录实现边界，避免误用开关 | 邀请和 OIDC 差异、原始跨空间标志、加密恢复保护、禁用执行与未来沙箱门槛 |
 
 升级时保留上述独立文件，先在新上游上验证覆盖文件路径及配置优先级；重新构建品牌镜像后更新 Compose 与锁文件完整 digest。按 [05-upgrade-runbook.md](05-upgrade-runbook.md) 恢复旧数据到隔离副本、迁移、回归，再决定发布。不得把旧版本测试结果直接套用到新镜像；公网 HTTPS、Office 生成、真实飞书删除与真实伙伴授权仍需相应人工验收。
+
+## 合作伙伴预设、场景模板与受限文件生成
+
+日期：2026-10-09。分支：`feat/partner-presets`。根据 `docs/business/agents-spec.md` 和用户关于先设计模板再继续实现的授权执行。本机新增配置覆盖，云端部署继续暂停。
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `branding/templates/*` | 教学、商务、运营需要统一但有区别的正式文件 | 十二份原生模板、版本摘要；PPT/Word/Excel 在本机 Office 打开，逐页检查，预算公式实算 |
+| `presets/boyan/v1/*`、`skills/boyan/*`、`.gitattributes` | 可版本化并重复安装业务规范 | 三名 Agent、五个场景与四个格式指南、固定 SHA 与 LF；静态契约及 24 条行为案例 |
+| `internal/boyanskills/*` | 指南读取不能变成任意 Skill 执行 | 固定路径、实际安装登记、版本和摘要校验；不打开原生沙箱 |
+| `internal/types/partner_provisioning.go`、`internal/application/service/partner_provisioning*`、`internal/handler/partner_provisioning*`、`internal/router/routes_partner_provisioning.go` | 原开户 API 不提供受限、可恢复的标准预设事务 | 系统管理员 JWT 加总部 Owner、幂等 key、事务与执行租约、角色和资源读回校验 |
+| `migrations/{versioned,sqlite}/000111_partner_provisioning*` | 保留开户步骤与安装登记 | 新增独立表；不改原业务数据 |
+| `internal/businessworkflow/*`、`internal/agent/tools/boyan_document.go`、`internal/handler/business_workflow.go`、`internal/router/routes_business_workflow.go` | 提示词不能强制用户确认或阻断文件发布 | 大纲哈希、权限复验、候选隔离、固定渲染、独立审校、通过后下载 |
+| `migrations/{versioned,sqlite}/000112_boyan_document_jobs*` | 文档状态和候选需持久化 | 每个租户/用户/会话独立记录、确认和发布约束、候选二进制留在受控表 |
+| `internal/container/container.go`、`internal/router/router.go`、`internal/application/service/agent_service.go`、`session_agent_qa.go`、`internal/types/agent.go`、`internal/modelcontext/tool_policy.go`、`internal/agent/tools/constants.go` | 接入业务工具及可验证来源 | 依赖注入、路由、新工具显式允许、实际 Agent ID 与分块 ID 解码；保留其他 Agent 默认工具行为 |
+| `frontend/src/api/business-workflow.ts`、`frontend/src/views/chat/components/BusinessDocumentPanel.vue`、`frontend/src/views/chat/index.vue` | 用户需看到并确认真实服务端大纲 | 会话任务卡、明确确认、生成与审校状态、授权下载 |
+| `deployment/document-renderer/*`、`docker-compose.presets.yml` | 不以任意代码执行实现 Office 生成 | 固定四种格式、模板摘要、预算公式重算；内部网络、只读根、非 root、资源限制 |
+| `docker/Dockerfile.app-boyankb`、`scripts/build-presets-images.sh` | 定制镜像需要带上预设和迁移 | 三个本机版本镜像，应用嵌入配置、指南及新增迁移 |
+| `scripts/onboard-partner*`、`scripts/test_onboard_partner.py` | 重复执行不重复资源，失败能恢复 | 默认本地计划，显式 apply、断点记录、readiness 通过才完成 |
+| `scripts/check-presets.py`、`scripts/acceptance-presets.py`、`scripts/test_acceptance_presets.py` | 配置、工作流与真实行为要分开验证 | 静态检查、两个非管理员伙伴、真实文件与隔离测试、明确人工项 |
+| `docs/04-presets.md`、`docs/partner-onboarding.md`、`docs/business/document-workflow.md` | 安装与升级可重复 | 方案取舍、执行命令、边界、验收与重放顺序 |
+
+升级时先重放独立资源，再逐项检查表中核心接入点；不得只复制提示词后宣称确认和权限约束仍然有效。重新构建并在隔离副本运行自动及人工验收。LICENSE 与上游版权声明保留。
