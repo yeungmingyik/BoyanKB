@@ -1,6 +1,8 @@
+import { businessSkillsEnUS } from '../businessSkills'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessSkills: businessSkillsEnUS,
   toolbox: {
     "title": "Toolbox",
     "description": "Manage skills, external tools, and browser connections for your agents.",

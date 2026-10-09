@@ -39,7 +39,8 @@
 
       <section v-if="selectedItem" class="toolbox-main" role="tabpanel">
         <div class="toolbox-panel">
-          <SkillSettings v-if="selectedItem.key === 'skills'" ref="panel" :key="sandboxId"
+          <BusinessSkills v-if="selectedItem.key === 'business-skills'" @count="counts['business-skills'] = $event" />
+          <SkillSettings v-else-if="selectedItem.key === 'skills'" ref="panel" :key="sandboxId"
             :initial-sandbox-id="sandboxId" @count="counts.skills = $event" />
           <McpSettings v-else-if="selectedItem.key === 'mcp'" ref="panel" @count="counts.mcp = $event" />
           <BrowserConnectionSettings v-else-if="selectedItem.key === 'browserconnection'" />
@@ -70,6 +71,7 @@ import ResourceIcon from '@/components/icons/ResourceIcon.vue'
 import BrowserIcon from '@/components/icons/BrowserIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkillSettings from '@/views/settings/SkillSettings.vue'
+import BusinessSkills from '@/views/toolbox/BusinessSkills.vue'
 import McpSettings from '@/views/settings/McpSettings.vue'
 import BrowserConnectionSettings from '@/views/settings/BrowserConnectionSettings.vue'
 
@@ -111,6 +113,7 @@ watch([selectedItem, visibleItems], () => {
 
 // Tab badges for tools that are not open; the open panel keeps its own badge current.
 const summaries: Record<ToolboxSection, () => Promise<void>> = {
+  'business-skills': async () => {},
   skills: async () => { counts.skills = (await listSkillCatalog())?.data?.length ?? 0 },
   mcp: async () => { counts.mcp = (await listMCPServices()).length },
   browserconnection: async () => { if (!browserConnection.loaded) await browserConnection.refresh() },

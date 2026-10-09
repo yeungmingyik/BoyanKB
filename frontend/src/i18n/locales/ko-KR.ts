@@ -1,6 +1,8 @@
+import { businessSkillsKoKR } from '../businessSkills'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessSkills: businessSkillsKoKR,
   toolbox: {
     "title": "도구함",
     "description": "에이전트의 스킬, 외부 도구 및 브라우저 연결을 관리합니다.",

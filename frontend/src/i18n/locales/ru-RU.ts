@@ -1,6 +1,8 @@
+import { businessSkillsRuRU } from '../businessSkills'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessSkills: businessSkillsRuRU,
   toolbox: {
     "title": "Инструменты",
     "description": "Управляйте навыками, внешними инструментами и подключением браузера для агентов.",

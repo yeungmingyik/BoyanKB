@@ -45,7 +45,7 @@
                   <t-icon :name="SKILL_ICON" size="14px" />
                 </div>
                 <div class="skill-card__heading">
-                  <h3 class="skill-card__title" :title="item.name">{{ item.name }}</h3>
+                  <h3 class="skill-card__title" :title="skillDisplayName(item.name)">{{ skillDisplayName(item.name) }}</h3>
                   <span v-if="item.version" class="skill-card__type">{{ item.version }}</span>
                 </div>
                 <div class="skill-card__actions">
@@ -63,6 +63,14 @@
               <p v-if="item.description" class="skill-card__desc" :title="item.description">
                 {{ compactText(item.description) }}
               </p>
+              <div v-if="businessSkillLabel(item.name)" class="skill-card__business">
+                <p>{{ t('businessSkills.nativeHint') }}</p>
+                <router-link to="/platform/toolbox/business-skills">{{ t('businessSkills.nativeLink') }}</router-link>
+                <details>
+                  <summary>{{ t('businessSkills.technical') }}</summary>
+                  <code>{{ item.name }}</code>
+                </details>
+              </div>
               <div v-for="view in [installsView(item)]" :key="'installs'" class="skill-card__installs">
                 <span v-if="view.installs.length === 0 && !view.canAdd" class="skill-card__installs-label">
                   {{ $t('settings.skills.noInstalls') }}
@@ -169,7 +177,7 @@
               <div class="skill-card__badge" aria-hidden="true">
                 <t-icon :name="SKILL_ICON" size="14px" />
               </div>
-              <h3 class="skill-card__title" :title="registeredCatalog.name">{{ registeredCatalog.name }}</h3>
+              <h3 class="skill-card__title" :title="skillDisplayName(registeredCatalog.name)">{{ skillDisplayName(registeredCatalog.name) }}</h3>
               <span v-if="registeredCatalog.version" class="skill-card__type">{{ registeredCatalog.version }}</span>
             </div>
             <p v-if="registeredCatalog.description" class="skill-card__desc" :title="registeredCatalog.description">
@@ -339,6 +347,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { AddIcon, DeleteIcon, FolderIcon } from 'tdesign-icons-vue-next'
 import { useI18n } from 'vue-i18n'
+import { businessSkillLabel } from '@/config/businessSkills'
 import SandboxSkillsPanel from '@/components/SandboxSkillsPanel.vue'
 import SkillFilesDrawer from '@/components/SkillFilesDrawer.vue'
 import SandboxBackendBadge from '@/components/settings/SandboxBackendBadge.vue'
@@ -373,6 +382,10 @@ const props = defineProps<{
 const emit = defineEmits<{ count: [value: number] }>()
 
 const { t } = useI18n()
+const skillDisplayName = (name: string) => {
+  const label = businessSkillLabel(name)
+  return label ? t(label) : name
+}
 const uiStore = useUIStore()
 const confirmDelete = useConfirmDelete()
 
@@ -1260,6 +1273,20 @@ onUnmounted(() => {
 
 .skill-settings {
   width: 100%;
+}
+
+.skill-card__business {
+  margin: var(--app-space-3) 0;
+  font-size: var(--app-text-sm);
+  line-height: 1.6;
+  color: var(--td-text-color-secondary);
+
+  p { margin: 0 0 var(--app-space-1); }
+  a { color: var(--td-brand-color); }
+  details { margin-top: var(--app-space-2); }
+  summary { cursor: pointer; width: fit-content; }
+  code { overflow-wrap: anywhere; }
+  a:focus-visible, summary:focus-visible { outline: 2px solid var(--td-brand-color); outline-offset: 3px; }
 }
 
 .section-header {

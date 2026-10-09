@@ -1,6 +1,8 @@
+import { businessSkillsJaJP } from '../businessSkills'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessSkills: businessSkillsJaJP,
   toolbox: {
     "title": "ツールボックス",
     "description": "エージェントのスキル、外部ツール、ブラウザー接続を管理します。",

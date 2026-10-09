@@ -4,6 +4,12 @@ import { SKILL_ICON } from '../types/mention'
 
 export const TOOLBOX_ITEMS = [
   {
+    key: 'business-skills',
+    icon: 'file',
+    title: 'businessSkills.title',
+    description: 'businessSkills.description',
+  },
+  {
     key: 'skills',
     icon: SKILL_ICON,
     title: 'settings.skills.title',
@@ -48,6 +54,7 @@ export function canAccessToolboxSection(
     isSupported: (capability?: DeploymentCapabilityKey) => boolean
   },
 ): boolean {
+  if (section === 'business-skills') return Boolean(access.currentTenantRole) && access.hasRole('viewer')
   if (!access.currentTenantRole && !access.canAccessAllTenants) return false
   return (access.canAccessAllTenants || access.hasRole(SETTINGS_SECTION_MIN_ROLE[section] ?? 'viewer'))
     && access.isSupported(SETTINGS_SECTION_CAPABILITY[section])

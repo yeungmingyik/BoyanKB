@@ -1,6 +1,8 @@
+import { businessSkillsZhCN } from '../businessSkills'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessSkills: businessSkillsZhCN,
   toolbox: {
     "title": "工具箱",
     "description": "管理智能体可用的技能、外部工具和浏览器连接。",

@@ -16,7 +16,7 @@ const access = (role: string | null, unsupported: string[] = [], superuser = fal
 })
 
 test('toolbox contains only the agreed tools; infrastructure and secrets stay in settings', () => {
-  assert.deepEqual(TOOLBOX_ITEMS.map((item) => item.key), ['skills', 'mcp', 'browserconnection'])
+  assert.deepEqual(TOOLBOX_ITEMS.map((item) => item.key), ['business-skills', 'skills', 'mcp', 'browserconnection'])
   const lookup = (key: string) => key.split('.').reduce<any>((node, part) => node?.[part], zhCN)
   for (const item of TOOLBOX_ITEMS) {
     for (const key of [item.title, item.description, 'help' in item ? item.help : undefined,
@@ -31,11 +31,14 @@ test('toolbox contains only the agreed tools; infrastructure and secrets stay in
 
 test('toolbox preserves role and deployment gates, including workspace switches', () => {
   for (const role of ['viewer', 'contributor']) {
+    assert.equal(canAccessToolboxSection('business-skills', access(role, ['settings.sandbox'])), true)
     assert.equal(canAccessToolboxSection('skills', access(role)), false)
     assert.equal(canAccessToolboxSection('mcp', access(role)), false)
     assert.equal(canAccessToolboxSection('browserconnection', access(role)), true)
   }
   assert.equal(canAccessToolboxSection('skills', access('admin')), true)
+  assert.equal(canAccessToolboxSection('business-skills', access(null)), false)
+  assert.equal(canAccessToolboxSection('business-skills', access(null, [], true)), false)
   assert.equal(canAccessToolboxSection('skills', access('owner', ['settings.sandbox'])), false)
   assert.equal(canAccessToolboxSection('mcp', access('owner', ['settings.mcp'])), false)
   assert.equal(canAccessToolboxSection('mcp', access(null)), false)
@@ -56,6 +59,9 @@ test('skill shortcut retains its target sandbox without leaking it to other tool
     path: '/platform/toolbox/browserconnection', query: {},
   })
   assert.deepEqual(toolboxLocation(), { path: '/platform/toolbox', query: {} })
+  assert.deepEqual(toolboxLocation('business-skills', 'sandbox-123'), {
+    path: '/platform/toolbox/business-skills', query: {},
+  })
 })
 
 const settings = readFileSync(new URL('../views/settings/Settings.vue', import.meta.url), 'utf8')
