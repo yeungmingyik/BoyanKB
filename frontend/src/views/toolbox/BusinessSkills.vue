@@ -188,6 +188,7 @@ onBeforeUnmount(clear)
 }
 
 @media (max-width: 640px) {
+  :global(.main:has(.business-skills)) { min-width: 0; }
   .business-skills__intro, .business-skills__row { flex-direction: column; gap: var(--app-space-3); }
   .business-skills__toolbar { gap: var(--app-space-2); align-items: flex-start; }
 }
