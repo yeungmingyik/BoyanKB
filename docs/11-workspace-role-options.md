@@ -1,6 +1,6 @@
 # 邀请式使用与内部内容建设权限
 
-日期：2026-10-10。仅评估方案，未修改账号、角色、工作空间、网关或沙箱配置。[所有权交接方案](10-partner-ownership-plan.md)仍待确认，尚未执行。
+日期：2026-10-10。用户已确认保留原生成员逻辑及刘伟健的伙伴 Owner 身份；[所有权交接方案](10-partner-ownership-plan.md)已取消且从未执行。账号、角色与资源归属保持原状。
 
 ## WeKnora 原生账号与成员模型
 
@@ -35,7 +35,7 @@
 | 总部一键创建伙伴空间并安装预设 | BoyanKB 定制；执行开通的管理员被保留为伙伴 Owner |
 | 卡卡保持 Viewer 却能邀请只读员工 | BoyanKB 定制的指定团队负责人能力；原生 Viewer 不能普通邀请 |
 | 三位受管 Agent、九项业务技能及受控文件生成 | BoyanKB 定制；不等同原生任意 Skill 的上传和沙箱安装 |
-| 公网屏蔽原生 Skill、沙箱和平台管理入口 | 当前试用部署策略，不代表上游没有这些接口 |
+| 公网技能包管理、沙箱和平台管理入口 | 技能目录管理修复见 [功能修复记录](12-skill-graph-prompts.md)；沙箱执行及平台管理继续受限，不代表上游没有这些接口 |
 
 核查依据为基线中的 `internal/types/{user,tenant_member}.go`、`internal/router/routes_auth_tenant.go`、`internal/handler/tenant.go`、`internal/application/service/system_setting.go`。与基线相比，`internal/application/service/tenant_invitation.go` 增加了定制团队邀请接受时的权限复核；`internal/teaminvitation/`、`internal/businessworkflow/team.go` 和 `internal/application/service/partner_provisioning.go` 为新增实现。本轮没有运行上游原版实例，默认界面体验为源码结论，端到端运行未验证。
 
@@ -43,7 +43,7 @@
 
 合作伙伴可以作为受邀成员加入工作空间，使用获授权的知识库、智能体和业务技能，不需要成为所有者。现有卡卡账号已经是此模式：星辰教育 Viewer，并额外获得受限的团队负责人邀请能力。
 
-邀请式使用与总部管理员能否进入伙伴空间是两件事。刘伟健保留伙伴 Owner 就仍然能够切入；之前的交接方案用于满足“刘伟健账号也不得进入伙伴空间”的额外约束，并非合作伙伴使用系统的必要条件。没有得到新的决定前，不执行交接，也不将本轮讨论视为已撤销这一约束。
+邀请式使用与总部管理员能否进入伙伴空间是两件事。刘伟健保留伙伴 Owner 就仍然能够切入；之前的交接方案用于满足“刘伟健账号也不得进入伙伴空间”的额外约束，并非合作伙伴使用系统的必要条件。用户现已撤销这项额外约束，保留刘伟健的伙伴 Owner 身份，不执行交接。
 
 ## 工作空间组织方式
 

@@ -62,3 +62,7 @@ docker compose -p weknora-local --env-file .env -f docker-compose.yml -f docker-
 公网匿名桌面 1366×768、手机 390×844 两个案例通过；保持严格 TLS 校验，使用 `BoyanKB-DeploymentCheck/1.0` User-Agent。复验未注入 CSS，未登录、未提交认证请求或修改账号数据。多行探针只在独立浏览器内替换提示文字，不修改业务数据或产品文案。
 
 本机报告为 `temp/login-layout-review/2026-10-10T04-30-13-428Z/report.json`，公网报告为 `temp/login-layout-review/public-2026-10-10T04-30-13-423Z/report.json`。截图位于对应目录，可查看 [桌面错误提示](../temp/login-layout-review/2026-10-10T04-30-13-428Z/1366x768-empty-submit.png) 和 [公网手机登录](../temp/login-layout-review/public-2026-10-10T04-30-13-423Z/anonymous-390x844.png)。这些证据使用临时独立浏览器，不代表已验证所有浏览器或用户现有标签的缓存；已有页面可使用 `Ctrl+Shift+R` 加载新资源。
+
+## 成员关系最终决定
+
+2026-10-10：用户确认刘伟健可以作为 Owner 切换到星辰教育。取消后续所有权交接方案；此前未执行交接，无需回滚成员数据。登录布局和访问恢复修复保留。
