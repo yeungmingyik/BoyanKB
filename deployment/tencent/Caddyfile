@@ -1,0 +1,71 @@
+{
+    admin off
+    auto_https off
+    log default {
+        format filter {
+            wrap json
+            fields {
+                request>uri delete
+                request>headers delete
+            }
+        }
+    }
+}
+
+:8090 {
+    @wrongHost not host {$PUBLIC_HOST:193.112.17.218} localhost 127.0.0.1
+    respond @wrongHost 404
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+
+    request_body {
+        max_size 52MB
+    }
+
+    @registration {
+        method POST
+        path /api/v1/auth/register
+    }
+    respond @registration 403
+
+    @internal path /swagger* /metrics /debug/* /api/v1/local-browser /api/v1/local-browser/* /api/v1/system/admin /api/v1/system/admin/* /api/v1/auth/auto-setup /api/v1/auth/oidc/* /mcp /mcp/*
+    respond @internal 404
+
+    @skillExecution {
+        path /api/v1/skills /api/v1/skills/*
+        not path_regexp ^/api/v1/skills/catalog(/[a-zA-Z0-9_-]+(/files(/content)?)?)?$
+    }
+    respond @skillExecution 404
+
+    @sandbox path /api/v1/sessions/*/sandbox/* /api/v1/sandbox-configs /api/v1/sandbox-configs/*
+    respond @sandbox 403
+
+    @static {
+        method GET HEAD
+        path /assets/*
+    }
+    reverse_proxy @static 10.239.80.3:80 {
+        header_up Host {hostport}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-For {remote_host}
+        header_up -Cf-Connecting-Ip
+        header_up -Forwarded
+        header_down Referrer-Policy no-referrer
+    }
+
+    reverse_proxy 10.239.80.3:80 {
+        header_up Host {hostport}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-For {remote_host}
+        header_up -Cf-Connecting-Ip
+        header_up -Forwarded
+        header_down Referrer-Policy no-referrer
+        header_down Cache-Control "private, no-store"
+        flush_interval -1
+    }
+}

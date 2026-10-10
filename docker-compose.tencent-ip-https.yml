@@ -1,0 +1,63 @@
+services:
+  gateway:
+    environment:
+      PUBLIC_HOST: "193.112.17.218"
+      PUBLIC_ORIGIN: "https://193.112.17.218"
+      WEB_ALLOWED_CIDRS: ${WEB_ALLOWED_CIDRS:-218.104.190.149/32}
+    ports: !override
+      - "127.0.0.1:18080:8090"
+      - "0.0.0.0:443:443/tcp"
+    volumes: !override
+      - ./deployment/tencent/Caddyfile.ip-https:/etc/caddy/Caddyfile:ro
+      - type: volume
+        source: gateway-tls-data
+        target: /data
+        volume:
+          nocopy: true
+      - type: volume
+        source: gateway-tls-config
+        target: /config
+        volume:
+          nocopy: true
+    tmpfs: !override
+      - /tmp:rw,nosuid,nodev,noexec,size=16m,mode=1777
+    cap_add: [NET_BIND_SERVICE]
+
+  app:
+    environment:
+      APP_EXTERNAL_URL: "https://193.112.17.218"
+      FRONTEND_BASE_URL: "https://193.112.17.218"
+
+  gateway-volume-init:
+    profiles: [ip-https-init]
+    image: boyankb/trial-gateway:2.11.7-v1@sha256:99aaa42a089894ceadd1f5094709845715a0e3088ea6b087a2ae7a452c2ac37c
+    platform: linux/amd64
+    pull_policy: never
+    restart: "no"
+    user: "0:0"
+    read_only: true
+    network_mode: none
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER]
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: [/bin/sh, -ec]
+    command: ["chown 65532:65532 /data /config && chmod 0700 /data /config"]
+    volumes:
+      - type: volume
+        source: gateway-tls-data
+        target: /data
+        volume:
+          nocopy: true
+      - type: volume
+        source: gateway-tls-config
+        target: /config
+        volume:
+          nocopy: true
+    cpus: 0.1
+    mem_limit: 32m
+    pids_limit: 16
+
+volumes:
+  gateway-tls-data: {}
+  gateway-tls-config: {}

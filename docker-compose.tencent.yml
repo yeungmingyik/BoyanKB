@@ -1,0 +1,370 @@
+name: ${COMPOSE_PROJECT_NAME:-boyankb-tencent}
+
+x-runtime: &runtime
+  restart: unless-stopped
+  pull_policy: never
+  platform: linux/amd64
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  gateway:
+    <<: *runtime
+    image: boyankb/trial-gateway:2.11.7-v1@sha256:99aaa42a089894ceadd1f5094709845715a0e3088ea6b087a2ae7a452c2ac37c
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-193.112.17.218}
+    ports:
+      - "127.0.0.1:18080:8090"
+    volumes:
+      - ./deployment/tencent/Caddyfile:/etc/caddy/Caddyfile:ro
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=16m,mode=1777
+      - /config:rw,nosuid,nodev,size=16m,mode=1777
+      - /data:rw,nosuid,nodev,size=16m,mode=1777
+    networks:
+      edge: {}
+      web:
+        ipv4_address: 10.239.80.2
+    cpus: 0.25
+    mem_limit: 96m
+    pids_limit: 96
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q --header="Host: $$PUBLIC_HOST" -O /dev/null http://127.0.0.1:8090/login']
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      frontend:
+        condition: service_healthy
+
+  frontend:
+    <<: *runtime
+    image: boyankb/frontend:v0.8.2-trial-skills-v3@sha256:4951e0703bd3c948554293a2e6fa3448db7206228b8e9fc4f481bf78f300537b
+    entrypoint: [/bin/sh, /etc/boyankb/frontend-entrypoint.sh]
+    environment:
+      APP_HOST: 10.239.80.4
+      APP_PORT: "8080"
+      APP_SCHEME: http
+      MAX_FILE_SIZE_MB: "50"
+      MAX_SKILL_BUNDLE_SIZE_MB: "50"
+      DEFAULT_LOCALE: zh-CN
+    volumes:
+      - ./deployment/tencent/frontend-entrypoint.sh:/etc/boyankb/frontend-entrypoint.sh:ro
+    networks:
+      web:
+        ipv4_address: 10.239.80.3
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE, SETUID, SETGID, CHOWN]
+    cpus: 0.5
+    mem_limit: 128m
+    pids_limit: 128
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1/']
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      app:
+        condition: service_healthy
+
+  app:
+    <<: *runtime
+    image: boyankb/app:v0.8.2-trial-graph-v3@sha256:ac806ca72aa54f18c73b5a4140cb18c75aa0f3a41fe1a1cd2cb5b5f7da04d756
+    environment:
+      GIN_MODE: release
+      TZ: Asia/Shanghai
+      WEKNORA_LANGUAGE: zh-CN
+      LOG_LEVEL: warn
+      LOG_PATH: ""
+      LOG_FORMAT: "%d %level [%traceId] %msg"
+      LLM_DEBUG_LOG: "false"
+      WEKNORA_LLM_STREAM_RAW_DUMP: ""
+      LANGFUSE_ENABLED: "false"
+      DISABLE_REGISTRATION: "true"
+      OIDC_AUTH_ENABLE: "false"
+      WEKNORA_AUTH_COMPLEX_PASSWORD_ENABLED: "true"
+      WEKNORA_AUTH_DEFAULT_TENANT_MODE: tenantless
+      WEKNORA_TENANT_SELF_SERVICE_CREATION_ENABLED: "false"
+      WEKNORA_TENANT_ENABLE_RBAC: "true"
+      WEKNORA_TENANT_ENABLE_CROSS_TENANT_ACCESS: "false"
+      WEKNORA_TENANT_AUTO_CREATE_API_KEY: "false"
+      WEKNORA_TENANT_AUTO_ACCEPT_INVITATION: "false"
+      WEKNORA_INVITATION_TTL: 24h
+      WEKNORA_AUDIT_RETENTION_DAYS: "180"
+      WEKNORA_TENANT_DEFAULT_STORAGE_QUOTA_GB: "5"
+      WEKNORA_SANDBOX_DOCKER_ENABLED: "false"
+      WEKNORA_AGENT_TOOL_APPROVAL_FAIL_OPEN: "false"
+      BROWSERSKILL_BINARY: ""
+      DOCKER_HOST: ""
+      AUTO_MIGRATE: "false"
+      AUTO_RECOVER_DIRTY: "false"
+      DB_DRIVER: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:?DB_USER required}
+      DB_NAME: ${DB_NAME:?DB_NAME required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      RETRIEVE_DRIVER: postgres
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+      REDIS_DB: "0"
+      STREAM_MANAGER_TYPE: redis
+      STORAGE_TYPE: local
+      LOCAL_STORAGE_BASE_DIR: /data/files
+      DOCREADER_ADDR: docreader:50051
+      DOCREADER_TRANSPORT: grpc
+      OLLAMA_BASE_URL: http://ollama:11434
+      ENABLE_OLLAMA: "true"
+      NEO4J_ENABLE: "true"
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: ${BOYAN_NEO4J_PASSWORD:?BOYAN_NEO4J_PASSWORD required}
+      CONCURRENCY_POOL_SIZE: "1"
+      WEKNORA_ASYNQ_CORE_CONCURRENCY: "1"
+      WEKNORA_ASYNQ_POSTPROCESS_CONCURRENCY: "1"
+      WEKNORA_ASYNQ_ENRICHMENT_CONCURRENCY: "1"
+      WEKNORA_ASYNQ_MAINTENANCE_CONCURRENCY: "1"
+      WEKNORA_ASYNQ_SHARED_CONCURRENCY: "1"
+      WEKNORA_WIKI_ASYNQ_CONCURRENCY: "1"
+      WEKNORA_MODEL_MAX_CONCURRENCY: "2"
+      WEKNORA_CHAT_ATTACHMENT_OCR_CONCURRENCY: "1"
+      MAX_FILE_SIZE_MB: "50"
+      MAX_SKILL_BUNDLE_SIZE_MB: "50"
+      GRPC_AUTH_TOKEN: ${GRPC_AUTH_TOKEN:?GRPC_AUTH_TOKEN required}
+      SYSTEM_AES_KEY: ${SYSTEM_AES_KEY:?SYSTEM_AES_KEY required}
+      SYSTEM_SIGNING_KEY: ${SYSTEM_SIGNING_KEY:?SYSTEM_SIGNING_KEY required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET required}
+      SSRF_DNS_WHITELIST_ONLY: "true"
+      SSRF_WHITELIST: ""
+      SSRF_WHITELIST_EXTRA: api.deepseek.com,open.feishu.cn,ollama,document-renderer
+      WEKNORA_TRUSTED_PROXIES: 10.239.80.3/32
+      APP_EXTERNAL_URL: ${PUBLIC_ORIGIN:-http://193.112.17.218}
+      FRONTEND_BASE_URL: ${PUBLIC_ORIGIN:-http://193.112.17.218}
+      BRANDING_CONFIG: /app/branding/brand.json
+      BUILTIN_MODELS_CONFIG: /app/config/builtin_models.local.yaml
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY required}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL_NAME: ${DEEPSEEK_MODEL_NAME:-deepseek-chat}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-bge-m3:latest}
+      WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL: ${WEKNORA_BOOTSTRAP_SYSTEM_ADMIN_EMAIL:-liuweijian@boyantech.xyz}
+      FEISHU_DOCX_PARSE_MODE: export
+      BOYAN_DOCUMENT_RENDERER_URL: http://document-renderer:8091
+      BOYAN_DOCUMENT_RENDERER_TOKEN: ${BOYAN_DOCUMENT_RENDERER_TOKEN:?BOYAN_DOCUMENT_RENDERER_TOKEN required}
+      BOYAN_PRESETS_ROOT: /app/presets/boyan/v1
+      BOYAN_SKILLS_ROOT: /app/skills/boyan
+      BOYAN_PPT_TEMPLATE_VERSION: boyan-v2
+    volumes:
+      - data-files:/data/files
+      - docreader-tmp:/tmp/docreader:ro
+      - ./config/config.yaml:/app/config/config.yaml:ro
+      - ./config/builtin_models.local.yaml:/app/config/builtin_models.local.yaml:ro
+    networks:
+      web:
+        ipv4_address: 10.239.80.4
+      backend: {}
+      outbound: {}
+      graph: {}
+      render: {}
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]
+    cpus: 1.5
+    mem_limit: 1024m
+    pids_limit: 256
+    stop_grace_period: 2m
+    healthcheck:
+      test: [CMD, curl, -fsS, http://127.0.0.1:8080/health]
+      interval: 15s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      docreader:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      document-renderer:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  docreader:
+    <<: *runtime
+    image: wechatopenai/weknora-docreader:v0.8.2@sha256:3c36e7e738ba515315523876d8041f9bb02809145a4e3b331e2550e4bff98b7a
+    environment:
+      TZ: Asia/Shanghai
+      LOG_LEVEL: WARNING
+      DOCREADER_IMAGE_OUTPUT_DIR: /tmp/docreader
+      MAX_FILE_SIZE_MB: "50"
+      DOCREADER_GRPC_MAX_WORKERS: "1"
+      DOCREADER_PDF_RENDER_MAX_WORKERS: "1"
+      DOCREADER_PDF_RENDER_PARALLELISM: "1"
+      DOCREADER_MARKITDOWN_MAX_WORKERS: "1"
+      DOCREADER_ODL_HYBRID: "off"
+      GRPC_AUTH_TOKEN: ${GRPC_AUTH_TOKEN:?GRPC_AUTH_TOKEN required}
+      SSRF_DNS_WHITELIST_ONLY: "true"
+      SSRF_WHITELIST_EXTRA: open.feishu.cn
+    volumes:
+      - docreader-tmp:/tmp/docreader
+    networks: [backend]
+    cap_drop: [ALL]
+    cpus: 1
+    mem_limit: 768m
+    pids_limit: 192
+    healthcheck:
+      test: [CMD, grpc_health_probe, -addr=localhost:50051]
+      interval: 15s
+      timeout: 5s
+      retries: 18
+      start_period: 60s
+
+  postgres:
+    <<: *runtime
+    image: paradedb/paradedb:v0.22.6-pg17@sha256:58bf87d2a6f1e72f56590b0f0ae1467e82c3f99ca203dde646672c8ac13148b2
+    command: [postgres, -c, shared_buffers=128MB, -c, work_mem=8MB, -c, maintenance_work_mem=128MB, -c, max_connections=60]
+    environment:
+      POSTGRES_USER: ${DB_USER:?DB_USER required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      POSTGRES_DB: ${DB_NAME:?DB_NAME required}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [backend]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    cpus: 1
+    mem_limit: 768m
+    pids_limit: 192
+    shm_size: 128m
+    stop_grace_period: 2m
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 15s
+      timeout: 5s
+      retries: 18
+
+  redis:
+    <<: *runtime
+    image: redis:7.0-alpine@sha256:c9d92d840fd011c908f040592857c724ae6d877f2aba5c40ad963276507386b2
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD required}
+    entrypoint: [/bin/sh, /etc/boyankb/redis-entrypoint.sh]
+    volumes:
+      - redis-data:/data
+      - ./deployment/tencent/redis-entrypoint.sh:/etc/boyankb/redis-entrypoint.sh:ro
+    tmpfs:
+      - /run:rw,nosuid,nodev,noexec,mode=1777,size=4m
+    networks: [backend]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID]
+    cpus: 0.5
+    mem_limit: 192m
+    pids_limit: 64
+    stop_grace_period: 1m
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 15s
+      timeout: 5s
+      retries: 12
+
+  ollama:
+    <<: *runtime
+    image: ollama/ollama:0.18.2@sha256:5a5d014aa774f78ebe1340c0d4afc2e35afc12a2c3b34c84e71f78ea20af4ba3
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: 5m
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_MAX_QUEUE: "8"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks: [backend]
+    cap_drop: [ALL]
+    cpus: 2
+    mem_limit: 2048m
+    pids_limit: 192
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+
+  document-renderer:
+    <<: *runtime
+    image: boyankb/document-renderer:boyan-v2-delivery-v1@sha256:b874335fc84e984444d12ffb50644d3b395f8ff4344152a9f563337d816bb49a
+    environment:
+      BOYAN_DOCUMENT_RENDERER_TOKEN: ${BOYAN_DOCUMENT_RENDERER_TOKEN:?BOYAN_DOCUMENT_RENDERER_TOKEN required}
+    read_only: true
+    user: "65532:65532"
+    cap_drop: [ALL]
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=384m,mode=1777
+    networks: [render]
+    cpus: 1
+    mem_limit: 768m
+    pids_limit: 96
+
+  neo4j:
+    <<: *runtime
+    image: neo4j:2025.10.1@sha256:155c8aad10d5c838bc3bbc476c0418779086547822acb214ec5e3d49ba336907
+    environment:
+      NEO4J_AUTH: neo4j/${BOYAN_NEO4J_PASSWORD:?BOYAN_NEO4J_PASSWORD required}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_allowlist: apoc.merge.node,apoc.merge.relationship,apoc.coll.union,apoc.periodic.iterate
+      NEO4J_dbms_security_procedures_unrestricted: apoc.periodic.iterate
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 256m
+      NEO4J_server_bolt_listen__address: 0.0.0.0:7687
+      NEO4J_server_http_enabled: "false"
+      NEO4J_server_https_enabled: "false"
+      NEO4J_dbms_usage__report_enabled: "false"
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    networks: [graph]
+    cpus: 1
+    mem_limit: 1280m
+    pids_limit: 256
+    stop_grace_period: 2m
+    healthcheck:
+      test: [CMD-SHELL, 'NEO4J_USERNAME=neo4j NEO4J_PASSWORD="$${NEO4J_AUTH#*/}" cypher-shell -a bolt://127.0.0.1:7687 "RETURN 1" >/dev/null 2>&1']
+      interval: 30s
+      timeout: 30s
+      retries: 12
+      start_period: 180s
+
+networks:
+  edge: {}
+  web:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.239.80.0/24
+  backend:
+    internal: true
+  graph:
+    internal: true
+  render:
+    internal: true
+  outbound: {}
+
+volumes:
+  postgres-data: {}
+  redis-data: {}
+  data-files: {}
+  docreader-tmp: {}
+  ollama-data: {}
+  neo4j-data: {}
+  neo4j-logs: {}

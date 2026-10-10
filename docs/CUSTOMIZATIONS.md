@@ -328,3 +328,19 @@
 已实际完成在线 PG custom dump、`.env` 与指定 KB 配置快照，通过 age 解密认证、组件摘要及 `pg_restore --list`；没有恢复原库。Neo4j 冷备 `neo4j-cold-20261010a.age` 已恢复至全新 `boyankb-restore-graph-20261010c`，文件清单及 `neo4j`、`system` 两库离线一致性检查全部通过；报告为 `temp/graph-backup/neo4j-restore-20261010c.json`。a、b 失败目标卷保留，源服务及原卷未被恢复工具修改。此次不启动恢复 DBMS/应用，九服务整站恢复仍为**未验证**。图谱 API、最终镜像和真实抽取结果以 [本轮验收](12-skill-graph-prompts.md) 为准。
 
 升级时核对原生技能路由、开通记录锁、抽取队列和工作流版本边界，保留六份提示词 COPY。不要修改已安装 v1 指南摘要来做界面翻译，不要移除七服务备份保护来迁就新增服务。当前备份命令与维护顺序见 [局部快照与图谱冷备](graph-partial-backup.md)。
+
+## 腾讯云独立内部测试部署
+
+日期：2026-10-10。分支：`feat/tencent-cloud-deployment`。
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `docker-compose.tencent.yml`、`deployment/tencent/{Caddyfile,frontend-entrypoint.sh,redis-entrypoint.sh,env.example,images.lock.json,validate-config.py}` | 将九服务和本地模型迁到4核8GB独立云主机，保留本机回退 | 独立项目和网络、回环入口、九镜像固定摘要、七数据卷、资源和任务并发限制；静态配置检查通过，实际数据与业务验收另记 |
+| `docker-compose.tencent-ip-https.yml`、`deployment/tencent/{Caddyfile.ip-https,validate-ip-https.py}` | 无域名内部测试也需要加密登录与来源限制 | LE IP短期证书、仅TCP443公网发布、HTTP来源白名单、专用证书卷与手动初始化；Caddy适配与静态验证通过，实际签发和续期分别验收 |
+| `scripts/{init-tencent-access,tencent-ssh,tencent-images,tencent-transfer}.py`、对应测试、`deployment/tencent/install-host.sh` | SSH信任、镜像版本与大文件传输必须可核验 | 专用公钥、控制台指纹固定、严格主机校验；镜像receipt、私有路径白名单、二进制断点续传与远端SHA256；不传输SSH私钥或Cloudflare令牌 |
+| `scripts/{tencent-snapshot,tencent-restore}.py`、对应测试 | 旧七服务备份不能覆盖当前Redis、Neo4j与模型缓存 | 新格式一致性快照、新云卷恢复、逐文件库存和数据摘要、失败保留现场；原备份保护不修改，真实整栈恢复另记 |
+| `scripts/tencent-accounts.py`、对应测试 | 只替换云端两个测试账号，不能转移旧个人聊天 | 新UUID、新账号先登录验证、事务内移交总部资源、旧账号软退役与撤销令牌；计划摘要和有效备份门禁；空间频道历史保留 |
+| `scripts/tencent-acceptance.py`、对应测试 | 云端启动健康不等于账号、问答和文件可用 | 两身份与九技能检查、真实引用及任务绑定、大纲确认和审校后生成Word/PPT；Office目视和事实核对明确人工验收 |
+| `deployment/tencent/README.md`、`docs/13-tencent-deployment.md` | 区分准备、实际恢复与公网验收 | 命令、凭据位置、访问边界、资源限制和回退顺序；实际结果随部署更新 |
+
+升级时先在隔离测试环境构建新定制镜像，更新本配置的镜像锁与兼容性检查，再演练新快照格式恢复和账号权限。不能直接将七服务生产模板覆盖到本九服务部署，不得把数据恢复通过写成全部业务验收通过。公网入口、账号和数据以 [腾讯云部署记录](13-tencent-deployment.md) 为准。
