@@ -1193,7 +1193,7 @@ onMounted(async () => {
 .login-layout--compact .form-section {
   flex: 1;
   align-items: center;
-  padding: 80px 24px 24px;
+  padding: 108px 24px 40px;
 }
 
 .login-layout--compact .form-panel {
@@ -1201,41 +1201,6 @@ onMounted(async () => {
 }
 
 .login-layout--compact {
-  .form-card {
-    padding: 24px 32px;
-  }
-
-  .form-header {
-    margin-bottom: 16px;
-  }
-
-  .form-hint {
-    margin-top: 8px;
-    padding: 6px 10px;
-  }
-
-  .form-content :deep(.t-form__item) {
-    margin-bottom: 8px;
-  }
-
-  .form-content :deep(.t-form__label--top) {
-    min-height: 20px;
-    line-height: 20px;
-    margin-bottom: 4px;
-  }
-
-  .submit-button {
-    margin: 8px 0 12px;
-  }
-
-  .register-cta {
-    margin-top: 0;
-  }
-
-  .register-cta__divider {
-    margin-bottom: 10px;
-  }
-
   .form-footer {
     display: flex;
     flex-wrap: wrap;
@@ -1248,17 +1213,6 @@ onMounted(async () => {
       margin-left: 0;
       white-space: nowrap;
     }
-  }
-
-  .login-features {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 16px;
-    margin-top: 16px;
-  }
-
-  .login-features .feature-item {
-    margin-bottom: 0;
   }
 }
 
@@ -1619,6 +1573,14 @@ onMounted(async () => {
   :deep(.t-form-item__control) {
     width: 100%;
   }
+
+  :deep(.t-form__controls > .t-input__extra) {
+    position: static;
+    height: auto;
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 .submit-button {
@@ -1841,14 +1803,6 @@ onMounted(async () => {
 }
 
 @media (max-width: 480px) {
-  .login-layout--compact .form-section {
-    padding: 80px 16px 24px;
-  }
-
-  .login-layout--compact .form-card {
-    padding: 24px 20px;
-  }
-
   .animated-bg {
     display: none;
   }

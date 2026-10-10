@@ -281,3 +281,14 @@
 | `internal/{teaminvitation,businessworkflow/team*,handler/business_team*}`、`internal/router/routes_business_workflow.go`、`internal/{types,application/repository,application/service}/tenant_invitation.go`、`internal/handler/tenant_invitation.go`、`migrations/{versioned,sqlite}/000113_team_invitations.*.sql` 及对应测试 | Viewer 负责人需要有限邀请权，不能提升为空间 Owner | 独立负责人绑定、只发本空间 Viewer、接受时复核撤权、链接仅创建响应返回、Owner 旧流程兼容；定向 Go 包及 SQLite 迁移往返通过 |
 
 团队入口升级时同时验证后端 `available` 与请求空间绑定，禁止用单纯前端角色判断代替授权。操作方式及人工界面检查见 `docs/trial-team.md`。
+
+## 登录布局恢复
+
+日期：2026-10-10。分支：`feat/login-layout-restore`。
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `frontend/src/views/auth/Login.vue` | 紧凑字段间距使绝对定位的红色校验提示被下一项遮住 | 恢复压缩前的布局间距、默认字段尺寸与纵向说明；登录及邀请注册提示参与自然布局并允许换行；匿名浏览器核对错误边界、短屏滚动及长文案 |
+| `docs/09-login-layout.md` | 需要解释总部账号的伙伴入口和记录布局修复 | 记录真实 Owner 成员关系、开通代码及私人内容边界；本轮不更改授权 |
+
+升级 TDesign 后核对 `.t-form__controls > .t-input__extra` 是否仍为校验提示节点，验证错误状态而非仅检查空白登录页。2026-10-08 的紧凑布局记录属于历史验收，本次恢复覆盖其中的压缩间距。
