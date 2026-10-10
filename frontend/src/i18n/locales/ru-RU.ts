@@ -1,7 +1,9 @@
 import { businessSkillsRuRU } from '../businessSkills'
+import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessTeam: businessTeamMessages['ru-RU'],
   businessSkills: businessSkillsRuRU,
   toolbox: {
     "title": "Инструменты",

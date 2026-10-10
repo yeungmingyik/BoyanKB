@@ -267,6 +267,7 @@ import {
 } from './sessionSidebarSourceFilter';
 import { logout as logoutApi } from '@/api/auth';
 import { useMenuStore } from '@/stores/menu';
+import { useBusinessTeamStore } from '@/stores/businessTeam';
 import { useSessionActivityStore } from '@/stores/sessionActivity';
 import { useAuthStore } from '@/stores/auth';
 import { useDeploymentCapabilitiesStore } from '@/stores/deploymentCapabilities';
@@ -315,6 +316,7 @@ const sessionActivity = useSessionActivityStore();
 const { entries: sessionActivityEntries } = storeToRefs(sessionActivity);
 let sessionActivityTimer: ReturnType<typeof setInterval> | undefined;
 const authStore = useAuthStore();
+const businessTeam = useBusinessTeamStore();
 const deploymentCapabilities = useDeploymentCapabilitiesStore();
 const toolboxPreview = computed(() => TOOLBOX_ITEMS.filter((item) => canAccessToolboxSection(item.key, {
     currentTenantRole: authStore.currentTenantRole,
@@ -450,6 +452,8 @@ const isMenuItemActive = (itemPath: string): boolean => {
             return currentRoute === 'agentList';
         case 'toolbox':
             return currentRoute === 'toolbox';
+        case 'team':
+            return currentRoute === 'businessTeam';
         case 'artifacts':
             return currentRoute === 'artifactLibrary';
         case 'organizations':
@@ -483,7 +487,9 @@ const getIconActiveState = (itemPath: string) => {
 const TOP_MENU_PATHS = new Set(['creatChat', 'knowledge-bases', 'artifacts', 'agents', 'toolbox', 'organizations']);
 
 const topMenuItems = computed<MenuItem[]>(() => {
-    return (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) => TOP_MENU_PATHS.has(item.path));
+    const items = (visibleMenuArr.value as unknown as MenuItem[]).filter((item: MenuItem) => TOP_MENU_PATHS.has(item.path));
+    if (businessTeam.available) items.push({ title: t('businessTeam.title'), path: 'team', icon: 'organization' });
+    return items;
 });
 
 const bottomMenuItems = computed<MenuItem[]>(() => {

@@ -1,7 +1,9 @@
 import { businessSkillsJaJP } from '../businessSkills'
+import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessTeam: businessTeamMessages['ja-JP'],
   businessSkills: businessSkillsJaJP,
   toolbox: {
     "title": "ツールボックス",

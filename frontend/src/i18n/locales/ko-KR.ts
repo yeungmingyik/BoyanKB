@@ -1,7 +1,9 @@
 import { businessSkillsKoKR } from '../businessSkills'
+import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessTeam: businessTeamMessages['ko-KR'],
   businessSkills: businessSkillsKoKR,
   toolbox: {
     "title": "도구함",

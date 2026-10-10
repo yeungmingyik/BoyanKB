@@ -1,5 +1,5 @@
 <template>
-    <div class="main" :class="{ 'main--chat': isChatDropRoute() }" ref="dropzone" :style="{ '--sidebar-width': `${uiStore.sidebarDisplayWidth}px` }">
+    <div class="main" :class="{ 'main--chat': isChatDropRoute(), 'main--team': route.name === 'businessTeam' }" ref="dropzone" :style="{ '--sidebar-width': `${uiStore.sidebarDisplayWidth}px` }">
         <Menu></Menu>
         <div v-if="isRouterAlive" class="platform-route-outlet">
             <RouterView />
@@ -269,7 +269,8 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
-    .main.main--chat {
+    .main.main--chat,
+    .main.main--team {
         min-width: 0;
     }
 

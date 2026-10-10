@@ -264,3 +264,12 @@
 | `docker-compose.delivery-local.yml` | 本机交付修复镜像需与旧生产锁分开核验 | app、frontend、渲染器使用本机固定摘要覆盖；只更新 weknora-local，云端与生产配置未更改 |
 
 升级时检查聊天工具事件字段和技能详情响应契约，重跑状态展示测试、类型检查与构建，再用普通伙伴身份验证中文说明、真实错误、确认和下载。不要改不可变的 `skills/boyan` 或 `presets/boyan/v1` 来调整界面用语。
+
+## 企业试用与员工邀请
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `frontend/src/api/{business-team,team-transport}.ts`、`frontend/src/composables/businessTeam*`、`frontend/src/stores/businessTeam.ts`、`frontend/src/views/team/TeamInvitations.vue` | 伙伴负责人需要邀请员工，同时保持资料只读 | 服务端能力控制入口；固定 Viewer、仅内存展示新链接、切空间清空及过期响应隔离；8 项状态及请求测试 |
+| `frontend/src/components/menu.vue`、`frontend/src/router/index.ts`、`frontend/src/views/platform/index.vue`、`frontend/src/i18n/{businessTeam,locales/*}.ts` | 团队功能需要中文导航和移动端布局 | 增加 `/platform/team`，按能力显示导航；团队页允许窄屏收缩；类型检查及 13 项 i18n 检查 |
+
+团队入口升级时同时验证后端 `available` 与请求空间绑定，禁止用单纯前端角色判断代替授权。操作方式及人工界面检查见 `docs/trial-team.md`。

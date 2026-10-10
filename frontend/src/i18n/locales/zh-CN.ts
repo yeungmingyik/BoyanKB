@@ -1,7 +1,9 @@
 import { businessSkillsZhCN } from '../businessSkills'
+import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  businessTeam: businessTeamMessages['zh-CN'],
   businessSkills: businessSkillsZhCN,
   toolbox: {
     "title": "工具箱",

@@ -147,6 +147,12 @@ const router = createRouter({
           meta: { requiresInit: true, requiresAuth: true }
         },
         {
+          path: "team",
+          name: "businessTeam",
+          component: () => import("../views/team/TeamInvitations.vue"),
+          meta: { requiresInit: true, requiresAuth: true }
+        },
+        {
           path: "agents",
           name: "agentList",
           component: () => import("../views/agent/AgentList.vue"),
