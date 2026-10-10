@@ -1,0 +1,53 @@
+services:
+  app:
+    environment:
+      NEO4J_ENABLE: "true"
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: ${BOYAN_NEO4J_PASSWORD:?Set BOYAN_NEO4J_PASSWORD in .env}
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      boyan-graph: {}
+
+  neo4j:
+    image: neo4j:2025.10.1@sha256:155c8aad10d5c838bc3bbc476c0418779086547822acb214ec5e3d49ba336907
+    ports: !reset []
+    environment: !override
+      NEO4J_AUTH: neo4j/${BOYAN_NEO4J_PASSWORD:?Set BOYAN_NEO4J_PASSWORD in .env}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_allowlist: apoc.merge.node,apoc.merge.relationship,apoc.coll.union,apoc.periodic.iterate
+      NEO4J_dbms_security_procedures_unrestricted: apoc.periodic.iterate
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 256m
+      NEO4J_server_bolt_listen__address: 0.0.0.0:7687
+      NEO4J_server_http_enabled: "false"
+      NEO4J_server_https_enabled: "false"
+      NEO4J_dbms_usage__report_enabled: "false"
+    volumes: !override
+      - neo4j-data-local:/data
+      - neo4j-logs-local:/logs
+    networks: !override
+      boyan-graph: {}
+    mem_limit: 2g
+    cpus: 1
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "NEO4J_USERNAME=neo4j NEO4J_PASSWORD=\"$${NEO4J_AUTH#*/}\" cypher-shell -a bolt://127.0.0.1:7687 'RETURN 1' >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 30s
+      retries: 12
+      start_period: 180s
+
+networks:
+  boyan-graph:
+    internal: true
+
+volumes:
+  neo4j-data-local:
+  neo4j-logs-local:

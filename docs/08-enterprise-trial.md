@@ -4,7 +4,9 @@
 
 本机 Docker 运行 BoyanKB，专用 Cloudflare Tunnel 将 `kb.boyantech.xyz` 转发到 `127.0.0.1:8090`。域名仍由既有 Cloudflare DNS 管理；不需要先购买 ECS。本机、Docker Desktop 和隧道进程必须持续运行。Windows 休眠、断网或退出 Docker 都会中断访问。
 
-公网入口是 HTTPS。应用、前端和网关的宿主端口仅监听 loopback；数据库、Redis、模型服务和文档渲染器不发布宿主端口。公网禁止公开注册、系统管理接口、原生脚本技能管理、沙箱执行和调试入口。本机管理员通过 `127.0.0.1:8088` 管理平台，合作伙伴使用域名。
+公网入口是 HTTPS。应用、前端和网关的宿主端口仅监听 loopback；数据库、Redis、模型服务、Neo4j 和文档渲染器不发布宿主端口。公网禁止公开注册、系统管理接口、原生技能安装执行、沙箱执行和调试入口。技能目录与文件查看已按现有角色鉴权开放；管理员可保存技能包，普通伙伴继续使用业务技能。本机管理员通过 `127.0.0.1:8088` 管理平台，合作伙伴使用域名。
+
+2026-10-10 起，本机完整覆盖链末尾追加 `docker-compose.graph-local.yml --profile neo4j`，镜像以 `deployment/trial/images.lock.json` 和 `docker-compose.trial.yml` 为准。技能管理、中文模板、图谱补建及采购建议见 [本轮配置与验收](12-skill-graph-prompts.md)。增加 Neo4j 后旧七服务备份脚本会拒绝运行，不应移除其保护；新的局部备份范围见 [图谱冷备](graph-partial-backup.md)。
 
 ## 登录入口
 
