@@ -37,6 +37,17 @@ docker compose --env-file .env.tencent -f docker-compose.tencent.yml ps
 
 启动前必须已向新卷恢复数据库、对象文件、Redis、Neo4j 和 Ollama 模型，并迁移 `config/config.yaml`、`config/builtin_models.local.yaml`。`AUTO_MIGRATE=false`，本配置不会初始化或升级应用 schema。Ollama 仅接内部网络，模型须从本机缓存迁移，不能依赖容器在线下载。
 
+配置传输文件默认由 root 以0600保存，但挂载给容器的四个服务配置需要指定组读取。app 入口切换到 UID/GID 1000；网关以65532运行。`tencent-restore.py` 在核验并复制配置后，将两份 YAML 设置为 `root:1000 0640`，将 `deployment/tencent/Caddyfile`、`Caddyfile.ip-https` 设置为 `root:65532 0640`。仅处理这四个普通文件，拒绝软硬链接，不递归改变目录。宿主目录保持0700，Docker 使用单文件只读挂载；`.env.tencent`、快照的 `runtime.env` 和其余密钥仍仅 root 可读。将所有配置一律保留为 root:root 0600，会导致非 root 的 app 或网关启动时权限不足。
+
+```bash
+stat -c '%U %g %a %n' config/config.yaml config/builtin_models.local.yaml deployment/tencent/Caddyfile deployment/tencent/Caddyfile.ip-https .env.tencent
+python3 -B scripts/test_tencent_restore.py
+```
+
+前两项应为组1000/0640，中间两项为组65532/0640，环境文件仍为root/0600。恢复程序只调整文件权限，不修改已核验的配置内容。
+
+恢复的Redis目录属于999:1000，AOF子目录为0700。受限root没有绕过目录权限的能力，因此自定义入口在生成0600认证配置后先执行 `gosu redis`，再运行官方入口；不扩大容器capabilities，不递归改写已有数据权限。该路径已在无网临时容器验证认证、匿名拒绝、读写和AOF持久化，并在云端实际恢复健康。
+
 公开注册关闭，账号由管理员邀请。原生技能目录接口保留，任意技能执行、会话沙箱、平台管理和本机浏览器接口由入口限制。业务文档生成通过独立内部渲染服务执行。
 
 ## 资源与访问边界
@@ -100,3 +111,7 @@ python3 -B scripts/tencent-transfer.py upload --source temp/tencent-cloud/config
 断线后重跑原上传命令：脚本核对 `.partial` 元数据及本地/远端前缀SHA256后续传，完成时重新计算远端完整SHA256，并以不覆盖目标的原子改名提交。完成文件摘要相同则直接跳过，摘要不同则停止，保留已有文件；不要手工覆盖冲突文件或混用其他上传工具修改 `.partial`。每次运行都会重新验证本地归档，首个上传字节前可能有一段哈希计算时间。
 
 2026-10-10 传输脚本在本机通过18项适用测试，另外6项Linux专用协议测试在隔离、无网络的Linux容器内通过，合计24项。Linux测试实际验证了二进制中断、续传、校验、原子完成、重复跳过、冲突拒绝和只读探测；不代表已将业务文件上传到云服务器。
+
+## 当前上线状态
+
+2026-10-10后续已完成真实传输、云端数据恢复、九服务健康检查、两正式账号交接和可信IP HTTPS登录。上文静态测试及准备阶段记录不代表最终状态；以 [部署执行记录](../../docs/13-tencent-deployment.md) 为准。用户要求暂缓业务验收，问答及Office生成尚未在云端执行，附加图谱解析检查仍需排查，证书续期待跨周期验证。

@@ -3,7 +3,9 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import stat
 import tarfile
+from types import SimpleNamespace
 import unittest
 from unittest import mock
 
@@ -205,6 +207,45 @@ class TencentRestoreTests(unittest.TestCase):
         with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=1, stdout=b'', stderr=b'secret')):
             with self.assertRaisesRegex(MOD.RestoreError, '^COMMAND_FAILED$'):
                 MOD.command(['docker', 'version'])
+
+    def test_service_files_change_only_four_fixed_groups_and_modes(self):
+        expected = [('config/config.yaml', 1000), ('config/builtin_models.local.yaml', 1000), ('deployment/tencent/Caddyfile', 65532), ('deployment/tencent/Caddyfile.ip-https', 65532)]
+        states = []
+        for _, group in expected:
+            states.extend([SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_uid=0, st_gid=0, st_nlink=1), SimpleNamespace(st_mode=stat.S_IFREG | 0o640, st_uid=0, st_gid=group, st_nlink=1)])
+        with mock.patch.object(MOD, 'safe_path', side_effect=lambda path: path) as paths, mock.patch.object(MOD.os, 'O_NOFOLLOW', 0x20000, create=True), mock.patch.object(MOD.os, 'open', side_effect=range(10, 14)) as opened, mock.patch.object(MOD.os, 'fstat', side_effect=states), mock.patch.object(MOD.os, 'fchown', create=True) as owner, mock.patch.object(MOD.os, 'fchmod', create=True) as mode, mock.patch.object(MOD.os, 'close') as closed:
+            MOD.prepare_service_files()
+        self.assertEqual(paths.call_args_list, [mock.call(MOD.ROOT / relative) for relative, _ in expected])
+        self.assertEqual([call.args[0] for call in opened.call_args_list], [MOD.ROOT / relative for relative, _ in expected])
+        self.assertTrue(all(call.args[1] & 0x20000 for call in opened.call_args_list))
+        self.assertEqual(owner.call_args_list, [mock.call(10 + index, 0, group) for index, (_, group) in enumerate(expected)])
+        self.assertEqual(mode.call_args_list, [mock.call(descriptor, 0o640) for descriptor in range(10, 14)])
+        self.assertEqual(closed.call_args_list, [mock.call(descriptor) for descriptor in range(10, 14)])
+        self.assertFalse(any('.env' in str(call.args[0]) for call in opened.call_args_list))
+
+    def test_service_files_validate_all_paths_before_permission_changes(self):
+        calls = [MOD.ROOT / relative for relative in list(MOD.SERVICE_FILE_GROUPS)[:3]]
+        with mock.patch.object(MOD, 'safe_path', side_effect=[*calls, MOD.RestoreError('SYMLINK_PATH_REJECTED')]), mock.patch.object(MOD.os, 'open') as opened:
+            with self.assertRaisesRegex(MOD.RestoreError, 'SYMLINK_PATH_REJECTED'):
+                MOD.prepare_service_files()
+        opened.assert_not_called()
+
+    def test_service_files_reject_nonroot_hardlinks_and_nonregular_files(self):
+        for mode, owner, links in ((stat.S_IFREG | 0o600, 1000, 1), (stat.S_IFREG | 0o600, 0, 2), (stat.S_IFLNK | 0o600, 0, 1)):
+            details = SimpleNamespace(st_mode=mode, st_uid=owner, st_gid=0, st_nlink=links)
+            with self.subTest(mode=mode, owner=owner, links=links), mock.patch.object(MOD, 'safe_path', side_effect=lambda path: path), mock.patch.object(MOD.os, 'O_NOFOLLOW', 0x20000, create=True), mock.patch.object(MOD.os, 'open', return_value=10), mock.patch.object(MOD.os, 'fstat', return_value=details), mock.patch.object(MOD.os, 'fchown', create=True) as chown, mock.patch.object(MOD.os, 'fchmod', create=True) as chmod, mock.patch.object(MOD.os, 'close') as close:
+                with self.assertRaisesRegex(MOD.RestoreError, 'SERVICE_CONFIGURATION_FILE_REJECTED'):
+                    MOD.prepare_service_files()
+                chown.assert_not_called()
+                chmod.assert_not_called()
+                close.assert_called_once_with(10)
+
+    def test_service_files_verify_effective_permissions(self):
+        details = SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_uid=0, st_gid=0, st_nlink=1)
+        with mock.patch.object(MOD, 'safe_path', side_effect=lambda path: path), mock.patch.object(MOD.os, 'O_NOFOLLOW', 0x20000, create=True), mock.patch.object(MOD.os, 'open', return_value=10), mock.patch.object(MOD.os, 'fstat', return_value=details), mock.patch.object(MOD.os, 'fchown', create=True), mock.patch.object(MOD.os, 'fchmod', create=True), mock.patch.object(MOD.os, 'close') as close:
+            with self.assertRaisesRegex(MOD.RestoreError, 'SERVICE_CONFIGURATION_PERMISSION_MISMATCH'):
+                MOD.prepare_service_files()
+        close.assert_called_once_with(10)
 
     def test_verify_only_cannot_apply_or_read_dump_into_database(self):
         value = manifest()

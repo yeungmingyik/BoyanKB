@@ -31,6 +31,7 @@ BINDS = {
     'redis': {'/etc/boyankb/redis-entrypoint.sh': 'deployment/tencent/redis-entrypoint.sh'},
 }
 MOUNTS = {'postgres': {'/var/lib/postgresql/data': 'postgres-data'}, 'redis': {'/data': 'redis-data'}, 'app': {'/data/files': 'data-files', '/tmp/docreader': 'docreader-tmp'}, 'docreader': {'/tmp/docreader': 'docreader-tmp'}, 'ollama': {'/root/.ollama': 'ollama-data'}, 'neo4j': {'/data': 'neo4j-data', '/logs': 'neo4j-logs'}}
+SERVICE_FILE_GROUPS = {'config/config.yaml': 1000, 'config/builtin_models.local.yaml': 1000, 'deployment/tencent/Caddyfile': 65532, 'deployment/tencent/Caddyfile.ip-https': 65532}
 
 
 class RestoreError(Exception):
@@ -274,6 +275,21 @@ def copy_identical(source, target):
         os.fsync(writer.fileno())
 
 
+def prepare_service_files():
+    paths = [(safe_path(ROOT / relative), group) for relative, group in SERVICE_FILE_GROUPS.items()]
+    for path, group in paths:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            details = os.fstat(descriptor)
+            require(stat.S_ISREG(details.st_mode) and details.st_uid == 0 and details.st_nlink == 1, 'SERVICE_CONFIGURATION_FILE_REJECTED')
+            os.fchown(descriptor, 0, group)
+            os.fchmod(descriptor, 0o640)
+            details = os.fstat(descriptor)
+            require(details.st_uid == 0 and details.st_gid == group and stat.S_IMODE(details.st_mode) == 0o640, 'SERVICE_CONFIGURATION_PERMISSION_MISMATCH')
+        finally:
+            os.close(descriptor)
+
+
 def helper_args(image, volume, script, readonly=False):
     require(volume in {PROJECT + '_' + value for value in VOLUMES} and re.fullmatch(r'sha256:[a-f0-9]{64}', image), 'HELPER_IMAGE_OR_VOLUME_REJECTED')
     mount = 'type=volume,src=' + volume + ',dst=/restore,volume-nocopy' + (',readonly' if readonly else '')
@@ -418,6 +434,7 @@ def apply_restore(manifest, inventories, values, manifest_hash, report_path):
             copy_identical(SOURCE / source, ROOT / target)
             entry = manifest['components'][source]
             require(file_digest(ROOT / target) == {'size': entry['size'], 'sha256': entry['sha256']}, 'COPIED_CONFIGURATION_DIGEST_MISMATCH')
+        prepare_service_files()
         fresh_target()
         for logical in sorted(VOLUMES):
             volume = PROJECT + '_' + logical
