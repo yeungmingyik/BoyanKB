@@ -1,0 +1,50 @@
+{
+    admin off
+    auto_https off
+    log default {
+        format filter {
+            wrap json
+            fields {
+                request>uri delete
+                request>headers delete
+            }
+        }
+    }
+}
+
+:8090 {
+    @wrongHost not host kb.boyantech.xyz
+    respond @wrongHost 404
+
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+
+    request_body {
+        max_size 52MB
+    }
+
+    @registration {
+        method POST
+        path /api/v1/auth/register
+    }
+    respond @registration 403
+
+    @internal path /swagger* /metrics /debug/* /api/v1/local-browser /api/v1/local-browser/* /api/v1/system/admin /api/v1/system/admin/* /api/v1/auth/auto-setup /api/v1/auth/oidc/* /api/v1/skills /api/v1/skills/* /mcp /mcp/*
+    respond @internal 404
+
+    @sandbox path /api/v1/sessions/*/sandbox/* /api/v1/sandbox-configs /api/v1/sandbox-configs/*
+    respond @sandbox 403
+
+    reverse_proxy 10.239.70.3:80 {
+        header_up Host kb.boyantech.xyz
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-For {http.request.header.Cf-Connecting-Ip}
+        header_down Referrer-Policy no-referrer
+        header_down Cache-Control "private, no-store"
+        flush_interval -1
+    }
+}
