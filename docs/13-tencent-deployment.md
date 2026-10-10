@@ -49,11 +49,12 @@ python3 deployment/tencent/validate-config.py
 python3 deployment/tencent/validate-ip-https.py
 docker compose --env-file .env.tencent -f docker-compose.tencent.yml -f docker-compose.tencent-ip-https.yml ps
 python3 scripts/tencent-acceptance.py readonly
+python3 scripts/tencent-runtime.py
 python3 scripts/tencent-acceptance.py exercise
 curl --noproxy '*' -fSI https://193.112.17.218/login
 ```
 
-`readonly` 会登录和读取授权资料，不创建业务内容；登录本身会生成认证记录。`exercise` 以新成员身份创建中文业务会话、问答和 Word/PPT 文件并消耗模型额度，保留输出与报告，不自动删除。生成必须经过真实大纲确认和审校，不能绕过阻断。脚本的自动通过不能代替事实审查和原生 Office 打开检查。
+`readonly` 会登录和读取授权资料，不创建业务内容；登录本身会生成认证记录。`tencent-runtime.py` 核对九服务、图谱范围、APOC能力与并发配置，只写私有报告。`exercise` 以新成员身份创建中文业务会话、问答和 Word/PPT 文件并消耗模型额度，保留输出与报告，不自动删除。脚本逐次核对任务与大纲绑定，演练确认和审校，不能绕过阻断；自动点击确认不代替业务人员审阅。检索结果属于企业库不代表答案引用已经准确，脚本自动通过不代替事实审查和原生 Office 打开检查。
 
 需要人工验证：分别用两个账号在独立浏览器会话登录，核对仅总部成员关系、技能可用、成员不能管理团队；用 Word/PowerPoint 打开产物确认无修复提示及版面正常；逐条核对回答与来源；用知识库没有的问题确认明确说明缺少依据。从未加入白名单的另一网络访问应403，即使伪造转发头也应拒绝。续期窗口后再次核验证书更新。
 
@@ -61,4 +62,8 @@ curl --noproxy '*' -fSI https://193.112.17.218/login
 
 ## 执行记录
 
-2026-10-10：已核对 SSH 主机指纹并取得 root 访问；已安装 Docker 29.9.0、Compose 5.6.0。基础 Compose、HTTPS 覆盖和 Caddy 静态校验通过。镜像传输、整栈恢复、账号交接及公网 HTTPS 尚待运行结果更新。
+2026-10-10：已核对 SSH 主机指纹并取得 root 访问；已安装 Docker 29.9.0、Compose 5.6.0。基础 Compose、HTTPS 覆盖和 Caddy 静态校验通过。
+
+完整源快照 `temp/tencent-cloud/snapshots/migration-20261010b` 已生成，九个组件通过摘要与库存验证，源端九服务全部恢复健康。数据库76张表；企业库19文档、27分块、27向量；图谱384实体、326关系；保留一个约1.2GB的 `bge-m3:latest` 模型，模型内容摘要固定。
+
+首轮 `migration-20261010` 在PG格式校验失败，未生成成功manifest，保留供诊断，不用于恢复。已修复Windows缓冲文件句柄传递和Neo4j慢启动等待，28项快照回归测试通过。云端Docker Hub连接超时，采用本机导出的固定镜像包经SSH传输。整栈云端恢复、账号交接及公网HTTPS尚待运行结果更新。
