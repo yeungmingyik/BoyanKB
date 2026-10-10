@@ -258,5 +258,9 @@
 | `scripts/onboard-partner.py`、`presets/workspaces/headquarters.example.json` | 已有空间需要幂等开通且不能误覆盖配置 | 默认计划；总部不改成员、不建共享；已有沙箱只读验证、已存 Agent 校验不覆盖；授权、漂移与重跑测试 |
 | `scripts/audit-delivery.py` | 运行数据清理必须先列出具体对象 | 校验 Compose 项目与数据库服务，固定只读查询、脱敏输出、强验收标记与人工复核分开，无 apply 入口 |
 | `docker/Dockerfile.app-boyankb`、`deployment/document-renderer/Dockerfile.dockerignore` | 交付镜像不应携带验收包或无关本机上下文 | 应用仅复制预设运行文件，渲染器上下文白名单限定代码和模板；实际镜像构建及资源核对 |
+| `scripts/normalize-delivery-names.py`、`scripts/feishu-space-sync.py` | 总部及真实飞书源仍有本地验收命名 | 四个固定对象事务改名、默认计划、可逆恢复；同步兼容新旧名且保留来源标记与空间校验 |
+| `scripts/onboard-partner.py`、`scripts/test_onboard_partner.py` | 不可变预设的旧追问字段与 API 序列化不同，导致幂等重跑误报 | 仅适配已禁用的固定旧配置，不改版本摘要；真实重跑相同 ID，启用追问漂移仍拒绝 |
+| `frontend/src/views/{platform,chat}/index.vue`、`frontend/src/views/creatChat/creatChat.vue` | 手机宽度下聊天最小宽度导致输入框和文件卡裁切 | 仅聊天路由移动断点允许收缩、统一边距与输入框宽度；类型检查及 390px 浏览器几何和截图核对 |
+| `docker-compose.delivery-local.yml` | 本机交付修复镜像需与旧生产锁分开核验 | app、frontend、渲染器使用本机固定摘要覆盖；只更新 weknora-local，云端与生产配置未更改 |
 
 升级时检查聊天工具事件字段和技能详情响应契约，重跑状态展示测试、类型检查与构建，再用普通伙伴身份验证中文说明、真实错误、确认和下载。不要改不可变的 `skills/boyan` 或 `presets/boyan/v1` 来调整界面用语。

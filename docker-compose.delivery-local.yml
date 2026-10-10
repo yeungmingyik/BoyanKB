@@ -1,0 +1,10 @@
+services:
+  app:
+    image: boyankb/app:v0.8.2-delivery-v1@sha256:6d9d6babb4b08085bb15cdb78a7418c80bcac1b3a54babd85a2b3eda2ab2c7d1
+    pull_policy: never
+  frontend:
+    image: boyankb/frontend:v0.8.2-delivery-v2@sha256:db9c7bada464c8fe9929e91fda0084057edd041d7869e0cb74866918cd1fc421
+    pull_policy: never
+  document-renderer:
+    image: boyankb/document-renderer:boyan-v2-delivery-v1@sha256:b874335fc84e984444d12ffb50644d3b395f8ff4344152a9f563337d816bb49a
+    pull_policy: never

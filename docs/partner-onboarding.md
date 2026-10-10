@@ -1,5 +1,7 @@
 # 合作伙伴空间开通
 
+给已有空间开通时设置 `target_tenant_id`，执行者还必须是目标空间的 active Owner。总部设置 `target_tenant_id == hq_tenant_id`、`members: []`，不传 `contributor_email`，不新建账号、组织或共享；示例见 `presets/workspaces/headquarters.example.json`。已有空间必须事先禁用代码沙箱；脚本只验证现有策略，不覆盖它。已有智能体配置有差异时停止，不静默重置。总部开通实例及验证见 [合作伙伴交付审查](07-partner-delivery.md)。
+
 本流程为每个合作伙伴创建独立工作空间，由总部操作员保留 Owner；伙伴账号仅分配 Viewer 或 Contributor。总部与每个伙伴分别建立一个只有两个成员空间的组织，总部知识库以 viewer 权限共享，其他伙伴名称和资料不进入这个组织。
 
 执行者必须同时持有有效用户 JWT、SystemAdmin 身份和总部空间的 active Owner 成员资格。接口直接复核数据库权限，不依赖 RBAC 是否开启。普通管理员、Contributor、Viewer、空间 API Key 和平台 API Key 均不能调用开通接口。
