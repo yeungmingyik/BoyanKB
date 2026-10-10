@@ -1,4 +1,5 @@
 import contextlib
+import copy
 import io
 import json
 import pathlib
@@ -114,6 +115,67 @@ class FeishuSpaceSyncTests(unittest.TestCase):
 
     def scopes(self, status=2):
         return [{"scope_name": scope, "grant_status": status} for scope in sorted(MODULE["REQUIRED_SCOPES"])]
+
+    def managed_kb(self, name):
+        return {"id": "kb1", "name": name, "description": MODULE["KB_MARKER"], "type": "document",
+                "embedding_model_id": "local-embedding", "summary_model_id": "",
+                "indexing_strategy": {"vector_enabled": True, "keyword_enabled": True, "wiki_enabled": False, "graph_enabled": False}}
+
+    def test_managed_kb_accepts_old_and_new_names_without_recreating(self):
+        for name in MODULE["KB_NAMES"]:
+            kb = self.managed_kb(name)
+            responses = [[{"id": "local-embedding", "type": "Embedding", "source": "local", "status": "active", "name": "bge-m3:latest"}], [kb], kb]
+            client = Mock()
+            client.request.side_effect = [{"success": True, "data": value} for value in responses]
+            self.assertEqual(MODULE["knowledge_base"](client), kb)
+            self.assertTrue(all(call.args[1] == "GET" for call in client.request.call_args_list))
+
+    def test_managed_kb_refuses_conflicting_marker_unknown_name_and_duplicate_aliases(self):
+        for changes in ({"description": "another-owner"}, {"name": "another-space"}):
+            kb = self.managed_kb(MODULE["KB_NAME"])
+            kb.update(changes)
+            client = Mock()
+            client.request.side_effect = [{"success": True, "data": value} for value in [[{"id": "local-embedding", "type": "Embedding", "source": "local", "status": "active", "name": "bge-m3:latest"}], [kb], kb]]
+            with self.assertRaises(SafeError):
+                MODULE["knowledge_base"](client)
+        client = Mock()
+        client.request.side_effect = [{"success": True, "data": value} for value in [[{"id": "local-embedding", "type": "Embedding", "source": "local", "status": "active", "name": "bge-m3:latest"}], [self.managed_kb(name) for name in MODULE["KB_NAMES"]]]]
+        with self.assertRaises(SafeError):
+            MODULE["knowledge_base"](client)
+        self.assertEqual(client.request.call_count, 2)
+
+    def test_new_kb_uses_business_name_and_preserves_ownership_marker(self):
+        client = Mock()
+        client.request.side_effect = [{"success": True, "data": value} for value in [[{"id": "local-embedding", "type": "Embedding", "source": "local", "status": "active", "name": "bge-m3:latest"}], [], self.managed_kb(MODULE["KB_NAME"])]]
+        MODULE["knowledge_base"](client, create=True)
+        path, method, body = client.request.call_args.args
+        self.assertEqual((path, method), ("/api/v1/knowledge-bases", "POST"))
+        self.assertEqual(body["name"], "合作伙伴专用空间")
+        self.assertEqual(body["description"], "managed-feishu-sync:" + SPACE_ID)
+
+    def test_datasource_name_aliases_do_not_relax_space_or_sync_guards(self):
+        base = {"id": "ds1", "knowledge_base_id": "kb1", "name": MODULE["KB_NAME"], "type": "feishu", "status": "paused",
+                "sync_mode": "incremental", "sync_schedule": "", "conflict_strategy": "overwrite", "sync_deletions": False,
+                "config": {"type": "feishu", "resource_ids": [SPACE_ID], "settings": {"allowed_space_id": SPACE_ID}}}
+        for name in MODULE["KB_NAMES"]:
+            ds = {**base, "name": name}
+            client = Mock()
+            client.request.side_effect = [[ds], ds]
+            self.assertEqual(MODULE["datasource"](client, {"id": "kb1"}, {}), ds)
+            self.assertTrue(all(len(call.args) == 1 for call in client.request.call_args_list))
+            for changed in ("name", "knowledge_base_id", "resource_ids", "allowed_space_id", "base_url", "sync_deletions", "status"):
+                bad = copy.deepcopy(ds)
+                if changed == "resource_ids":
+                    bad["config"][changed] = [SPACE_ID, "other"]
+                elif changed in {"allowed_space_id", "base_url"}:
+                    bad["config"]["settings"][changed] = "other"
+                else:
+                    bad[changed] = True if changed == "sync_deletions" else "other"
+                client = Mock()
+                client.request.side_effect = [[bad], bad]
+                with self.subTest(name=name, changed=changed), self.assertRaises(SafeError):
+                    MODULE["datasource"](client, {"id": "kb1"}, {}, create=True)
+                self.assertEqual(client.request.call_count, 2)
 
     def probe_state(self):
         nodes = {"root": {"node_edit_time": "200", "object_edit_time": "200"}}

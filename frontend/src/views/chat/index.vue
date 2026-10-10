@@ -1763,6 +1763,13 @@ onBeforeRouteUpdate((to, from, next) => {
     max-width: 100%;
     min-width: 400px;
 
+    @media (max-width: 640px) {
+        &:not(.is-embedded) {
+            min-width: 0;
+            --chat-content-inset: 12px;
+        }
+    }
+
     &.is-embedded {
         max-width: 100%;
         min-width: 100%;

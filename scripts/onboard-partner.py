@@ -478,6 +478,11 @@ class Onboarder:
         config["sandbox_config_id"] = ""
         config["skills_selection_mode"] = "none"
         config["selected_skills"] = []
+        suggestions = config.get("question_suggestions", {})
+        if "followups" in suggestions:
+            require(suggestions["followups"] == {"enabled": False, "mode": "curated", "count": 0} and "follow_ups" not in suggestions, "unsupported_legacy_followups")
+            suggestions.pop("followups")
+            suggestions["follow_ups"] = {"enabled": False, "mode": "hybrid", "count": 3}
         return result
 
     def agents(self):

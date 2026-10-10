@@ -1,5 +1,5 @@
 <template>
-    <div class="main" ref="dropzone" :style="{ '--sidebar-width': `${uiStore.sidebarDisplayWidth}px` }">
+    <div class="main" :class="{ 'main--chat': isChatDropRoute() }" ref="dropzone" :style="{ '--sidebar-width': `${uiStore.sidebarDisplayWidth}px` }">
         <Menu></Menu>
         <div v-if="isRouterAlive" class="platform-route-outlet">
             <RouterView />
@@ -266,6 +266,17 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+@media (max-width: 640px) {
+    .main.main--chat {
+        min-width: 0;
+    }
+
+    .main--chat .rich-input-container {
+        box-sizing: border-box;
+        max-width: 100%;
+    }
 }
 
 .upload-mask {

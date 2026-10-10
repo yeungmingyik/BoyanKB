@@ -19,7 +19,8 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 REQUIRED_SCOPES = frozenset({"wiki:wiki:readonly", "drive:export:readonly", "drive:file:download"})
 DOWNLOAD_ALTERNATIVES = frozenset({"drive:drive:readonly", "drive:file:readonly"})
 SUPPORTED_TYPES = frozenset({"doc", "docx", "sheet", "bitable", "file"})
-KB_NAME = "feishu-" + SPACE_ID
+KB_NAME = "合作伙伴专用空间"
+KB_NAMES = frozenset({KB_NAME, "feishu-" + SPACE_ID})
 KB_MARKER = "managed-feishu-sync:" + SPACE_ID
 GUARD_LABEL = "io.weknora.feishu-guard"
 GRANTED = 1
@@ -520,7 +521,7 @@ def knowledge_base(client, create=False):
     rows = local_data(client, "/api/v1/knowledge-bases")
     if not isinstance(rows, list):
         fail("Knowledge base list is invalid.")
-    matches = [mapping(row) for row in rows if row.get("name") == KB_NAME or row.get("description") == KB_MARKER]
+    matches = [mapping(row) for row in rows if row.get("name") in KB_NAMES or row.get("description") == KB_MARKER]
     if len(matches) > 1:
         fail("Multiple managed knowledge bases exist; refusing ambiguous selection.")
     if not matches:
@@ -537,7 +538,7 @@ def knowledge_base(client, create=False):
         }))
     else:
         kb = mapping(local_data(client, "/api/v1/knowledge-bases/" + identifier(matches[0].get("id"))))
-    if kb.get("name") != KB_NAME or kb.get("description") != KB_MARKER or kb.get("type") != "document":
+    if kb.get("name") not in KB_NAMES or kb.get("description") != KB_MARKER or kb.get("type") != "document":
         fail("The managed knowledge base name or ownership marker conflicts.")
     if kb.get("embedding_model_id") != "local-embedding" or kb.get("summary_model_id"):
         fail("The managed knowledge base must use local embedding without a summary model.")
@@ -581,9 +582,9 @@ def datasource(client, kb, settings, create=False):
     if latest:
         ds["latest_sync_log"] = latest
     cfg = mapping(ds.get("config"))
-    expected = {"knowledge_base_id": kb["id"], "name": KB_NAME, "type": "feishu", "status": "paused",
+    expected = {"knowledge_base_id": kb["id"], "type": "feishu", "status": "paused",
                 "sync_mode": "incremental", "sync_schedule": "", "conflict_strategy": "overwrite", "sync_deletions": False}
-    if any(ds.get(key) != value for key, value in expected.items()):
+    if ds.get("name") not in KB_NAMES or any(ds.get(key) != value for key, value in expected.items()):
         fail("The existing data source has unexpected sync settings; no changes were made to it.")
     if cfg.get("type") != "feishu" or cfg.get("resource_ids") != [SPACE_ID]:
         fail("The data source is not restricted to the authorized Wiki space.")

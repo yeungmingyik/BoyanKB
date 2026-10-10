@@ -180,6 +180,29 @@ class OnboardTests(unittest.TestCase):
         with self.assertRaisesRegex(MODULE.OnboardError, "headquarters_contributor_not_required"):
             plan_for(value)
 
+    def test_followups_use_api_schema_without_changing_versioned_preset(self):
+        plan = self.headquarters_plan()
+        original = copy.deepcopy(plan["agents"])
+        client = FakeClient(plan)
+        MODULE.Onboarder(client, plan).run()
+        for agent in client.agents:
+            suggestions = agent["config"]["question_suggestions"]
+            self.assertNotIn("followups", suggestions)
+            self.assertEqual(suggestions["follow_ups"], {"enabled": False, "mode": "hybrid", "count": 3})
+            suggestions["follow_ups"].update({"categories": ["clarify", "deepen", "action"], "max_context_turns": 2})
+        MODULE.Onboarder(client, plan).run()
+        self.assertEqual(plan["agents"], original)
+        client.agents[0]["config"]["question_suggestions"]["follow_ups"]["enabled"] = True
+        with self.assertRaisesRegex(MODULE.OnboardError, "existing_agent_requires_review"):
+            MODULE.Onboarder(client, plan).run()
+
+    def test_unsupported_legacy_followups_are_not_silently_disabled(self):
+        plan = self.headquarters_plan()
+        plan["agents"]["mentor"]["config"]["question_suggestions"]["followups"]["enabled"] = True
+        client = FakeClient(plan)
+        with self.assertRaisesRegex(MODULE.OnboardError, "unsupported_legacy_followups"):
+            MODULE.Onboarder(client, plan).run()
+
     def test_target_identifier_is_a_positive_integer(self):
         for target in (None, 0, -1, True, "10000", 1.5):
             with self.subTest(target=target):

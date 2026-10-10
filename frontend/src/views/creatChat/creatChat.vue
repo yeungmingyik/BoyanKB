@@ -327,6 +327,18 @@ async function openProjectDir() {
     width: 100%;
 }
 
+@media (max-width: 640px) {
+    .dialogue-wrap {
+        min-width: 0;
+        padding: 16px;
+        box-sizing: border-box;
+    }
+
+    .dialogue-answers {
+        min-width: 0;
+    }
+}
+
 .project-dir-bar {
     display: flex;
     align-items: center;
