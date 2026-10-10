@@ -64,3 +64,28 @@ python scripts/check-frontend-access-logs.py --base-url http://127.0.0.1:8088 --
 追加 `--check-upstream-failure` 会使用正在运行的同一前端 image ID 启动一个临时测试容器，设置 `network=none`、无宿主端口及挂载、上游指向自身关闭的 9 端口。脚本检查两次真实 502 的 query、短链、Referer、User-Agent 标记均不出现在日志，最后停止自己创建的测试容器，不停止原 app。Nginx 内部错误页跳转可能将日志路径替换为固定 `/50x.html`，探针接受该安全路径，同时仍要求真实 502 和所有标记均未泄漏。该选项会创建临时容器，区别于默认的只读路由探针。2026-10-10 本机部署后，四路由探针和两次上游故障模拟均通过。
 
 脚本和文档复用的生产原语位于 `scripts/backup-prod.py`、`scripts/restore-prod.py`；新增流程在 `scripts/trial_backup.py`、`scripts/backup-trial.py`、`scripts/restore-trial.py`、`scripts/verify-trial.py`，生产文件未修改。
+
+## 九服务栈与图谱兼容边界
+
+2026-10-10 的本机覆盖新增试用网关与 Neo4j，当前栈为九服务。本文上方的七服务备份/恢复命令仅适用于其指定历史 profile，**不能用于当前九服务栈**。`trial_backup.py` 会继续拒绝额外服务及 `NEO4J_ENABLE=true`，不应移除检查来获取成功回执，也不要套用历史回执为当前部署背书。
+
+新增 `scripts/graph-trial-backup.py` 只提供局部操作，与原七服务回执采用不同格式：
+
+| 子命令 | 校验范围 | 未覆盖范围 |
+| --- | --- | --- |
+| `snapshot` | 在线 PG custom dump、根 `.env`、指定 KB 配置；age 完整解密、摘要、`pg_restore --list` | 非全栈原子快照，不含 Neo4j、原文对象、Redis、模型、镜像或数据库集群角色；没有实际恢复数据库 |
+| `cold-backup` | 外部维护流程已停止 app 和干净停止 Neo4j后，完整加密 `/data`，包含系统库与事务目录 | 不包含其他服务、环境文件、插件缓存和镜像；脚本不自动停机或恢复服务 |
+| `restore` | 新隔离卷、相同本地 image ID、完整文件清单摘要及 `neo4j-admin database check` | 不启动 DBMS/应用，不证明登录、文件、检索或跨存储一致性 |
+
+真实在线快照、冷备及新卷离线恢复结果记录在 [图谱局部备份说明](graph-partial-backup.md)。2026-10-10 已完成 Neo4j 冷备和全新 c 项目恢复，文件清单及 `neo4j`、`system` 两库离线一致性检查全部通过；未启动恢复 DBMS 或应用。原管理员清理门禁所需的七服务整栈证据，不能被这些局部回执替代。当前九服务整栈备份及应用恢复兼容方案仍需单独实现和验收。
+
+维护窗口应先确认图谱任务结束并暂停新的写入，再由操作者按当前完整 Compose 覆盖链停止 app、干净停止 Neo4j。冷备成功后，可以先恢复原 Neo4j 并等待健康，再恢复 app；随后在原服务继续运行时验证独立恢复卷。每个输出与目标项目必须唯一，失败保留证据，不覆盖或删除原卷。
+
+当前 age identity 的实际路径为 `temp/enterprise-trial/keys/.env`；它是原始 age 私钥文件，与根目录应用 `.env` 用途不同，只将路径交给 age，不输出内容。以下为本轮成功执行的命令记录；再次操作时须换用未占用的输出和目标名称：
+
+```powershell
+python scripts/graph-trial-backup.py cold-backup --project weknora-local --maintenance-stopped --age-binary temp/production-tools/age-v1.3.2/age/age.exe --identity temp/enterprise-trial/keys/.env --output temp/graph-backup/neo4j-cold-20261010a.age --receipt temp/graph-backup/neo4j-cold-20261010a.json
+python scripts/graph-trial-backup.py restore --archive temp/graph-backup/neo4j-cold-20261010a.age --identity temp/enterprise-trial/keys/.env --age-binary temp/production-tools/age-v1.3.2/age/age.exe --target-project boyankb-restore-graph-20261010c --report temp/graph-backup/neo4j-restore-20261010c.json
+```
+
+恢复辅助容器为 `network none`，不发布端口、不启动应用；仅写新项目的专用数据卷，保留该卷供后续审核。挂载禁用镜像目录预填，只有可信离线检查容器的临时目录允许原生库加载，根目录及资源限制保持不变。a、b 失败目标与 c 成功目标均保留，原卷未被修改。14 项图谱工具及 15 项旧备份测试通过。详细前提、失败处理和报告边界见 [图谱局部备份说明](graph-partial-backup.md)。

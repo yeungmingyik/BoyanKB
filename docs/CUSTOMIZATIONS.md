@@ -304,3 +304,27 @@
 | `docs/{trial-tunnel,08-enterprise-trial}.md` | 连接器停止导致公网中断，需要准确的恢复与验证范围 | 记录实际重新启动、正确 `.xyz` 入口、缓存边界、退出原因未验证及缺少自动启动/重启；修正旧版文档中全部公网流程未验证的过时说明 |
 
 升级时确认 `/assets/*` 仍仅承载带内容哈希的公开前端文件。保留拒绝路由先于代理的执行顺序；不要直接替换为排序在 `respond` 之前的 `handle`。运行 Caddy 配置校验、`scripts/check-trial-gateway.py` 并检查实际响应头。此次未更换镜像摘要、未修改生产配置，也未更改隧道启动器。
+
+## 技能目录、知识图谱与中文高级提示词
+
+日期：2026-10-10。分支：`feat/skill-graph-prompt-fixes`。保留现有账号、成员关系、原生角色与不可变业务预设；本轮本机覆盖不修改生产配置。
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `branding/brand.json`、`frontend/src/config/deploymentCapabilities{,.test}.ts`、`frontend/src/config/toolbox.test.ts` | 无沙箱部署也需要管理员保存和查看原生技能包 | 目录入口与沙箱设置分开，`nativeSkillExecution=false` 只控制界面模式；新增契约测试，不作为后端执行授权 |
+| `frontend/src/views/settings/SkillSettings.vue`、`SkillSettings.test.ts`、`frontend/src/i18n/skillCatalog.ts`、`frontend/src/i18n/locales/{zh-CN,en-US,ja-JP,ko-KR,ru-RU}.ts` | 原页面因沙箱接口失败而无法显示目录，保存又容易误认成安装 | 目录和沙箱分别加载，错误可重试；当前仅保存步骤，不请求安装或沙箱接口；业务预设删除入口隐藏，中文提示明确保存不等于可执行 |
+| `deployment/trial/Caddyfile`、`scripts/check-trial-gateway.py` | 公网原先把技能目录一并拦截 | 精确允许 catalog、指定项及文件读取路径进入原后端鉴权；其余原生技能执行和沙箱路由仍拦截；需要部署后的角色与路由验收 |
+| `internal/application/repository/tenant_skill.go`、`tenant_skill_catalog_preset_test.go`、`internal/application/service/tenant_skill_catalog.go`、`tenant_skill_catalog_preset_test.go`、`tenant_skill_catalog_test.go`、`tenant_skill_install_test.go`、`tenant_skill_reaper_test.go` | 管理员普通上传或删除不能破坏已绑定的九项业务预设 | catalog 变更事务锁定开通记录，按名称和 catalog ID 检查预设引用；拒绝删除及内容漂移，完全相同包允许幂等登记；新增冲突、同包及事务测试 |
+| `frontend/src/views/knowledge/settings/GraphSettings.vue`、`graphAvailability{,.test}.ts`、五份主语言文件 | 请求失败与未启用不应混同，旧响应不能覆盖重试结果 | 区分加载、启用、关闭、错误状态，支持重试并丢弃过期响应；未确认可用时维持禁用 |
+| `docker-compose.graph-local.yml`、`.env.example` | 本机原栈缺少图数据库 | 独立 Neo4j 数据/日志卷、仅 app 与数据库加入内部网络、无宿主发布端口、锁定镜像摘要和资源限额；APOC core 过程白名单，凭据来自 `BOYAN_NEO4J_PASSWORD`；不代表图数据或生产容量已验收 |
+| `internal/application/service/graph_backfill{,_test}.go`、`extract.go`、`internal/handler/graph_backfill.go`、`internal/router/routes_graph_backfill.go`、`router.go`、`internal/container/container.go`、`internal/types/task.go` | 普通重新解析会替换分块，已有文档需要单独补建图谱 | 新增本空间 Owner/Admin Web 身份的计划与提交 API；绑定来源、配置、模型及计划摘要；复用现有分块抽取队列，执行及写图前复验身份与来源，不走重新解析及旧任务完成计数；确定性任务 ID、30 天队列保留，拒绝过期计划 |
+| `internal/application/service/chat_pipeline/search_entity.go`、`search_parallel.go` 及共享图谱检索测试 | 伙伴检索总部共享库时不能按伙伴租户查总部图谱分块，也不能扩大资料范围 | 从服务端 KB 记录取得源租户，按当前调用者检查共享权限与 SearchTargets；过滤文件、分块所属库/租户和启用状态，返回前重新授权；定向及完整 chat_pipeline 包测试通过，真实业务效果单独验收 |
+| `scripts/backfill-enterprise-graph.py`、`scripts/check-skill-graph.py` | 补图要先审查范围，运行状态不能靠开关推断 | 总部固定企业库，默认只读计划，显式 `--apply --expected-plan-hash` 提交；角色、目录及服务状态检查；真实抽取结果由对应部署验收记录补充 |
+| `branding/prompt_templates/{context_template,rewrite,fallback,intent_prompts}.yaml`、`docker/Dockerfile.app-boyankb`、`internal/config/branding_prompt_templates_test.go` | 高级上下文、改写、兜底与意图提示词仍主要显示英文 | 新增 19 个中文覆盖，与原两份共 32 个模板；保留 ID、变量、枚举、JSON 与引用协议；三个固定兜底直接返回中文回复；配置/品牌 Go 包测试通过，不改已保存自定义提示词或 `presets/boyan/v1` |
+| `scripts/feishu-space-sync.py`、`scripts/test_feishu_space_sync.py` | 摘要及图谱启用后策略不再匹配，登录默认空间又可能是伙伴空间 | 显式 `--enrichment-policy` 绑定目标空间、既有总部库、摘要模型与完整抽取配置；`--tenant-id` 仅为本机请求选择空间，沿用服务端权限验证，403 不回退且不修改活动空间；保留其他增强、删除及空间保护 |
+| `scripts/graph-trial-backup.py`、`scripts/test_graph_trial_backup.py` | 当前网关加 Neo4j 的九服务栈不能沿用七服务整栈备份证明 | 独立在线 PG/环境/KB 配置快照与 Neo4j 冷备格式；同镜像、新隔离卷恢复及离线一致性检查；禁镜像目录预填、固定隔离主机名，仅可信检查工具临时目录允许原生库加载；14 项新增、15 项旧备份测试通过，旧脚本保护不变 |
+| `docs/graph-partial-backup.md`、`docs/trial-backup.md`、`docs/02-feishu.md`、`docs/12-skill-graph-prompts.md` | 运行、同步和备份的范围需保持一致 | 区分历史导入结果、显式增强策略、在线局部快照及已验证图谱冷备/离线恢复；不把单库检查作为全栈恢复 |
+
+已实际完成在线 PG custom dump、`.env` 与指定 KB 配置快照，通过 age 解密认证、组件摘要及 `pg_restore --list`；没有恢复原库。Neo4j 冷备 `neo4j-cold-20261010a.age` 已恢复至全新 `boyankb-restore-graph-20261010c`，文件清单及 `neo4j`、`system` 两库离线一致性检查全部通过；报告为 `temp/graph-backup/neo4j-restore-20261010c.json`。a、b 失败目标卷保留，源服务及原卷未被恢复工具修改。此次不启动恢复 DBMS/应用，九服务整站恢复仍为**未验证**。图谱 API、最终镜像和真实抽取结果以 [本轮验收](12-skill-graph-prompts.md) 为准。
+
+升级时核对原生技能路由、开通记录锁、抽取队列和工作流版本边界，保留六份提示词 COPY。不要修改已安装 v1 指南摘要来做界面翻译，不要移除七服务备份保护来迁就新增服务。当前备份命令与维护顺序见 [局部快照与图谱冷备](graph-partial-backup.md)。
