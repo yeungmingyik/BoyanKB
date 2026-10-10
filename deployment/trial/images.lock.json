@@ -10,10 +10,10 @@
       ]
     },
     {
-      "tag": "boyankb/frontend:v0.8.2-trial-v1",
-      "id": "sha256:8da66e76fbce6e6e8df4d4512830667a243013755a753a868f6b9b30b1537af4",
+      "tag": "boyankb/frontend:v0.8.2-trial-login-v2",
+      "id": "sha256:38f5da3a66a2695aeb0bf33229aafab31787d79b841637d27bf62b1dcbb68fbb",
       "digests": [
-        "boyankb/frontend@sha256:8da66e76fbce6e6e8df4d4512830667a243013755a753a868f6b9b30b1537af4"
+        "boyankb/frontend@sha256:38f5da3a66a2695aeb0bf33229aafab31787d79b841637d27bf62b1dcbb68fbb"
       ]
     },
     {

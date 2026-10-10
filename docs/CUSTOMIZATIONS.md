@@ -290,5 +290,6 @@
 | --- | --- | --- |
 | `frontend/src/views/auth/Login.vue` | 紧凑字段间距使绝对定位的红色校验提示被下一项遮住 | 恢复压缩前的布局间距、默认字段尺寸与纵向说明；登录及邀请注册提示参与自然布局并允许换行；匿名浏览器核对错误边界、短屏滚动及长文案 |
 | `docs/09-login-layout.md` | 需要解释总部账号的伙伴入口和记录布局修复 | 记录真实 Owner 成员关系、开通代码及私人内容边界；本轮不更改授权 |
+| `docker-compose.trial.yml`、`deployment/trial/images.lock.json`、`docs/08-enterprise-trial.md` | 试用站应运行修复后的前端且可以回滚 | 新增 `v0.8.2-trial-login-v2` 镜像，更新前端摘要，旧版保留；仅重建本机 frontend |
 
 升级 TDesign 后核对 `.t-form__controls > .t-input__extra` 是否仍为校验提示节点，验证错误状态而非仅检查空白登录页。2026-10-08 的紧凑布局记录属于历史验收，本次恢复覆盖其中的压缩间距。

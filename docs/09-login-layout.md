@@ -23,7 +23,30 @@ Owner 拥有实际空间管理权限，包括成员、邀请、智能体及空�
 1. 使用未登录的独立浏览器打开本机或公网 `/login`。
 2. 输入不完整邮箱 `liuwei`，分别检查保持焦点和失焦后的错误提示。
 3. 清空表单并点击登录，确认邮箱和密码提示完整可见，按钮不覆盖文字；该操作只应触发前端校验，不应提交认证请求。
-4. 分别检查 1440×900、1366×768、1366×680、390×844、390×568；短屏滚动后能到达按钮，且没有横向溢出。
+4. 分别检查 1440×900、1366×768、1366×560、390×844、390×568；短屏滚动后能到达按钮，且没有横向溢出。
 5. 检查长提示的自动换行，核对下一项和按钮随提示高度下移。模拟文案只用于隔离浏览器布局验证，不写入应用数据或翻译资源。
 
-修复前证据位于 `temp/login-layout-review/2026-10-10T04-24-05-182Z/`。部署镜像、修复后截图及实际结果在验证完成后登记于下方。
+修复前证据位于 `temp/login-layout-review/2026-10-10T04-24-05-182Z/`。
+
+## 部署与构建检查
+
+源代码提交 `225571a5`。前端镜像为 `boyankb/frontend:v0.8.2-trial-login-v2@sha256:38f5da3a66a2695aeb0bf33229aafab31787d79b841637d27bf62b1dcbb68fbb`，已在 `docker-compose.trial.yml` 和 `deployment/trial/images.lock.json` 固定。实际更新 `weknora-local` 的 frontend，8 个服务均健康；公网网关 6 项检查通过，HTTPS 证书验证保持开启。
+
+构建中的 13 项 i18n 检查、38 项既有测试、Vite 构建及 favicon 字节比对通过。构建仍提示部分既有 JavaScript 包较大，这不影响本次样式验证。
+
+本次在 PowerShell 7 执行的构建和更新命令如下。重新构建后须先核对产物摘要，不能假设它与本次摘要相同；摘要变化时先更新试用配置和锁文件再启动。
+
+```powershell
+docker build --file docker/Dockerfile.frontend-boyankb --build-arg VITE_FRONTEND_COMMIT=225571a5 --tag boyankb/frontend:v0.8.2-trial-login-v2 .
+docker compose -p weknora-local --env-file .env -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.branding.yml -f docker-compose.presets.yml -f docker-compose.delivery-local.yml -f docker-compose.trial.yml up -d --no-deps --no-build --wait --wait-timeout 120 frontend
+```
+
+后续源代码有变化时使用新标签，核对新摘要并更新锁文件，不覆盖本次版本。旧前端 `boyankb/frontend:v0.8.2-trial-v1@sha256:8da66e76fbce6e6e8df4d4512830667a243013755a753a868f6b9b30b1537af4` 仍保留，需要回滚时在经过审阅的试用配置中恢复该摘要，并仅重建 frontend。
+
+## 实际浏览器结果
+
+新镜像下的五种尺寸、三种真实错误状态，共 15 个案例通过；另有 1 个明确标注的合成多行提示探针通过。共检查 22 条错误：无裁切、重叠或横向溢出，真实提示的文字采样点未被后续控件遮挡。五种尺寸输入完整有效邮箱后，错误均消失。已查看桌面双错误、短屏多行和有效邮箱清除截图。
+
+公网匿名桌面 1366×768、手机 390×844 两个案例通过；保持严格 TLS 校验，使用 `BoyanKB-DeploymentCheck/1.0` User-Agent。复验未注入 CSS，未登录、未提交认证请求或修改账号数据。多行探针只在独立浏览器内替换提示文字，不修改业务数据或产品文案。
+
+本机报告为 `temp/login-layout-review/2026-10-10T04-30-13-428Z/report.json`，公网报告为 `temp/login-layout-review/public-2026-10-10T04-30-13-423Z/report.json`。截图位于对应目录，可查看 [桌面错误提示](../temp/login-layout-review/2026-10-10T04-30-13-428Z/1366x768-empty-submit.png) 和 [公网手机登录](../temp/login-layout-review/public-2026-10-10T04-30-13-423Z/anonymous-390x844.png)。这些证据使用临时独立浏览器，不代表已验证所有浏览器或用户现有标签的缓存；已有页面可使用 `Ctrl+Shift+R` 加载新资源。

@@ -32,7 +32,7 @@ services:
       - no-new-privileges:true
 
   frontend:
-    image: boyankb/frontend:v0.8.2-trial-v1@sha256:8da66e76fbce6e6e8df4d4512830667a243013755a753a868f6b9b30b1537af4
+    image: boyankb/frontend:v0.8.2-trial-login-v2@sha256:38f5da3a66a2695aeb0bf33229aafab31787d79b841637d27bf62b1dcbb68fbb
     pull_policy: never
     entrypoint: ["/bin/sh", "/etc/boyankb/trial-entrypoint.sh"]
     environment:

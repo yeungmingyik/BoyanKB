@@ -56,7 +56,7 @@
 | 检查 | 实际结果 |
 | --- | --- |
 | 服务 | 8 个试用服务健康；仅 8088、8080、8090 发布到 `127.0.0.1` |
-| 镜像 | app `v0.8.2-trial-v1`、frontend `v0.8.2-trial-v1`、gateway `2.11.7-v1`；所有服务固定摘要，详见 `deployment/trial/images.lock.json` |
+| 镜像 | app `v0.8.2-trial-v1`、frontend `v0.8.2-trial-login-v2`、gateway `2.11.7-v1`；所有服务固定摘要，详见 `deployment/trial/images.lock.json`；前端登录布局修复见 `docs/09-login-layout.md` |
 | 网关 | 本机与公网各 6 项通过；注册 403、系统管理/原生技能管理 404、沙箱 403 |
 | 本机账号 | 26 项只读权限检查通过；负责人固定 Viewer、三 Agent、九技能、共享源限定、跨总部拒绝 |
 | 公网账号 | `20261010-114004-8730cb57/report.json`：26 项通过，严格 TLS 校验，使用明确的部署检查 User-Agent |
