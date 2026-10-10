@@ -1,0 +1,139 @@
+templates:
+  - id: "default_fallback"
+    name: "标准兜底"
+    description: "友好告知无法回答并提供建议"
+    i18n:
+      zh-CN:
+        name: "标准兜底"
+        description: "友好告知无法回答并提供建议"
+      en-US:
+        name: "Standard Fallback"
+        description: "Friendly message with suggestions when unable to answer"
+      ko-KR:
+        name: "표준 폴백"
+        description: "친절하게 답변 및 제안을 드릴 수 없음을 알려드립니다."
+      ja-JP:
+        name: "標準フォールバック"
+        description: "回答できないことを丁寧に伝え、提案を提示するメッセージ"
+    default: true
+    content: |
+      抱歉，当前未在知识库中检索到与您的问题直接相关的内容。
+
+      您可以尝试：
+      1. 换一种方式描述问题。
+      2. 补充更具体的信息。
+      3. 咨询相关领域的专业人员。
+
+      如有其他问题，我也愿意继续提供帮助。
+
+  - id: "polite_fallback"
+    name: "礼貌兜底"
+    description: "更加礼貌详细的无法回答提示"
+    i18n:
+      zh-CN:
+        name: "礼貌兜底"
+        description: "更加礼貌详细的无法回答提示"
+      en-US:
+        name: "Polite Fallback"
+        description: "More polite and detailed unable-to-answer message"
+      ko-KR:
+        name: "정중한 폴백"
+        description: "더 정중하고 자세한 답변 불가 프롬프트"
+      ja-JP:
+        name: "丁寧なフォールバック"
+        description: "より丁寧で詳細な回答不可メッセージ"
+    content: |
+      抱歉，目前无法准确回答您的问题，可能是问题超出了现有资料范围，或知识库尚未收录相关内容。
+
+      建议您：
+      1. 尝试使用不同的关键词。
+      2. 将问题拆分为更具体的小问题。
+      3. 联系客服寻求帮助。
+
+      感谢您的理解，我也愿意继续协助处理其他问题。
+
+  - id: "brief_fallback"
+    name: "简洁兜底"
+    description: "简短的无法回答提示"
+    i18n:
+      zh-CN:
+        name: "简洁兜底"
+        description: "简短的无法回答提示"
+      en-US:
+        name: "Brief Fallback"
+        description: "Short unable-to-answer message"
+      ko-KR:
+        name: "간단한 폴백"
+        description: "대답할 수 없는 짧은 프롬프트"
+      ja-JP:
+        name: "簡潔なフォールバック"
+        description: "短い回答不可メッセージ"
+    content: |
+      抱歉，暂时无法回答这个问题。请尝试换一种方式提问，或联系客服。
+
+  - id: "model_fallback"
+    name: "模型兜底提示"
+    description: "引导模型基于通用知识回答的提示词"
+    i18n:
+      zh-CN:
+        name: "模型兜底提示"
+        description: "引导模型基于通用知识回答的提示词"
+      en-US:
+        name: "Model Fallback Prompt"
+        description: "Prompt to guide model to answer with general knowledge"
+      ko-KR:
+        name: "모델 폴백 프롬프트"
+        description: "일반 지식을 바탕으로 모델이 답변하도록 안내하는 프롬프트"
+      ja-JP:
+        name: "モデルフォールバックプロンプト"
+        description: "一般知識に基づいて回答するようモデルを誘導するプロンプト"
+    mode: "model"
+    content: |
+      检索未找到与用户问题直接匹配的内容。不过，知识库中包含以下文档：
+
+      {{kb_documents}}
+
+      回答要求：
+      1. 如果上方有文档列表，可用于列出相关文档或建议哪些文档可能包含所需信息。
+      2. 如果列表为空，使用通用知识回答，并明确告知用户答案并非来自知识库。
+      3. 涉及特定专业领域或最新信息时，建议用户查阅官方资料。
+      4. 保持准确、客观。
+
+      语言要求：始终使用 {{language}} 回答。
+
+      用户问题：{{query}}
+
+  - id: "default_fallback_prompt"
+    name: "标准模型兜底提示词"
+    description: "知识库无相关结果时引导模型回答的默认提示词"
+    i18n:
+      zh-CN:
+        name: "标准模型兜底提示词"
+        description: "知识库无相关结果时引导模型回答的默认提示词"
+      en-US:
+        name: "Standard Fallback Prompt"
+        description: "Default prompt that delegates to the model when KB has no relevant results"
+      ko-KR:
+        name: "표준 폴백 프롬프트"
+        description: "KB에 관련 결과가 없을 때 모델에 위임하는 기본 프롬프트"
+      ja-JP:
+        name: "標準フォールバックプロンプト"
+        description: "ナレッジベースに関連する結果がない場合にモデルへ委ねるデフォルトのプロンプト"
+    mode: "model"
+    content: |
+      你是 BoyanKB，一位专业、友善的人工智能助手。
+
+      检索未找到与用户问题直接匹配的内容。不过，知识库中包含以下文档：
+
+      {{kb_documents}}
+
+      ## 回答要求
+      - 文档列表仅是元数据，可以说明标题或推荐相关文档，不能用它概括尚未阅读的正文或支持具体事实断言。
+      - 文档列表为空或不相关时，可以依据通用知识回答，并明确告知用户答案并非来自知识库。
+      - 表达简洁、清楚，提供实质内容。
+      - 不得猜测无法获取的时效性事实或私有事实。证据不足影响回答时，说明具体缺少什么。
+      - 使用礼貌、专业的语气。
+      - 默认回答语言：{{language}}；用户明确要求其他语言时遵从该要求。
+
+      ## 用户问题
+      {{query}}

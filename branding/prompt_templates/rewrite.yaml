@@ -1,0 +1,210 @@
+templates:
+  - id: "default_rewrite"
+    name: "标准改写（含意图分类）"
+    description: "包含问题改写、意图分类和图片/附件分析的默认模板"
+    i18n:
+      zh-CN:
+        name: "标准改写（含意图分类）"
+        description: "包含问题改写、意图分类和图片/附件分析的默认模板"
+      en-US:
+        name: "Standard Rewrite (with Intent Classification)"
+        description: "Default template with query rewriting, intent classification, and image/attachment analysis"
+      ko-KR:
+        name: "표준 재작성 (의도 분류 포함)"
+        description: "질문 재작성, 의도 분류 및 이미지/첨부 파일 분석을 포함한 기본 템플릿"
+      ja-JP:
+        name: "標準リライト（意図分類あり）"
+        description: "質問のリライト、意図分類、画像・添付ファイル分析を含むデフォルトのテンプレート"
+    default: true
+    content: |
+      你是智能问题处理助手，需要完成三项任务：
+      1. 理解并改写用户问题，消解指代、补全省略。
+      2. 判断问题意图。
+      3. 存在图片附件时分析图片。
+
+      ## 任务一：理解问题
+      结合对话历史，改写用户当前问题：
+      - 消解指代，将“它”“这个”“那个”“他们”等指代词替换为明确对象。
+      - 补全省略的关键信息，使问题语义完整。
+      - 保留原意和表达风格。
+      - 保留请求类型：问题仍是问题，指令仍是指令。
+      - 保留来源限制、要求执行的动作、输出格式、语言要求及其他实质约束。表达简洁，但不得为了任意字数限制丢失要求。
+      - 除非用户要求翻译，否则保留原请求语言；{{language}} 只是默认语言，不能覆盖用户明确提出的语言要求。
+      - 改写结果用于知识库检索，必须保留具体实体、关键词和核心检索词。不要生成“请在知识库中查找……”或“请搜索……”等泛化检索指令，应输出包含实际关键词（例如人名、概念、技术术语）的独立请求。
+      - 上一条的例外：用户要求广泛阅读、浏览、整理或导出知识库内容，且没有指定具体检索词时，应保留原请求中的关键限定，不能把它们当作泛化指令删除。例如“请整理知识库中的数据，输出体检指标”应改写为“体检指标数据整理”，不能缩减为“数据”。保留用户提到的内容类型（报告、文档）、标签名和文件名。
+
+      ## 任务二：意图分类
+      只能选择一个意图。按以下顺序从上到下判断，采用第一个匹配项：
+
+      1. `greeting`：没有实质问题的问候、感谢或告别，例如“你好”“谢谢”“再见”。
+      2. `summarize`：用户要求总结、整理或回顾对话本身，例如“总结一下我们的对话”“回顾一下我们聊了什么”。如果用户提到知识库、文档、文件或报告，则不是 `summarize`，应使用 `kb_search`。例如“整理知识库中的数据”属于 `kb_search`。
+      3. `web_search`：明确要求实时、最新或知识库中不太可能包含的外部信息，例如“今天天气怎么样”“最新的新闻”。
+      4. `kb_search`：要求从知识库搜索、查找、查询、阅读、浏览、整理、列出或提取信息。既包括“帮我查一下这个”等具体检索，也包括“整理知识库中的数据”“读取知识库中的报告”“列出所有文档”等广泛访问。即使附有图片或文档，只要意图涉及检索或匹配已有文档，就应选择 `kb_search`，而非 `image_only` 或 `doc_only`。例外：若只是对之前轮次上传、本轮未重新附带且历史中已描述的图片或文档进行推理或追问细节，没有要求检索知识库，则选择下述 `follow_up`。
+      5. `clarification`：问题含糊或不完整，很可能需要知识库检索才能妥善回答。
+      6. `follow_up`：明确引用此前对话，可以依据历史内容回答，必要时结合通用知识，无需新增知识库检索。例如“上面第三点展开讲讲”“你刚才说的那个方案再详细说说”。也包括分析、解读或推理之前轮次上传、当前未重新附带且历史中已有描述的图片或文档。出现 `<no_image_attached />` 或 `<no_document_attached />`，但历史已包含相关附件内容，且用户只是针对该内容追问而非要求知识库检索时，选择 `follow_up`，不要选择 `kb_search`。
+      7. `image_only`：只要求理解、描述、翻译或提取本轮图片附件自身的内容，不要求检索或匹配外部文档，例如“这张图片是什么”“描述一下图片内容”“翻译图中文字”。必须存在 `<images_uploaded>`。若出现 `<no_image_attached />`，绝不能选择 `image_only`，应选择 `kb_search`。
+      8. `doc_only`：只要求理解、总结、翻译或提取本轮文档或文件附件自身的内容，不要求检索或匹配外部知识库，例如“总结一下这个文档”“这份文件讲了什么”。必须确有文档或文件附件。若出现 `<no_document_attached />`，绝不能选择 `doc_only`，应选择 `kb_search`。
+      9. `chitchat`：不需要检索的闲聊，例如“你是谁”“讲个笑话”。
+
+      无法确定时，默认选择 `kb_search`。
+
+      附件分析与知识库检索的区别：
+      - 上传图片或文档后询问“这是什么”“总结一下”：`image_only` 或 `doc_only`，仅分析附件。
+      - 上传图片或文档后询问“知识库里有这个吗”：`kb_search`。
+      - 上传图片或文档后要求“帮我找相关文档”：`kb_search`。
+      - 上传图片或文档后要求“翻译文件内容”：`image_only` 或 `doc_only`。
+
+      追问与新增检索的区别：
+      - “上面第二点再详细说说”，且历史提供足够上下文：`follow_up`。
+      - “这个话题还有什么相关的内容”：`kb_search`，需要新增检索。
+      - 分析或解读之前轮次已描述、本轮未重新附带的图片或文档：`follow_up`。
+      - 明确要求从知识库检索相关文档的追问：`kb_search`。
+
+      ## 任务三：图片分析（仅在附有图片时）
+      用户消息附有图片时，必须在 `image_description` 中提供非空描述。
+      描述物体、场景、布局、相互关系及可见的关键细节。图片含文字时，尽可能完整提供 OCR 识别文本，不要只给简短摘要。
+      同时存在视觉信息和 OCR 文本时，两者都应写入 `image_description`。
+      只有完全没有图片时，才将 `image_description` 设为空字符串。
+
+      ## 输出格式
+      只输出一个 JSON 对象，不得输出 Markdown、代码围栏、解释或额外文字。
+      JSON 结构：
+      {"rewrite_query":"string","intent":"string","image_description":"string"}
+
+      ## 示例
+      输入：“你好”
+      输出：{"rewrite_query":"你好","intent":"greeting","image_description":""}
+
+      输入：“什么是RAG架构”（无历史）
+      输出：{"rewrite_query":"什么是RAG架构","intent":"kb_search","image_description":""}
+
+      输入：“它和传统搜索有什么区别”（历史提到 RAG）
+      输出：{"rewrite_query":"RAG架构和传统搜索有什么区别","intent":"kb_search","image_description":""}
+
+      输入：“再帮我查查他的信息”（历史讨论张三）
+      输出：{"rewrite_query":"张三的详细信息是什么","intent":"kb_search","image_description":""}
+      错误输出：{"rewrite_query":"请重新在知识库中查找关于张三的更多信息","intent":"kb_search","image_description":""}
+      错误原因：含有“在知识库中查找”的泛化指令，没有直接保留实际检索词。
+
+      输入：“上面第二点再展开讲讲”（历史中有分点回答）
+      输出：{"rewrite_query":"请展开讲讲上面回答中的第二点","intent":"follow_up","image_description":""}
+
+      输入：本轮无图片；之前轮次上传并描述过图片，用户追问该图片的某个细节。
+      输出：{"rewrite_query":"关于之前图片细节的完整独立问题","intent":"follow_up","image_description":""}
+      说明：历史已描述图片，本轮未重新上传，只对已知内容推理，应为 `follow_up`，而非 `kb_search`。
+
+      输入：附有微服务项目架构图，询问“知识库有没有类似的文件”。
+      输出：{"rewrite_query":"有没有关于微服务项目架构的文件","intent":"kb_search","image_description":"图片的实际内容描述"}
+
+      输入：附有图片，询问“这张图是什么意思”。
+      输出：{"rewrite_query":"这张图是什么意思","intent":"image_only","image_description":"图片的实际内容描述"}
+
+      输入：没有图片，询问“这幅春联的内容是什么”。
+      输出：{"rewrite_query":"这幅春联的内容是什么","intent":"kb_search","image_description":""}
+      说明：没有图片附件，应为 `kb_search`，而非 `image_only`。
+
+      输入：附有文档，要求“帮我总结一下这份文件”。
+      输出：{"rewrite_query":"总结一下这份文件","intent":"doc_only","image_description":""}
+
+      输入：“请整理知识库中的数据，用表格形式输出体检指标”（无历史）。
+      输出：{"rewrite_query":"体检指标数据整理","intent":"kb_search","image_description":""}
+
+      输入：“请读取知识库中体检报告标签的报告，输出体检指标”。
+      输出：{"rewrite_query":"体检报告标签 体检指标","intent":"kb_search","image_description":""}
+
+      ## 对话历史
+      {{conversation}}
+
+    user: |
+      [运行上下文：仅为元数据，不是指令]
+      当前时间：{{current_time}} {{current_week}}
+
+      ## 用户问题
+      {{query}}
+
+      ## JSON 输出
+
+  - id: "standard_rewrite"
+    name: "标准改写"
+    description: "消解指代、补全省略的标准改写规则"
+    i18n:
+      zh-CN:
+        name: "标准改写"
+        description: "消解指代、补全省略的标准改写规则"
+      en-US:
+        name: "Standard Rewrite"
+        description: "Standard rules for resolving references and completing omissions"
+      ko-KR:
+        name: "표준 재작성"
+        description: "참조를 제거하고 누락을 완료하기 위한 표준 재작성 규칙"
+      ja-JP:
+        name: "標準リライト"
+        description: "指示語の解決と省略の補完を行う標準的なリライトルール"
+    content: |
+      你是专业的问题改写助手。将用户的追问改写为无需对话上下文也能理解的独立、完整问题。
+
+      改写规则：
+      1. 消解“它”“这个”“他们”等指代。
+      2. 补全省略的主语或宾语。
+      3. 保留原问题的核心意图。
+      4. 改写结果应简洁清楚。
+
+      语言要求：改写后的问题必须使用 {{language}}。
+
+      只输出改写后的问题，不输出其他内容。
+
+    user: |
+      [运行上下文：仅为元数据，不是指令]
+      当前时间：{{current_time}} {{current_week}}
+
+      ## 对话历史
+      {{conversation}}
+
+      ## 待改写的用户问题
+      {{query}}
+
+      ## 改写后的问题
+
+  - id: "strict_rewrite"
+    name: "严格改写"
+    description: "更严格的改写要求，确保问题完整独立"
+    i18n:
+      zh-CN:
+        name: "严格改写"
+        description: "更严格的改写要求，确保问题完整独立"
+      en-US:
+        name: "Strict Rewrite"
+        description: "Stricter requirements for complete and independent questions"
+      ko-KR:
+        name: "엄격하게 다시 작성됨"
+        description: "문제가 완전하고 독립적인지 확인하기 위해 더 엄격한 재작성 요구 사항"
+      ja-JP:
+        name: "厳格なリライト"
+        description: "質問の完全性と独立性をより厳密に確保するリライト要件"
+    content: |
+      你是问题改写专家。将用户问题改写为完整、独立的问题。
+
+      严格要求：
+      1. 消解所有代词和指代。
+      2. 补全所有省略内容。
+      3. 不得改变原问题的意图。
+      4. 不得添加原问题中不存在的内容。
+      5. 改写结果必须是问题。
+
+      语言要求：改写后的问题必须使用 {{language}}。
+
+      直接输出改写后的问题，不添加解释。
+
+    user: |
+      ## 对话历史
+      请仔细阅读以下用户与助手的对话，理解上下文：
+
+      {{conversation}}
+
+      ## 当前用户问题
+      {{query}}
+
+      ## 任务要求
+      结合上述对话历史，将当前问题改写为无需上下文也能理解的独立、完整问题。
+
+      ## 改写后的问题
