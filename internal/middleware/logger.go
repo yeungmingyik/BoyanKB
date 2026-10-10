@@ -48,7 +48,7 @@ var sensitiveFieldRegex = regexp.MustCompile(
 		`id[_-]?token|tenant[_-]?access[_-]?token|authorization|auth[_-]?token|api[_-]?key|` +
 		`api[_-]?secret|secret[_-]?key|client[_-]?secret|private[_-]?key|secret|` +
 		`(?:feishu[_-]?)?app[_-]?(?:secret|id)|` +
-		`authorization[_-]?url|authorization[_-]?attempt)")\s*:\s*"(?:\\.|[^"\\])*(?:"|$)`,
+		`invite[_-]?url|authorization[_-]?url|authorization[_-]?attempt)")\s*:\s*"(?:\\.|[^"\\])*(?:"|$)`,
 )
 
 // sanitizeBody 清理敏感信息
@@ -213,6 +213,9 @@ func Logger() gin.HandlerFunc {
 		statusCode := c.Writer.Status()
 		method := c.Request.Method
 
+		if strings.HasPrefix(path, "/r/") {
+			path = "/r/[redacted]"
+		}
 		if raw != "" {
 			path = path + "?" + sanitizeQuery(raw)
 		}
