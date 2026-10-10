@@ -272,5 +272,7 @@
 | `frontend/src/api/{business-team,team-transport}.ts`、`frontend/src/composables/businessTeam*`、`frontend/src/stores/businessTeam.ts`、`frontend/src/views/team/TeamInvitations.vue` | 伙伴负责人需要邀请员工，同时保持资料只读 | 服务端能力控制入口；固定 Viewer、仅内存展示新链接、切空间清空及过期响应隔离；8 项状态及请求测试 |
 | `frontend/src/components/menu.vue`、`frontend/src/router/index.ts`、`frontend/src/views/platform/index.vue`、`frontend/src/i18n/{businessTeam,locales/*}.ts` | 团队功能需要中文导航和移动端布局 | 增加 `/platform/team`，按能力显示导航；团队页允许窄屏收缩；类型检查及 13 项 i18n 检查 |
 | `frontend/nginx{,-http}.conf`、`internal/middleware/logger.go`、`internal/middleware/logger_*test.go`、`scripts/{check-frontend-access-logs,test_frontend_access_logs}.py` | 邀请及资源链接含持有者令牌 | 访问日志去查询、Referer 和 User-Agent，资源短链路径固定脱敏，响应邀请 URL 脱敏；关闭可能泄漏原始请求的 Nginx 错误日志；保留状态码访问日志和健康检查，失败排障见备份文档 |
+| `scripts/{trial_backup,backup-trial,restore-trial,verify-trial,prepare-trial-admin,configure-trial-auth}.py` 及对应测试 | 清理旧账号必须可恢复且限定具体对象 | 加密备份、隔离恢复、源容器和审计摘要绑定、新管理员先验证、单事务退役旧账号、保留源资料；认证设置读回；21 项交接测试及真实演练 |
+| `scripts/{trial-cloudflare,run-trial-tunnel}.py` 及对应测试、`deployment/trial/*`、`docker-compose.trial.yml` | 未购买服务器时提供受控 HTTPS 试用 | 专用隧道、单主机 DNS 检查、令牌仅本机进程环境、PID 身份核对、固定网关与最小端口；42 项隧道离线测试 |
 
 团队入口升级时同时验证后端 `available` 与请求空间绑定，禁止用单纯前端角色判断代替授权。操作方式及人工界面检查见 `docs/trial-team.md`。
