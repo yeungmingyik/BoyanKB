@@ -2683,7 +2683,6 @@ defineExpose({
 </script>
 <template>
   <div class="answers-input" :class="{ 'is-embedded': embeddedMode, 'is-compact': compact }" @drop="onDrop" @dragover="onDragOver">
-    <p v-if="currentAgentConfig.boyan_hybrid_search_without_rerank && !currentAgentConfig.rerank_model_id && !settingsStore.selectedAgentSourceTenantId" class="boyan-retrieval-notice" role="status">未配置重排，受管预设由服务端校验</p>
     <!-- Hidden file input for image upload -->
     <input ref="imageInputRef" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple
       style="display:none" @change="handleImageSelect" />
@@ -3016,12 +3015,6 @@ defineExpose({
   </div>
 </template>
 <style scoped lang="less">
-.boyan-retrieval-notice {
-  margin: 0 0 8px;
-  font-size: var(--app-text-sm);
-  line-height: 1.5;
-  color: var(--td-text-color-secondary);
-}
 
 @import './css/chat-resource-chips.less';
 

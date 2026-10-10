@@ -655,7 +655,7 @@
                 {{ $t('agent.editor.rerankModelDesc') }}
                 <template v-if="formData.config.boyan_hybrid_search_without_rerank && !formData.config.rerank_model_id">
                   <br />
-                  <span class="hint">未配置重排，受管预设由服务端校验</span>
+                  <span class="hint">当前使用混合检索，可选配重排序模型</span>
                 </template>
                 <template v-else-if="!needsRerankModel">
                   <br />

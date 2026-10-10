@@ -243,3 +243,16 @@
 | `docs/06-ppt-design.md`、`docs/06-agent-skill-validation.md`、`docs/business/{skills-catalog,chinese-prompts}.md` | 需要区分模板、指南安装、真实任务和人工验收 | 操作入口、可重复命令、正反例、权限与专业审校边界 |
 
 重新合入上游时先保留 `branding/` 独立资源及 Dockerfile 的覆盖 COPY；检查模板配置目录、工具箱路由、成员校验和业务工作流的版本字段是否变化。运行本文对应测试，再进行真实任务和 Office 验证。对已有确认记录使用过的模板版本不原地覆盖，新设计发布新版本；旧版资源继续保留。运行时预设与技能仍为 v1，与 PPT 视觉 v2 分开管理。
+
+## 合作伙伴交付界面整理
+
+日期：2026-10-10。分支：`feat/partner-delivery-cleanup`。
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `frontend/src/components/Input-field.vue`、`frontend/src/views/agent/AgentEditorModal.vue` | 可选重排提示干扰聊天，设置说明过于技术化 | 移除聊天常驻提示，配置页改为可选增强说明；不改变提交或后台校验 |
+| `frontend/src/views/toolbox/BusinessSkills.vue`、`frontend/src/i18n/businessSkills.ts` | 普通使用说明直接暴露完整技能协议 | 默认场景、输入和确认流程说明；原协议折叠至技术详情，未开通时联系管理员 |
+| `frontend/src/views/chat/components/{AgentStreamDisplay,BusinessDocumentToolResult}.vue`、`frontend/src/utils/{agent-tool-icons,business-document-display}.ts` | 文件工具流显示内部工具名和原始成功结果 | 中文名称与状态，技术字段折叠；错误仍可见，确认与下载门禁不变 |
+| `docs/07-partner-delivery.md` | 交付审查不能将测试数据改名后当成正式内容 | 已知资源 ID 清单、保留范围、只读检查和现有生产配置差距 |
+
+升级时检查聊天工具事件字段和技能详情响应契约，重跑状态展示测试、类型检查与构建，再用普通伙伴身份验证中文说明、真实错误、确认和下载。不要改不可变的 `skills/boyan` 或 `presets/boyan/v1` 来调整界面用语。

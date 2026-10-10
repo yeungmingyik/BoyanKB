@@ -217,6 +217,7 @@
                     <div v-if="isEventExpanded(event.tool_call_id) && !event.pending && hasExpandableResults(event)"
                     class="action-details">
                     <BrowserToolDetails v-if="event.tool_name === 'local_browser'" :event="event" />
+                    <BusinessDocumentToolResult v-else-if="event.tool_name === 'boyan_document' && event.success === true" :event="event" />
                     <div v-else-if="resolveToolDisplayType(event)" class="tool-result-wrapper">
                       <ToolResultRenderer :display-type="resolveToolDisplayType(event)" :tool-data="event.tool_data"
                         :output="mcpToolResultOutput(event)" :arguments="event.arguments" :success="event.success" />
@@ -539,6 +540,7 @@
                 <div v-if="isEventExpanded(event.tool_call_id) && !event.pending && hasExpandableResults(event)"
                   class="action-details">
                   <BrowserToolDetails v-if="event.tool_name === 'local_browser'" :event="event" />
+                  <BusinessDocumentToolResult v-else-if="event.tool_name === 'boyan_document' && event.success === true" :event="event" />
                     <div v-else-if="resolveToolDisplayType(event)" class="tool-result-wrapper">
                     <ToolResultRenderer :display-type="resolveToolDisplayType(event)" :tool-data="event.tool_data"
                       :output="mcpToolResultOutput(event)" :arguments="event.arguments" :success="event.success" />
@@ -673,6 +675,8 @@ import { unwrapFinalAnswerWrappers, thinkingEqualsAnswer } from '@/utils/finalAn
 import { getAgentToolIconName } from '@/utils/agent-tool-icons';
 import { getMcpToolDisplayType, getMcpToolTitle, mcpToolResultOutput } from '@/utils/mcpToolDisplay';
 import { getQueryText, getWikiPageText } from '@/utils/agent-tool-display';
+import { getBusinessDocumentToolTitle } from '@/utils/business-document-display';
+import BusinessDocumentToolResult from './BusinessDocumentToolResult.vue';
 import {
   formatToolTitleWithDetail,
   getEventSkillName,
@@ -726,6 +730,7 @@ const { t } = useI18n();
 ensureMermaidInitialized();
 
 const TOOL_NAME_KEYS: Record<string, string> = {
+  boyan_document: 'businessSkills.fileTool',
   discover_mcp_tools: 'agentStream.mcp.discoverTools',
   call_mcp_tool: 'agentStream.mcp.callTool',
   search_knowledge: 'agentStream.tools.searchKnowledge',
@@ -2852,6 +2857,7 @@ const getAttachmentParsingSummary = (event: any): string => {
 
 // Get tool title - prefer summary over description, add query for search tools
 const getToolTitle = (event: any): string => {
+  if (event.tool_name === 'boyan_document') return getBusinessDocumentToolTitle(t, event);
   if (event.tool_name === 'local_browser') return browserToolTitle(t, event);
   const mcpTitle = getMcpToolTitle(t, event)
   if (mcpTitle) return mcpTitle
@@ -3016,6 +3022,7 @@ const skillScriptCommandLabel = (event: any): string => {
 
 // Tool description
 const getToolDescription = (event: any): string => {
+  if (event.tool_name === 'boyan_document') return getBusinessDocumentToolTitle(t, event);
   if (event.tool_name === 'local_browser') return browserToolTitle(t, event);
   if (event.pending) {
     if (event.tool_name === 'image_analysis') {

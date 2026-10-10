@@ -19,6 +19,7 @@
       <div class="business-skills__intro" :class="{ 'is-ready': ready }">
         <div>
           <h3 v-if="catalog.status === 'not_installed'">{{ t('businessSkills.notInstalled') }}</h3>
+          <h3 v-else-if="ready">{{ t('businessSkills.enabled') }}</h3>
           <h3 v-else>{{ catalog.reason }}</h3>
           <p v-if="!catalog.installed">{{ t('businessSkills.switchSpace') }}</p>
           <p v-else>{{ t('businessSkills.workflow') }}</p>
@@ -63,7 +64,15 @@
       width="min(840px, calc(100vw - 32px))" :footer="false" @close="close">
       <div v-if="detailLoading" role="status"><t-loading :text="t('common.loading')" /></div>
       <p v-else-if="detailFailed" role="alert">{{ t('businessSkills.detailFailed') }}</p>
-      <pre v-else-if="detail" class="business-skills__guide">{{ businessSkillGuide(detail.content) }}</pre>
+      <div v-else-if="detail" class="business-skills__usage">
+        <p>{{ guideUsage }}</p>
+        <p>{{ t('businessSkills.guideWorkflow') }}</p>
+        <p>{{ t('businessSkills.guideSources') }}</p>
+        <details class="business-skills__technical">
+          <summary>{{ t('businessSkills.guideProtocol') }}</summary>
+          <pre class="business-skills__guide">{{ businessSkillGuide(detail.content) }}</pre>
+        </details>
+      </div>
       <div class="business-skills__dialog-footer">
         <t-button theme="default" variant="outline" @click="close">{{ t('businessSkills.close') }}</t-button>
       </div>
@@ -77,7 +86,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { getBusinessSkill, listBusinessSkills } from '@/api/business-skills'
 import { createBusinessSkillCatalog } from '@/composables/businessSkillCatalog'
-import { businessSkillGuide, canReadBusinessSkill, canUseBusinessPlanner } from '@/config/businessSkills'
+import { businessSkillGuide, businessSkillLabel, canReadBusinessSkill, canUseBusinessPlanner } from '@/config/businessSkills'
 import { useAuthStore } from '@/stores/auth'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -96,6 +105,10 @@ const groups = computed(() => [
 const guideTitle = computed(() => detail.value?.display_name
   ?? catalog.value?.skills.find((skill) => skill.name === (detailLoading.value || detailFailed.value))?.display_name
   ?? t('businessSkills.read'))
+const guideUsage = computed(() => {
+  const key = businessSkillLabel(detail.value?.name ?? '')?.replace('.names.', '.guides.')
+  return key ? t(key) : detail.value?.description ?? ''
+})
 
 const openPlanner = () => {
   if (!ready.value || !catalog.value?.planner_agent_id) return
@@ -116,6 +129,8 @@ onBeforeUnmount(clear)
   color: var(--td-text-color-primary);
 
   p { margin: 0; line-height: 1.65; }
+
+  &__usage { display: grid; gap: var(--app-space-4); line-height: 1.65; }
 
   &__toolbar {
     display: flex;
