@@ -121,6 +121,84 @@ class FeishuSpaceSyncTests(unittest.TestCase):
                 "embedding_model_id": "local-embedding", "summary_model_id": "",
                 "indexing_strategy": {"vector_enabled": True, "keyword_enabled": True, "wiki_enabled": False, "graph_enabled": False}}
 
+    def kb_client(self, kb):
+        models = [{"id": "local-embedding", "type": "Embedding", "source": "local", "status": "active", "name": "bge-m3:latest"}]
+        client = Mock()
+        client.request.side_effect = [{"success": True, "data": value} for value in (models, [kb], kb)]
+        return client
+
+    def test_read_only_accepts_summary_configuration_without_allowing_sync(self):
+        kb = self.managed_kb(MODULE["KB_NAME"])
+        kb["summary_model_id"] = "PRIVATE_MODEL_ID"
+        client = self.kb_client(kb)
+        self.assertEqual(MODULE["knowledge_base"](client, read_only=True), kb)
+        self.assertTrue(all(call.args[1] == "GET" for call in client.request.call_args_list))
+        policy = json.loads(self.output.getvalue().splitlines()[0])
+        self.assertEqual(policy, {"event": "ingestion_policy", "validation_mode": "read_only",
+                                  "summary_model_configured": True, "sync_allowed": False})
+        self.assertNotIn("PRIVATE_MODEL_ID", self.output.getvalue())
+
+    def test_sync_rejects_configured_summary_before_any_mutation(self):
+        kb = self.managed_kb(MODULE["KB_NAME"])
+        kb["summary_model_id"] = "PRIVATE_MODEL_ID"
+        for create in (False, True):
+            client = self.kb_client(kb)
+            with self.subTest(create=create), self.assertRaisesRegex(SafeError, "Sync is blocked"):
+                MODULE["knowledge_base"](client, create=create)
+            self.assertTrue(all(call.args[1] == "GET" for call in client.request.call_args_list))
+        self.assertNotIn("PRIVATE_MODEL_ID", self.output.getvalue())
+
+    def test_read_only_cannot_create_missing_resources(self):
+        client = Mock()
+        with self.assertRaises(SafeError):
+            MODULE["knowledge_base"](client, create=True, read_only=True)
+        client.request.assert_not_called()
+
+    def test_read_only_retains_embedding_scope_and_enrichment_guards(self):
+        cases = [{"embedding_model_id": "remote-embedding"}, {"description": "another-owner"},
+                 {"name": "another-space"}, {"type": "faq"},
+                 {"image_processing_config": {"model_id": "unexpected"}},
+                 {"vlm_config": {"model_name": "unexpected"}}, {"vlm_config": {"base_url": "unexpected"}}]
+        cases.extend({key: {"enabled": True}} for key in (
+            "question_generation_config", "auto_tag_config", "profile_config", "vlm_config", "asr_config"))
+        for key in ("vector_enabled", "keyword_enabled", "wiki_enabled", "graph_enabled"):
+            strategy = self.managed_kb(MODULE["KB_NAME"])["indexing_strategy"].copy()
+            strategy[key] = not strategy[key]
+            cases.append({"indexing_strategy": strategy})
+        for changes in cases:
+            kb = self.managed_kb(MODULE["KB_NAME"])
+            kb.update({"summary_model_id": "PRIVATE_MODEL_ID", **changes})
+            client = self.kb_client(kb)
+            with self.subTest(changes=changes), self.assertRaises(SafeError):
+                MODULE["knowledge_base"](client, read_only=True)
+            self.assertTrue(all(call.args[1] == "GET" for call in client.request.call_args_list))
+
+    def test_verify_does_not_sync_and_sync_rejects_summary_before_datasource(self):
+        kb = self.managed_kb(MODULE["KB_NAME"])
+        kb["summary_model_id"] = "PRIVATE_MODEL_ID"
+        nodes = {"root": {"object_type": "docx"}}
+        for verify in (False, True):
+            client = self.kb_client(kb)
+            ds = Mock(return_value={"id": "ds1"})
+            sync = Mock()
+            after = Mock(return_value={})
+            with self.subTest(verify=verify), patch.dict(GLOBALS, {
+                "HttpClient": Mock(), "require_guard": Mock(), "FeishuClient": Mock(),
+                "permissions": Mock(), "inventory": Mock(return_value=nodes), "login": Mock(return_value=client),
+                "datasource": ds, "documents": Mock(return_value={}), "await_sync": sync, "await_documents": after,
+            }):
+                if verify:
+                    result = MODULE["synchronize"]({}, verify=True)
+                    self.assertEqual(result[1], kb)
+                    ds.assert_called_once_with(client, kb, {}, create=False)
+                    after.assert_called_once()
+                else:
+                    with self.assertRaisesRegex(SafeError, "Sync is blocked"):
+                        MODULE["synchronize"]({})
+                    ds.assert_not_called()
+                    after.assert_not_called()
+                sync.assert_not_called()
+
     def test_managed_kb_accepts_old_and_new_names_without_recreating(self):
         for name in MODULE["KB_NAMES"]:
             kb = self.managed_kb(name)
@@ -152,6 +230,8 @@ class FeishuSpaceSyncTests(unittest.TestCase):
         self.assertEqual((path, method), ("/api/v1/knowledge-bases", "POST"))
         self.assertEqual(body["name"], "合作伙伴专用空间")
         self.assertEqual(body["description"], "managed-feishu-sync:" + SPACE_ID)
+        self.assertEqual(body["summary_model_id"], "")
+        self.assertEqual(body["embedding_model_id"], "local-embedding")
 
     def test_datasource_name_aliases_do_not_relax_space_or_sync_guards(self):
         base = {"id": "ds1", "knowledge_base_id": "kb1", "name": MODULE["KB_NAME"], "type": "feishu", "status": "paused",
@@ -261,6 +341,23 @@ class FeishuSpaceSyncTests(unittest.TestCase):
             with self.assertRaises(SafeError):
                 MODULE["write_snapshot"](output, {"id": "kb1"}, {"id": "ds1"}, nodes, rows)
             self.assertEqual(output.read_text(encoding="utf-8"), text)
+
+    def test_snapshot_records_read_only_policy_without_model_configuration(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(GLOBALS, {"REPO_ROOT": pathlib.Path(temporary).resolve()}):
+            nodes, rows = self.probe_state()
+            for summary in ("", "PRIVATE_MODEL_ID"):
+                kb = self.managed_kb(MODULE["KB_NAME"])
+                kb["summary_model_id"] = summary
+                kb["model_parameters"] = {"api_key": "PRIVATE_SECRET", "base_url": "PRIVATE_ENDPOINT"}
+                output = MODULE["snapshot_path"]("temp/with-summary.json" if summary else "temp/no-summary.json", writing=True)
+                MODULE["write_snapshot"](output, kb, {"id": "ds1"}, nodes, rows)
+                text = output.read_text(encoding="utf-8")
+                data = json.loads(text)
+                self.assertEqual(data["version"], 1)
+                self.assertEqual(data["ingestion_policy"], {"validation_mode": "read_only",
+                    "summary_model_configured": bool(summary), "sync_allowed": not bool(summary)})
+                self.assertNotIn("PRIVATE_", text)
+                self.assertEqual(len(data["documents"]), 1)
 
     def test_changed_probe_requires_real_indexed_text_in_selected_document(self):
         with tempfile.TemporaryDirectory() as temporary:

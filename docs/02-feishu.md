@@ -1,8 +1,10 @@
 # 飞书合作伙伴专用空间同步
 
-本方案仅将飞书知识空间 `7610776951925509072` 同步到本机 WeKnora 的专用知识库 `feishu-7610776951925509072`。连接器使用应用身份 `tenant_access_token`，首次遍历全部可见目录，后续按节点内容更新时间增量同步。本方案不需要用户 OAuth，不申请全部 scope，不向 DeepSeek 发送本次导入的正文。
+本方案仅将飞书知识空间 `7610776951925509072` 同步到本机 WeKnora 的专用知识库，现名为「合作伙伴专用空间」，原名为 `feishu-7610776951925509072`。连接器使用应用身份 `tenant_access_token`，首次遍历全部可见目录，后续按节点内容更新时间增量同步。本方案不需要用户 OAuth，不申请全部 scope。2026-10-08 首次导入使用空摘要模型，未通过导入摘要步骤发送正文到 DeepSeek；当前配置差异见第 5 节。
 
-日期：2026-10-08。基线：Tencent/WeKnora v0.8.2。变更登记见 [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md)。
+首次验收：2026-10-08。配置复核：2026-10-10。基线：Tencent/WeKnora v0.8.2。变更登记见 [CUSTOMIZATIONS.md](CUSTOMIZATIONS.md)。
+
+**2026-10-10 当前状态：**知识库已配置远程摘要模型，不能继续沿用「摘要模型为空」的导入保证。`verify`、`snapshot` 允许只读核验，并明确输出 `summary_model_configured=true`、`sync_allowed=false`；`sync` 仍拒绝执行。恢复实际同步前需明确摘要处理策略，不能把只读对账成功当作同步已恢复。以下首次导入、V1/V2 更新及无变化增量结果属于 2026-10-08 历史验收。用户选择保留 probe，不删除源文档或本地副本。
 
 ## 1. 当前结果与待验证项
 
@@ -143,10 +145,10 @@ go test -ldflags='-X google.golang.org/protobuf/reflect/protoregistry.conflictPo
 
 此命令与 `docker/Dockerfile.feishu-local` 一致，将上游 Qdrant、Milvus 依赖的 protobuf 同名注册冲突处理为警告，避免测试进程在初始化阶段退出。
 
-helper 的完整 19 个模拟测试已通过，不调用真实飞书接口，可单独复跑：
+helper 当前 29 个模拟测试已通过，覆盖只读核验与同步权限分离、摘要配置差异、原有范围和增强开关检查、快照字段过滤。不调用真实飞书接口，可单独复跑：
 
 ```powershell
-python scripts/test_feishu_space_sync.py
+python -B scripts/test_feishu_space_sync.py
 ```
 
 权限检查、目录预检和真实同步依次执行；某一步失败后停止，不把失败当作空目录成功：
@@ -161,7 +163,7 @@ python scripts/feishu-space-sync.py permissions
 python scripts/feishu-space-sync.py permissions --apply
 ```
 
-管理员批准后：
+管理员批准后，且第 5 节同步策略检查通过时：
 
 ```powershell
 python scripts/feishu-space-sync.py permissions
@@ -171,13 +173,36 @@ python scripts/feishu-space-sync.py sync --timeout 7200
 python scripts/feishu-space-sync.py verify --timeout 7200
 ```
 
-`inventory` 仅读取目标目录元数据；`audit-access` 分页核对应用可见 Wiki 空间，可选检查用户指定的拒绝样本；`audit-documents` 只读检查目标 docx 的阅读和导出权限；`sync` 创建或复用专用资源并抓取正文写入本机；`verify` 不触发同步，核对目录、解析状态，可进一步验证指定 probe 的真实关键词检索；`snapshot` 在验收后保存更新前基线。所有动作都会取得所需 token。脚本没有自动修改或删除飞书 probe 的子命令，具体参数以 `--help` 为准。
+`inventory` 仅读取目标目录元数据；`audit-access` 分页核对应用可见 Wiki 空间，可选检查用户指定的拒绝样本；`audit-documents` 只读检查目标 docx 的阅读和导出权限；`sync` 在策略检查通过后创建或复用专用资源并抓取正文写入本机；`verify` 不触发同步，核对目录、解析状态，可进一步验证指定 probe 的真实关键词检索；`snapshot` 保存只读对账基线与当前导入策略状态。所有动作都会取得所需 token。脚本没有自动修改或删除飞书 probe 的子命令，具体参数以 `--help` 为准。
 
 脚本不覆盖同名但配置不兼容的知识库或数据源。发生冲突时应检查配置和归属，不删除后重建来绕过检查。脚本也不处理首次管理员注册，请先完成本机管理员账号及工作空间创建。
 
 ## 5. 专用知识库、数据源和 API
 
-知识库固定名称 `feishu-7610776951925509072`，描述标记 `managed-feishu-sync:7610776951925509072`。使用本地 BGE-M3 向量化，开启向量与关键词索引；`summary_model_id` 为空，关闭问题生成、自动标签、知识库 profile、Wiki、知识图谱、VLM 和 ASR。该配置避免导入摘要等步骤调用远程模型；后续若主动选择远程聊天模型提问，属于另一项数据处理操作，不在此保证内。
+知识库和数据源现名均为「合作伙伴专用空间」，脚本兼容旧显示名 `feishu-7610776951925509072`，描述归属标记仍为 `managed-feishu-sync:7610776951925509072`。2026-10-08 初始配置使用本地 BGE-M3 向量化，开启向量与关键词索引；`summary_model_id` 为空，关闭问题生成、自动标签、知识库 profile、Wiki、知识图谱、VLM 和 ASR。脚本新建知识库仍使用这套配置。它避免导入摘要等步骤调用远程模型；主动选择远程聊天模型提问是另一项数据处理操作。
+
+**2026-10-10 配置差异与只读检查：**现存知识库 `d9285ed1-0760-474b-ba82-a13347598176` 的向量模型仍为 `local-embedding`（本地 BGE-M3），但 `summary_model_id` 已为 `local-deepseek-chat`。该模型的来源为 `remote`，不能由 ID 中的 `local` 判断为本地推理。问题生成、自动标签、profile、VLM、ASR、Wiki 和知识图谱仍关闭；19 篇正文解析完成，现存摘要状态为 failed；数据源仍为 paused、空 schedule、增量模式、删除同步关闭。这些只读数据库结果不代表今天执行了新的正文同步。
+
+普通摘要默认启用，独立于上述增强开关：`internal/application/service/knowledge_process_config.go` 中 `ResolveProcessConfig` 默认 `SummaryEnabled=true`，`internal/application/service/datasource_service.go` 的文件导入未传入关闭摘要的逐文档覆盖。因此当前配置重新导入时可能调用远程摘要模型，不能简单删除脚本的摘要检查。管理员交接脚本仅修改知识库创建者并在事务内核对其余配置未变，说明摘要配置在交接前已存在；具体修改人、时间和入口**未验证**。前端新建时会选择默认聊天模型，编辑表单也要求聊天模型，但这不足以证明本次差异由哪次界面操作产生。
+
+当前 helper 的行为分开如下：
+
+| 动作 | 当前非空摘要模型下的行为 |
+| --- | --- |
+| `verify` | 允许核对已有资源；不创建资源或触发同步，输出 `validation_mode=read_only`、`summary_model_configured=true`、`sync_allowed=false` |
+| `snapshot` | 与 verify 相同，并将这些字段写入 JSON 的 `ingestion_policy`，不保存模型配置、密钥或正文 |
+| `sync` | 在调用数据源或同步接口之前拒绝；不自动清空摘要模型、不改变已有配置 |
+
+本地向量模型、目标空间、归属标记、索引、增强关闭和数据源范围等检查均继续严格执行。`sync_allowed` 仅表示此 helper 的导入策略判断，不是后端全局同步开关；不要通过界面或其他 API 绕过当前未解决的摘要策略。数据源 paused 也不等于取消已有队列任务。
+
+当前只读复核命令如下；快照路径必须尚不存在。离线测试已通过，真实只读快照结果以本次命令输出为准，不沿用历史验收结果：
+
+```powershell
+python scripts/feishu-space-sync.py verify --timeout 300
+python scripts/feishu-space-sync.py snapshot --output temp/feishu-readonly-20261010.json --timeout 300
+```
+
+恢复操作性同步仍待确定摘要策略并重新验收：保持入库不调用远程摘要，需要明确禁用导入摘要或处理空摘要模型与现有界面的兼容性；若允许远程摘要，则需明确数据处理范围后另行调整策略。本次仅修复只读核验兼容性，没有修改知识库、数据源、模型或飞书内容，也没有替用户作出该策略选择。
 
 空 `summary_model_id` 不阻止上游普通摘要任务入队。摘要 worker 在 `internal/application/service/knowledge_process.go:1290` 检查到模型为空后跳过模型调用，并将 `summary_status` 设为 `failed`；该状态不等于 `parse_status=failed`。正文解析、索引和摘要必须分别验收：本方案要求 `parse_status=completed` 且实际检索成功，不要求生成摘要。本次 19 个源节点均为 docx，没有表格节点。
 
@@ -186,7 +211,7 @@ python scripts/feishu-space-sync.py verify --timeout 7200
 ```json
 {
   "knowledge_base_id": "<专用知识库ID>",
-  "name": "feishu-7610776951925509072",
+  "name": "合作伙伴专用空间",
   "type": "feishu",
   "config": {
     "type": "feishu",
@@ -317,7 +342,7 @@ python scripts/feishu-space-sync.py verify --node-token JJ0zw4wfjiSGwSkypq3csTVJ
 python scripts/feishu-space-sync.py snapshot --output temp/feishu-before.json
 ```
 
-快照只允许写入仓库 `temp` 下的 JSON 路径，拒绝覆盖已有文件；重复测试请选择新的文件名，并在后续 `--baseline` 中使用同一路径。快照保存空间、数据源、文档 ID、哈希和时间戳，不保存正文、AppSecret 或访问凭据。节点标识可能以 external ID 保存，这是对账元数据，不是认证 token。
+快照只允许写入仓库 `temp` 下的 JSON 路径，拒绝覆盖已有文件；重复测试请选择新的文件名，并在后续 `--baseline` 中使用同一路径。快照保存空间、数据源、文档 ID、哈希和时间戳；2026-10-10 起另保存 `ingestion_policy`，版本仍为 1，历史基线继续兼容。不保存正文、模型配置、AppSecret 或访问凭据。节点标识可能以 external ID 保存，这是对账元数据，不是认证 token。
 
 用户将同一 probe 文档改为包含 `WEKNORA_FEISHU_PROBE_V2`，记录修改时间，然后执行：
 
@@ -398,5 +423,6 @@ python scripts/feishu-space-sync.py audit-access --deny-space '<用户指定的�
 | 同步状态为 partial，但已有文档出现在知识库 | 抓取可以部分成功，且旧 failed 任务重试会更新同一日志。本次最终已补齐 19 篇并完整验证，不能只凭某条旧日志判断当前总数 |
 | 没有 cron 且数据源 paused，为什么文档数量仍变化 | 已入队任务仍可能按 Asynq `MaxRetry(5)` 自动重试。paused 与空 schedule 不会取消这些任务；本次旧失败日志重试补入 1 篇，最新手动同步因此只新增 3 篇 |
 | 容器 healthy、健康接口 200，是否已经完成同步验收 | 仅证明服务健康。还需核对源与本地来源集合、`parse_status=completed` 及真实关键词检索 |
-| `summary_status=failed`，是否代表正文导入失败 | 本方案故意留空摘要模型，worker 会跳过摘要并设置该状态。独立检查 `parse_status` 与检索；真实解析失败仍不通过 |
+| `summary_status=failed`，是否代表正文导入失败 | 2026-10-08 初始配置留空摘要模型，worker 跳过摘要并设置该状态。当前已配置远程摘要模型，既有 failed 状态不能证明未来导入不会调用远程模型。独立检查 `parse_status` 与检索，并按第 5 节确认当前同步策略 |
+| `verify` 或 `snapshot` 成功但 `sync_allowed=false` | 只证明已有数据可对账，摘要配置仍不符合 helper 的导入策略。实际 `sync` 保持拒绝，需先明确摘要处理策略，不要绕过校验 |
 | 日志扫描没有发现凭据，是否保证从未泄漏 | 本次只对指定 app 日志窗口做内存匹配。已部署脱敏修复并通过相关测试，但不能由一次扫描推出全时段保证 |

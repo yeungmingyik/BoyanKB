@@ -509,7 +509,15 @@ def local_data(client, path, method="GET", payload=None):
     return result["data"]
 
 
-def knowledge_base(client, create=False):
+def ingestion_policy(kb, read_only):
+    summary_configured = bool(kb.get("summary_model_id"))
+    return {"validation_mode": "read_only" if read_only else "sync",
+            "summary_model_configured": summary_configured, "sync_allowed": not summary_configured}
+
+
+def knowledge_base(client, create=False, read_only=False):
+    if create and read_only:
+        fail("Read-only verification cannot create a knowledge base.")
     models = local_data(client, "/api/v1/models")
     if not isinstance(models, list):
         fail("Model list is invalid.")
@@ -540,8 +548,8 @@ def knowledge_base(client, create=False):
         kb = mapping(local_data(client, "/api/v1/knowledge-bases/" + identifier(matches[0].get("id"))))
     if kb.get("name") not in KB_NAMES or kb.get("description") != KB_MARKER or kb.get("type") != "document":
         fail("The managed knowledge base name or ownership marker conflicts.")
-    if kb.get("embedding_model_id") != "local-embedding" or kb.get("summary_model_id"):
-        fail("The managed knowledge base must use local embedding without a summary model.")
+    if kb.get("embedding_model_id") != "local-embedding":
+        fail("The managed knowledge base must use local embedding.")
     strategy = mapping(kb.get("indexing_strategy"))
     if strategy.get("vector_enabled") is not True or strategy.get("keyword_enabled") is not True:
         fail("The managed knowledge base must enable vector and keyword indexes.")
@@ -554,6 +562,10 @@ def knowledge_base(client, create=False):
     if vlm.get("model_name") or vlm.get("base_url") or mapping(kb.get("image_processing_config") or {}).get("model_id"):
         fail("Legacy image model enrichment must remain disabled.")
     identifier(kb.get("id"))
+    policy = ingestion_policy(kb, read_only)
+    emit("ingestion_policy", **policy)
+    if not read_only and not policy["sync_allowed"]:
+        fail("Sync is blocked because a summary model is configured; read-only verify or snapshot remains available.")
     emit("knowledge_base", knowledge_base_id=kb["id"])
     return kb
 
@@ -723,7 +735,7 @@ def synchronize(settings, verify=False, timeout=7200):
     if not any(row["object_type"] in SUPPORTED_TYPES for row in nodes.values()):
         fail("There are no supported documents to import.")
     client = login(settings)
-    kb = knowledge_base(client, create=not verify)
+    kb = knowledge_base(client, create=not verify, read_only=verify)
     ds = datasource(client, kb, settings, create=not verify)
     before = documents(client, kb["id"], ds["id"], nodes)
     counts = None
@@ -762,7 +774,8 @@ def snapshot_path(value, writing=False):
 
 
 def write_snapshot(path, kb, ds, nodes, rows):
-    payload = {"version": 1, "space_id": SPACE_ID, "knowledge_base_id": kb["id"], "data_source_id": ds["id"], "documents": []}
+    payload = {"version": 1, "space_id": SPACE_ID, "knowledge_base_id": kb["id"], "data_source_id": ds["id"],
+               "ingestion_policy": ingestion_policy(kb, read_only=True), "documents": []}
     for external_id, row in sorted(rows.items()):
         node = nodes[external_id.split("#", 1)[0]]
         payload["documents"].append({key: row[key] for key in ("external_id", "knowledge_id", "file_hash", "source_updated_at", "updated_at")})
