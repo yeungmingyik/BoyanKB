@@ -60,6 +60,8 @@ class FakeClient:
         elif path == MODULE.PREFIX:
             if self.job is None:
                 self.job = {"partner_key": payload["partner_key"], "spec_hash": payload["spec_hash"], "tenant_id": payload.get("target_tenant_id", 10001), "owner_user_id": "operator", "status": "provisioning", "state": {}, "revision": 1}
+                if payload.get("knowledge_mode"):
+                    self.job["state"]["knowledge_mode"] = payload["knowledge_mode"]
             else:
                 MODULE.require(self.job["spec_hash"] == payload["spec_hash"], "spec_changed")
             result = self.job
@@ -150,6 +152,83 @@ class FakeClient:
 
 
 class OnboardTests(unittest.TestCase):
+    def shared_enterprise_plan(self, headquarters=False):
+        value = manifest()
+        value["knowledge_mode"] = "shared_enterprise"
+        value.pop("contributor_email")
+        value["members"] = [{"email": "viewer@example.test", "role": "viewer"}]
+        if headquarters:
+            value.update({"target_tenant_id": value["hq_tenant_id"], "members": []})
+        return plan_for(value)
+
+    def test_shared_enterprise_keeps_one_source_without_private_kb_or_creator_assignment(self):
+        for headquarters in (False, True):
+            with self.subTest(headquarters=headquarters):
+                plan = self.shared_enterprise_plan(headquarters)
+                client = FakeClient(plan)
+                first = MODULE.Onboarder(client, plan).run()
+                second = MODULE.Onboarder(client, plan).run()
+                self.assertEqual(first["state"], second["state"])
+                self.assertEqual(first["status"], "ready")
+                self.assertEqual(first["state"]["knowledge_mode"], "shared_enterprise")
+                self.assertFalse(first["state"].get("knowledge_base_id"))
+                self.assertFalse(first["state"].get("contributor_user_id"))
+                self.assertIsNone(client.kb)
+                self.assertEqual(len(client.agents), 3)
+                self.assertEqual(len(client.catalog), 9)
+                self.assertFalse(any(path.endswith("/knowledge-creator") or method == "POST" and path == "/api/v1/knowledge-bases" for method, path in client.calls))
+                for agent in client.agents:
+                    self.assertEqual(agent["config"]["knowledge_bases"], plan["manifest"]["hq_knowledge_base_ids"])
+                self.assertEqual(plan["agents"]["planner"]["config"]["knowledge_bases"], ["@hq", "@partner"])
+                self.assertEqual(len(client.members), 0 if headquarters else 1)
+                if not headquarters:
+                    self.assertEqual(client.members[0]["role"], "viewer")
+
+    def test_shared_enterprise_requires_one_source_and_no_contributor_assignment(self):
+        for mutation, error in (("unknown", "knowledge_mode"), ("multiple", "single_enterprise"), ("contributor", "shared_enterprise_contributor")):
+            with self.subTest(mutation=mutation):
+                value = manifest()
+                value["knowledge_mode"] = "shared_enterprise"
+                if mutation != "contributor":
+                    value.pop("contributor_email")
+                if mutation == "unknown":
+                    value["knowledge_mode"] = "all_tenants"
+                if mutation == "multiple":
+                    value["hq_knowledge_base_ids"].append(str(uuid.uuid4()))
+                with self.assertRaisesRegex(MODULE.OnboardError, error):
+                    plan_for(value)
+
+    def test_shared_enterprise_requires_server_mode_and_read_only_effective_share(self):
+        for mutation, error in (("mode", "knowledge_mode_mismatch"), ("private", "shared_enterprise_private"), ("share", "hq_share_not_read_only")):
+            with self.subTest(mutation=mutation):
+                plan = self.shared_enterprise_plan()
+                client = FakeClient(plan)
+                request = client.request
+                def changed(method, path, *args, **kwargs):
+                    result = request(method, path, *args, **kwargs)
+                    if path == MODULE.PREFIX and mutation == "mode":
+                        result["data"]["state"].pop("knowledge_mode")
+                    if path == MODULE.PREFIX and mutation == "private":
+                        result["data"]["state"]["knowledge_base_id"] = plan["manifest"]["hq_knowledge_base_ids"][0]
+                    if path == "/api/v1/shared-knowledge-bases" and mutation == "share":
+                        result["data"][0]["effective_permission"] = "editor"
+                    return result
+                with patch.object(client, "request", side_effect=changed):
+                    with self.assertRaisesRegex(MODULE.OnboardError, error):
+                        MODULE.Onboarder(client, plan).run()
+                self.assertFalse(any(path.endswith("/knowledge-creator") for _, path in client.calls))
+
+    def test_mode_change_requires_explicit_migration_and_legacy_digest_has_no_mode(self):
+        legacy = plan_for()
+        self.assertNotIn("knowledge_mode", legacy["manifest"])
+        client = FakeClient(legacy)
+        original = MODULE.Onboarder(client, legacy).run()
+        plan = self.shared_enterprise_plan()
+        self.assertNotEqual(legacy["spec_hash"], plan["spec_hash"])
+        with self.assertRaisesRegex(MODULE.OnboardError, "spec_changed"):
+            MODULE.Onboarder(client, plan).run()
+        self.assertEqual(original["state"], client.job["state"])
+
     def headquarters_plan(self):
         value = manifest()
         value.update({"partner_key": "headquarters", "name": "总部业务", "target_tenant_id": 10000, "members": []})
@@ -383,6 +462,55 @@ class OnboardTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertNotIn("never-print", output.getvalue())
         self.assertIn("http_403", output.getvalue())
+
+
+class TeamManagerManifestTests(unittest.TestCase):
+    def shared_manifest(self):
+        value = manifest()
+        value["knowledge_mode"] = "shared_enterprise"
+        value.pop("contributor_email")
+        value["members"] = [{"email": "manager@example.test", "role": "viewer"}]
+        value["team_manager_email"] = "manager@example.test"
+        return value
+
+    def test_manager_binding_is_opt_in_and_hash_bound(self):
+        value = self.shared_manifest()
+        managed = plan_for(value)
+        del value["team_manager_email"]
+        ordinary = plan_for(value)
+        self.assertNotEqual(managed["spec_hash"], ordinary["spec_hash"])
+        self.assertNotIn("team_manager_email", ordinary["manifest"])
+        self.assertNotIn("team_manager_email", plan_for()["manifest"])
+
+    def test_manager_must_be_explicit_shared_viewer(self):
+        for mutation in ("legacy", "contributor", "unknown", "null", "empty"):
+            value = self.shared_manifest()
+            if mutation == "legacy":
+                value.pop("knowledge_mode")
+                value["contributor_email"] = "manager@example.test"
+                value["members"][0]["role"] = "contributor"
+            elif mutation == "contributor":
+                value["members"][0]["role"] = "contributor"
+            elif mutation == "unknown":
+                value["team_manager_email"] = "unknown@example.test"
+            elif mutation == "null":
+                value["team_manager_email"] = None
+            else:
+                value["team_manager_email"] = ""
+            with self.subTest(mutation=mutation), self.assertRaises(MODULE.OnboardError):
+                plan_for(value)
+
+    def test_complete_onboarding_binds_active_viewer_without_role_elevation(self):
+        plan = plan_for(self.shared_manifest())
+        client = FakeClient(plan)
+        first = MODULE.Onboarder(client, plan).run()
+        self.assertEqual(first["status"], "ready")
+        member = client.members[0]
+        self.assertEqual(member["role"], "viewer")
+        self.assertEqual(first["state"]["team_manager_user_id"], member["user_id"])
+        second = MODULE.Onboarder(client, plan).run()
+        self.assertEqual(first["state"], second["state"])
+        self.assertEqual(len(client.members), 1)
 
 
 if __name__ == "__main__":

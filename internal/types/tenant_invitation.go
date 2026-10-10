@@ -60,6 +60,8 @@ func (s TenantInvitationStatus) IsTerminal() bool {
 // is therefore the single source of truth for "pending intent" without
 // polluting the authoritative member roster.
 type TenantInvitation struct {
+	TeamManagerUserID     string `json:"-" gorm:"type:varchar(36);not null;default:''"`
+	TeamManagerAuthorized bool   `json:"-" gorm:"-"`
 	// Surrogate primary key.
 	ID uint64 `json:"id" gorm:"primaryKey;autoIncrement"`
 	// TenantID references tenants.id.

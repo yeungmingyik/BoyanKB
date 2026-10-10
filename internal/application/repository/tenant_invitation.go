@@ -5,9 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tencent/WeKnora/internal/teaminvitation"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/Tencent/WeKnora/internal/types/interfaces"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // ErrPendingInvitationExists is returned by Create when a pending
@@ -85,6 +87,11 @@ func (r *tenantInvitationRepository) GetByID(
 		}
 		return nil, err
 	}
+	allowed, err := teaminvitation.InvitationAllowed(r.db.WithContext(ctx), &inv)
+	if err != nil {
+		return nil, err
+	}
+	inv.TeamManagerAuthorized = allowed
 	return &inv, nil
 }
 
@@ -120,7 +127,7 @@ func (r *tenantInvitationRepository) GetActiveByToken(
 		return nil, nil
 	}
 	var inv types.TenantInvitation
-	err := r.db.WithContext(ctx).
+	err := r.db.WithContext(ctx).Session(&gorm.Session{Logger: logger.Discard}).
 		Where("token = ? AND status = ?",
 			token, types.TenantInvitationStatusPending).
 		First(&inv).Error
@@ -128,6 +135,10 @@ func (r *tenantInvitationRepository) GetActiveByToken(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
+		return nil, err
+	}
+	allowed, err := teaminvitation.InvitationAllowed(r.db.WithContext(ctx), &inv)
+	if err != nil || !allowed {
 		return nil, err
 	}
 	return &inv, nil

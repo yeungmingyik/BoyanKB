@@ -15,7 +15,11 @@ type PartnerRestrictedSkill struct {
 	Enabled       bool   `json:"enabled"`
 }
 
+const PartnerKnowledgeSharedEnterprise = "shared_enterprise"
+
 type PartnerProvisioningState struct {
+	KnowledgeMode     string                            `json:"knowledge_mode,omitempty"`
+	TeamManagerUserID string                            `json:"team_manager_user_id,omitempty"`
 	OrganizationID    string                            `json:"organization_id,omitempty"`
 	KnowledgeBaseID   string                            `json:"knowledge_base_id,omitempty"`
 	ContributorUserID string                            `json:"contributor_user_id,omitempty"`
@@ -61,3 +65,14 @@ type PartnerProvisioningJob struct {
 }
 
 func (PartnerProvisioningJob) TableName() string { return "partner_provisioning_jobs" }
+
+func (j PartnerProvisioningJob) ValidKnowledgeMode() bool {
+	switch j.State.KnowledgeMode {
+	case "":
+		return true
+	case PartnerKnowledgeSharedEnterprise:
+		return len(j.HQKnowledgeBaseIDs) == 1 && j.HQKnowledgeBaseIDs[0] != "" && j.State.KnowledgeBaseID == "" && j.State.ContributorUserID == ""
+	default:
+		return false
+	}
+}

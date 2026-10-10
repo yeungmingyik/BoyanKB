@@ -140,7 +140,7 @@ func (h *TenantInvitationHandler) projectInvitationWithLink(
 	tenantsByID map[uint64]*types.Tenant,
 ) types.TenantInvitationResponse {
 	resp := projectInvitation(inv, usersByID, tenantsByID)
-	if inv.Status == types.TenantInvitationStatusPending && inv.Token != "" {
+	if inv.Status == types.TenantInvitationStatusPending && inv.Token != "" && inv.TeamManagerUserID == "" {
 		resp.InviteURL = buildInviteRegisterURL(h.configInfo, inv.Token)
 	}
 	return resp

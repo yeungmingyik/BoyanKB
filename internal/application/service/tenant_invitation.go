@@ -224,6 +224,9 @@ func (s *tenantInvitationService) Accept(
 	if inv.InviteeUserID != callerUserID {
 		return nil, ErrInvitationForbidden
 	}
+	if inv.TeamManagerUserID != "" && !inv.TeamManagerAuthorized {
+		return nil, ErrInvitationForbidden
+	}
 	if inv.Status != types.TenantInvitationStatusPending {
 		return nil, ErrInvitationNotPending
 	}

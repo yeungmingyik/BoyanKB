@@ -86,7 +86,7 @@ def deterministic_archive(directory):
 def load_plan(path):
     manifest_path = Path(path).resolve()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
-    allowed = {"schema_version", "partner_key", "name", "description", "hq_tenant_id", "target_tenant_id", "hq_knowledge_base_ids", "preset", "models", "members", "contributor_email"}
+    allowed = {"schema_version", "partner_key", "name", "description", "hq_tenant_id", "target_tenant_id", "hq_knowledge_base_ids", "preset", "models", "members", "contributor_email", "knowledge_mode", "team_manager_email"}
     require(isinstance(manifest, dict) and set(manifest) <= allowed, "invalid_manifest_fields")
     require(manifest.get("schema_version") == 1, "manifest_version")
     require(bool(re.fullmatch(r"[a-z0-9][a-z0-9_-]{2,63}", manifest.get("partner_key", ""))), "partner_key")
@@ -96,8 +96,12 @@ def load_plan(path):
     if "target_tenant_id" in manifest:
         require(type(target) is int and target > 0, "target_tenant_id")
     headquarters = target == int(manifest["hq_tenant_id"])
+    if "knowledge_mode" in manifest:
+        require(manifest["knowledge_mode"] == "shared_enterprise", "knowledge_mode")
+    shared_enterprise = manifest.get("knowledge_mode") == "shared_enterprise"
     ids = manifest.get("hq_knowledge_base_ids")
     require(isinstance(ids, list) and 1 <= len(ids) <= 32 and len(set(ids)) == len(ids), "hq_knowledge_base_ids")
+    require(not shared_enterprise or len(ids) == 1, "single_enterprise_knowledge_base_required")
     for item in ids:
         try:
             uuid.UUID(item)
@@ -120,9 +124,18 @@ def load_plan(path):
         member["email"] = email
         emails.add(email)
     contributor = manifest.get("contributor_email", "").strip().lower()
-    require(not contributor if headquarters else any(m["email"] == contributor and m["role"] == "contributor" for m in members), "headquarters_contributor_not_required" if headquarters else "contributor_required")
+    if shared_enterprise:
+        require(not contributor, "shared_enterprise_contributor_not_required")
+    else:
+        require(not contributor if headquarters else any(m["email"] == contributor and m["role"] == "contributor" for m in members), "headquarters_contributor_not_required" if headquarters else "contributor_required")
     manifest["members"] = members
     manifest["contributor_email"] = contributor
+    if "team_manager_email" in manifest:
+        manager = manifest["team_manager_email"]
+        require(isinstance(manager, str) and manager.strip() != "" and shared_enterprise and not headquarters, "team_manager_requires_shared_partner")
+        manager = manager.strip().lower()
+        require(any(member["email"] == manager and member["role"] == "viewer" for member in members), "team_manager_must_be_viewer_member")
+        manifest["team_manager_email"] = manager
     preset_path = local_path(ROOT, manifest.get("preset", "presets/boyan/v1/manifest.json"))
     preset = json.loads(preset_path.read_text(encoding="utf-8-sig"))
     require(preset.get("schema_version") == 1 and preset.get("preset_version") == "boyan/v1", "preset_version")
@@ -276,6 +289,7 @@ class Onboarder:
         self.last_renew = 0
         self.actor_id = None
         self.headquarters = self.manifest.get("target_tenant_id") == self.hq
+        self.shared_enterprise = self.manifest.get("knowledge_mode") == "shared_enterprise"
 
     def request(self, method, path, payload=None, tenant=None, operation="api", **kwargs):
         if self.job and time.monotonic() - self.last_renew >= 60 and path != self.path + "/lease":
@@ -328,7 +342,10 @@ class Onboarder:
         payload["spec_hash"] = self.plan["spec_hash"]
         if self.manifest.get("target_tenant_id"):
             payload["target_tenant_id"] = self.manifest["target_tenant_id"]
+        if self.shared_enterprise:
+            payload["knowledge_mode"] = "shared_enterprise"
         self.job = self.request("POST", PREFIX, payload, tenant=self.hq, operation="provision")["data"]
+        require(self.job["state"].get("knowledge_mode", "") == self.manifest.get("knowledge_mode", ""), "knowledge_mode_mismatch")
         self.last_renew = time.monotonic()
         self.lease()
         try:
@@ -336,6 +353,7 @@ class Onboarder:
             self.validate_models(self.job["tenant_id"])
             self.sandbox_policy()
             contributor = self.members()
+            self.team_manager()
             self.organization()
             self.knowledge(contributor)
             self.skills()
@@ -392,7 +410,7 @@ class Onboarder:
             require(len(existing) == 1 and existing[0].get("role") == member["role"] and existing[0].get("status") == "active", "member_role_mismatch")
             if member["email"] == self.manifest["contributor_email"]:
                 contributor = identifier(existing[0]["user_id"])
-        require(contributor, "contributor_missing")
+        require(self.shared_enterprise or contributor, "contributor_missing")
         return contributor
 
     def organization(self):
@@ -424,8 +442,25 @@ class Onboarder:
         for kb in self.manifest["hq_knowledge_base_ids"]:
             self.request("POST", "/api/v1/knowledge-bases/" + identifier(kb) + "/shares", {"organization_id": org_id, "permission": "viewer"}, tenant=self.hq)
 
+    def team_manager(self):
+        email = self.manifest.get("team_manager_email")
+        if not email:
+            require(not self.job["state"].get("team_manager_user_id"), "unexpected_team_manager_binding")
+            return
+        tenant = self.job["tenant_id"]
+        query = urllib.parse.urlencode({"q": email, "page_size": 100})
+        matched = [member for member in rows(self.request("GET", f"/api/v1/tenants/{tenant}/members?" + query, tenant=tenant)) if member.get("email", "").lower() == email]
+        require(len(matched) == 1 and matched[0].get("role") == "viewer" and matched[0].get("status") == "active", "active_viewer_team_manager_required")
+        user_id = identifier(matched[0]["user_id"])
+        require(self.job["state"].get("team_manager_user_id") in (None, "", user_id), "team_manager_binding_mismatch")
+        self.job["state"]["team_manager_user_id"] = user_id
+        self.checkpoint()
+
     def knowledge(self, contributor):
         state, tenant = self.job["state"], self.job["tenant_id"]
+        if self.shared_enterprise:
+            require(not state.get("knowledge_base_id") and not state.get("contributor_user_id"), "shared_enterprise_private_knowledge_not_allowed")
+            return
         if not state.get("knowledge_base_id"):
             kb_id = str(uuid.uuid5(uuid.NAMESPACE_URL, "boyankb:partner:" + self.key + ":knowledge"))
             try:
@@ -470,7 +505,8 @@ class Onboarder:
             if value == "@hq":
                 kb_ids.extend(self.manifest["hq_knowledge_base_ids"])
             elif value == "@partner":
-                kb_ids.append(self.job["state"]["knowledge_base_id"])
+                if not self.shared_enterprise:
+                    kb_ids.append(self.job["state"]["knowledge_base_id"])
             else:
                 raise OnboardError("unexpected_agent_kb_binding")
         config["knowledge_bases"] = list(dict.fromkeys(kb_ids))
@@ -515,9 +551,12 @@ class Onboarder:
     def verify_resources(self):
         tenant = self.job["tenant_id"]
         self.sandbox_policy()
-        kb = self.request("GET", "/api/v1/knowledge-bases/" + self.job["state"]["knowledge_base_id"], tenant=tenant)["data"]
-        require(kb.get("creator_id") == self.job["owner_user_id"] if self.headquarters else kb.get("creator_id") and kb["creator_id"] != self.job["owner_user_id"], "knowledge_creator_mismatch")
-        require(kb.get("summary_model_id", "") == "" and not kb.get("indexing_strategy", {}).get("wiki_enabled") and not kb.get("indexing_strategy", {}).get("graph_enabled"), "partner_kb_unsafe_pipeline")
+        if self.shared_enterprise:
+            require(not self.job["state"].get("knowledge_base_id") and not self.job["state"].get("contributor_user_id"), "shared_enterprise_private_knowledge_not_allowed")
+        else:
+            kb = self.request("GET", "/api/v1/knowledge-bases/" + self.job["state"]["knowledge_base_id"], tenant=tenant)["data"]
+            require(kb.get("creator_id") == self.job["owner_user_id"] if self.headquarters else kb.get("creator_id") and kb["creator_id"] != self.job["owner_user_id"], "knowledge_creator_mismatch")
+            require(kb.get("summary_model_id", "") == "" and not kb.get("indexing_strategy", {}).get("wiki_enabled") and not kb.get("indexing_strategy", {}).get("graph_enabled"), "partner_kb_unsafe_pipeline")
         if self.headquarters:
             for kb_id in self.manifest["hq_knowledge_base_ids"]:
                 source = self.request("GET", "/api/v1/knowledge-bases/" + identifier(kb_id), tenant=tenant)["data"]
@@ -534,7 +573,8 @@ class Onboarder:
                 require(saved["config"].get(field, "") == wanted["config"].get(field, ""), "agent_config_mismatch")
 
     def report(self):
-        return {"partner_key": self.key, "spec_hash": self.plan["spec_hash"], "status": self.job["status"], "tenant_id": self.job["tenant_id"], "state": self.job["state"], "manual_checks": ["指定伙伴身份与账号交付", "Viewer/Contributor跨空间拒绝与资料上传", "Agent真实问答与固定文件渲染", "渲染服务健康和输出内容审阅"]}
+        scope_check = "企业知识库只读、跨空间会话与文件隔离" if self.shared_enterprise else "Viewer/Contributor跨空间拒绝与资料上传"
+        return {"partner_key": self.key, "spec_hash": self.plan["spec_hash"], "status": self.job["status"], "tenant_id": self.job["tenant_id"], "state": self.job["state"], "manual_checks": ["指定伙伴身份与账号交付", scope_check, "Agent真实问答与固定文件渲染", "渲染服务健康和输出内容审阅"]}
 
     def wait_readiness(self):
         deadline = time.monotonic() + self.timeout
@@ -565,6 +605,8 @@ def main(argv=None):
         require(0 <= args.timeout <= 3600, "invalid_readiness_timeout")
         plan = load_plan(args.manifest)
         result = {"mode": "plan", "partner_key": plan["manifest"]["partner_key"], "spec_hash": plan["spec_hash"], "agents": 3, "restricted_skills": 9, "new_accounts": False}
+        if plan["manifest"].get("knowledge_mode") == "shared_enterprise":
+            result.update({"knowledge_mode": "shared_enterprise", "enterprise_knowledge_bases": 1, "creates_working_knowledge_base": False})
         if plan["manifest"].get("target_tenant_id"):
             result["target_tenant_id"] = plan["manifest"]["target_tenant_id"]
             result["creates_workspace"] = False

@@ -274,5 +274,7 @@
 | `frontend/nginx{,-http}.conf`、`internal/middleware/logger.go`、`internal/middleware/logger_*test.go`、`scripts/{check-frontend-access-logs,test_frontend_access_logs}.py` | 邀请及资源链接含持有者令牌 | 访问日志去查询、Referer 和 User-Agent，资源短链路径固定脱敏，响应邀请 URL 脱敏；关闭可能泄漏原始请求的 Nginx 错误日志；保留状态码访问日志和健康检查，失败排障见备份文档 |
 | `scripts/{trial_backup,backup-trial,restore-trial,verify-trial,prepare-trial-admin,configure-trial-auth}.py` 及对应测试 | 清理旧账号必须可恢复且限定具体对象 | 加密备份、隔离恢复、源容器和审计摘要绑定、新管理员先验证、单事务退役旧账号、保留源资料；认证设置读回；21 项交接测试及真实演练 |
 | `scripts/{trial-cloudflare,run-trial-tunnel}.py` 及对应测试、`deployment/trial/*`、`docker-compose.trial.yml` | 未购买服务器时提供受控 HTTPS 试用 | 专用隧道、单主机 DNS 检查、令牌仅本机进程环境、PID 身份核对、固定网关与最小端口；42 项隧道离线测试 |
+| `internal/types/partner_provisioning.go`、`internal/application/service/partner_provisioning.go`、`internal/businessworkflow/reviewer.go`、`scripts/onboard-partner.py` 及对应测试 | 一份企业知识库应支持所有已授权伙伴，无需额外工作库 | 可选 `shared_enterprise`，固定单源、伙伴只读共享、三个 Agent 绑定同源、旧清单哈希兼容、禁止转移源库创建者 |
+| `internal/{teaminvitation,businessworkflow/team*,handler/business_team*}`、`internal/router/routes_business_workflow.go`、`internal/{types,application/repository,application/service}/tenant_invitation.go`、`internal/handler/tenant_invitation.go`、`migrations/{versioned,sqlite}/000113_team_invitations.*.sql` 及对应测试 | Viewer 负责人需要有限邀请权，不能提升为空间 Owner | 独立负责人绑定、只发本空间 Viewer、接受时复核撤权、链接仅创建响应返回、Owner 旧流程兼容；定向 Go 包及 SQLite 迁移往返通过 |
 
 团队入口升级时同时验证后端 `available` 与请求空间绑定，禁止用单纯前端角色判断代替授权。操作方式及人工界面检查见 `docs/trial-team.md`。

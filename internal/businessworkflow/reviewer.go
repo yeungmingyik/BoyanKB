@@ -17,7 +17,7 @@ func (s *Service) Provision(ctx context.Context) (*types.PartnerProvisioningJob,
 	if c.TenantID == 0 || s.DB.WithContext(ctx).Where("tenant_id = ? AND status = ?", c.TenantID, "ready").First(&provision).Error != nil {
 		return nil, ErrDenied
 	}
-	if provision.State.AgentIDs["planner"] == "" || provision.State.AgentIDs["reviewer"] == "" {
+	if !provision.ValidKnowledgeMode() || provision.State.AgentIDs["planner"] == "" || provision.State.AgentIDs["reviewer"] == "" {
 		return nil, ErrDenied
 	}
 	return &provision, nil
