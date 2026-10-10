@@ -23,6 +23,7 @@ CONFIG_MEMBERS = {
     "deployment/tencent/README.md", "deployment/tencent/validate-config.py",
     "deployment/tencent/validate-ip-https.py", "deployment/tencent/install-host.sh",
     "scripts/tencent-restore.py", "scripts/tencent-accounts.py",
+    "scripts/tencent-runtime.py",
     "scripts/tencent-acceptance.py", "scripts/acceptance-presets.py", "docs/13-tencent-deployment.md",
 }
 SNAPSHOT_MEMBERS = {
