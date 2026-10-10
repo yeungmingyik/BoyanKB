@@ -1,8 +1,10 @@
+import { skillCatalogMessages } from '../skillCatalog'
 import { businessSkillsJaJP } from '../businessSkills'
 import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  skillCatalog: skillCatalogMessages['ja-JP'],
   businessTeam: businessTeamMessages['ja-JP'],
   businessSkills: businessSkillsJaJP,
   toolbox: {
@@ -2437,7 +2439,9 @@ export default {
     extractFailed: 'エンティティとリレーションの抽出に失敗しました',
     exampleLoaded: '例を読み込みました',
     exampleCleared: '例をクリアしました',
-    disabledWarning: 'ナレッジグラフのデータベースが有効になっていないため、エンティティとリレーションの抽出は利用できません',
+    checkingAvailability: 'ナレッジグラフサービスを確認しています…',
+    availabilityFailed: 'ナレッジグラフサービスを確認できませんでした。再試行してください。',
+    disabledWarning: 'この環境ではナレッジグラフが有効になっていません。通常のナレッジベース検索とチャットは利用できます。有効にするには管理者にお問い合わせください。',
     howToEnable: 'ナレッジグラフを有効にするには？'
   },
   initialization: {

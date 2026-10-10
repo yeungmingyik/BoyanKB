@@ -24,6 +24,7 @@
   "footer": "hidden",
   "hiddenProviders": ["weknoracloud", "hunyuan", "lkeap", "cos", "ima", "tencent_vectordb"],
   "features": {
+    "nativeSkillExecution": false,
     "showcase": false,
     "upstreamCli": false,
     "upstreamSkill": false,

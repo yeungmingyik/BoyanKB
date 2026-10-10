@@ -1,8 +1,10 @@
+import { skillCatalogMessages } from '../skillCatalog'
 import { businessSkillsRuRU } from '../businessSkills'
 import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  skillCatalog: skillCatalogMessages['ru-RU'],
   businessTeam: businessTeamMessages['ru-RU'],
   businessSkills: businessSkillsRuRU,
   toolbox: {
@@ -5248,7 +5250,9 @@ export default {
     extractFailed: 'Не удалось извлечь сущности и отношения',
     exampleLoaded: 'Пример загружен',
     exampleCleared: 'Пример очищен',
-    disabledWarning: 'База данных графа знаний не включена, извлечение сущностей и отношений будет недоступно',
+    checkingAvailability: 'Проверка сервиса графа знаний…',
+    availabilityFailed: 'Не удалось проверить сервис графа знаний. Повторите попытку.',
+    disabledWarning: 'Граф знаний не включён в этой установке. Обычный поиск по базе знаний и чат доступны. Для включения обратитесь к администратору.',
     howToEnable: 'Как включить граф знаний?'
   },
   retrievalSettings: {

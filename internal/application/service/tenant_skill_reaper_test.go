@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tencent/WeKnora/internal/application/repository"
 	"github.com/Tencent/WeKnora/internal/sandbox"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/stretchr/testify/require"
@@ -944,6 +945,10 @@ func (r *reaperSkillStore) DeleteUserEnvVarsByConfig(context.Context, uint64, st
 
 func (r *reaperSkillStore) CreateCatalog(context.Context, *types.TenantSkillCatalogEntity) error {
 	panic("CreateCatalog is outside the reaper surface")
+}
+
+func (r *reaperSkillStore) WithCatalogMutation(context.Context, uint64, func(repository.TenantSkillRepository, types.PartnerProvisioningState) error) error {
+	panic("WithCatalogMutation is outside the reaper surface")
 }
 func (r *reaperSkillStore) GetCatalog(context.Context, uint64, string) (*types.TenantSkillCatalogEntity, error) {
 	panic("GetCatalog is outside the reaper surface")

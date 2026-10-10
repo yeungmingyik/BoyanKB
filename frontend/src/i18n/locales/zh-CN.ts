@@ -1,8 +1,10 @@
+import { skillCatalogMessages } from '../skillCatalog'
 import { businessSkillsZhCN } from '../businessSkills'
 import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  skillCatalog: skillCatalogMessages['zh-CN'],
   businessTeam: businessTeamMessages['zh-CN'],
   businessSkills: businessSkillsZhCN,
   toolbox: {
@@ -5250,7 +5252,9 @@ export default {
     extractFailed: '实体关系提取失败',
     exampleLoaded: '示例已加载',
     exampleCleared: '示例已清除',
-    disabledWarning: '知识图谱数据库未启用，实体关系提取功能将无法使用',
+    checkingAvailability: '正在检查知识图谱服务…',
+    availabilityFailed: '暂时无法检查知识图谱服务，请重试。',
+    disabledWarning: '当前部署未启用知识图谱，不影响普通知识库检索和问答。如需使用，请联系管理员启用。',
     howToEnable: '如何启用知识图谱？'
   },
   retrievalSettings: {

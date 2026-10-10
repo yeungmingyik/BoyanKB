@@ -39,7 +39,7 @@ test('toolbox preserves role and deployment gates, including workspace switches'
   assert.equal(canAccessToolboxSection('skills', access('admin')), true)
   assert.equal(canAccessToolboxSection('business-skills', access(null)), false)
   assert.equal(canAccessToolboxSection('business-skills', access(null, [], true)), false)
-  assert.equal(canAccessToolboxSection('skills', access('owner', ['settings.sandbox'])), false)
+  assert.equal(canAccessToolboxSection('skills', access('owner', ['settings.sandbox'])), true)
   assert.equal(canAccessToolboxSection('mcp', access('owner', ['settings.mcp'])), false)
   assert.equal(canAccessToolboxSection('mcp', access(null)), false)
   assert.equal(canAccessToolboxSection('mcp', access(null, [], true)), true)

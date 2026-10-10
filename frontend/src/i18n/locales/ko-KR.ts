@@ -1,8 +1,10 @@
+import { skillCatalogMessages } from '../skillCatalog'
 import { businessSkillsKoKR } from '../businessSkills'
 import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  skillCatalog: skillCatalogMessages['ko-KR'],
   businessTeam: businessTeamMessages['ko-KR'],
   businessSkills: businessSkillsKoKR,
   toolbox: {
@@ -5248,7 +5250,9 @@ export default {
     extractFailed: '엔티티 관계 추출 실패',
     exampleLoaded: '예시가 로드되었습니다',
     exampleCleared: '예시가 지워졌습니다',
-    disabledWarning: '지식 그래프 데이터베이스가 활성화되지 않아 엔티티 관계 추출 기능을 사용할 수 없습니다',
+    checkingAvailability: '지식 그래프 서비스를 확인하고 있습니다…',
+    availabilityFailed: '지식 그래프 서비스를 확인하지 못했습니다. 다시 시도해 주세요.',
+    disabledWarning: '이 배포 환경에서는 지식 그래프가 활성화되지 않았습니다. 일반 지식베이스 검색과 채팅은 계속 사용할 수 있습니다. 활성화하려면 관리자에게 문의하세요.',
     howToEnable: '지식 그래프를 활성화하는 방법?'
   },
   retrievalSettings: {

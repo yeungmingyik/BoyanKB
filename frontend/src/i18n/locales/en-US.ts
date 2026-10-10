@@ -1,8 +1,10 @@
+import { skillCatalogMessages } from '../skillCatalog'
 import { businessSkillsEnUS } from '../businessSkills'
 import { businessTeamMessages } from '../businessTeam'
 import { productName, productSlug } from '../../config/branding.ts'
 
 export default {
+  skillCatalog: skillCatalogMessages['en-US'],
   businessTeam: businessTeamMessages['en-US'],
   businessSkills: businessSkillsEnUS,
   toolbox: {
@@ -2437,7 +2439,9 @@ export default {
     extractFailed: 'Entity-relationship extraction failed',
     exampleLoaded: 'Example loaded',
     exampleCleared: 'Example cleared',
-    disabledWarning: 'Knowledge graph database is not enabled, entity-relationship extraction will not be available',
+    checkingAvailability: 'Checking the knowledge graph service…',
+    availabilityFailed: 'Could not check the knowledge graph service. Please try again.',
+    disabledWarning: 'Knowledge graphs are not enabled in this deployment. Knowledge-base search and chat remain available. Contact your administrator to enable this feature.',
     howToEnable: 'How to enable knowledge graph?'
   },
   initialization: {

@@ -16,23 +16,28 @@
     </div>
 
     <template v-else>
-      <div v-if="catalog.length === 0" class="empty-state">
+      <t-alert v-if="catalogError" theme="error" :message="t('settings.skills.loadFailed')">
+        <template #operation><t-button variant="text" @click="load">{{ t('skillCatalog.retry') }}</t-button></template>
+      </t-alert>
+      <t-alert v-if="!nativeExecution" theme="info" :message="t('skillCatalog.storageOnly')" class="catalog-notice" />
+      <t-alert v-if="sandboxError" theme="warning" :message="t('skillCatalog.sandboxUnavailable')" class="catalog-notice" />
+      <div v-if="!catalogError && catalog.length === 0" class="empty-state">
         <t-empty :description="$t('settings.skills.emptyDesc')" />
-        <p v-if="skillConfigs.length === 0" class="empty-hint">
+        <p v-if="nativeExecution && skillConfigs.length === 0" class="empty-hint">
           {{ $t('settings.skills.emptyNoSandboxHint') }}
         </p>
         <div class="empty-actions">
           <t-button theme="primary" @click="openAdd">
             {{ $t('settings.skills.addSkill') }}
           </t-button>
-          <t-button v-if="skillConfigs.length === 0" theme="default" variant="outline"
+          <t-button v-if="nativeExecution && skillConfigs.length === 0" theme="default" variant="outline"
             @click="uiStore.openSettings('sandbox')">
             {{ $t('settings.skills.goSandboxSettings') }}
           </t-button>
         </div>
       </div>
 
-      <div v-else class="skill-list">
+      <div v-else-if="!catalogError" class="skill-list">
         <article v-for="item in catalog" :key="item.id" class="skill-card" :class="{
           'skill-card--focused': focusedCatalogId === item.id,
           'skill-card--installed': liveInstalls(item).length > 0,
@@ -71,7 +76,8 @@
                   <code>{{ item.name }}</code>
                 </details>
               </div>
-              <div v-for="view in (allowsNativeSkillInstall(item.name) ? [installsView(item)] : [])" :key="'installs'" class="skill-card__installs">
+              <span v-if="!nativeExecution && !businessSkillLabel(item.name)" class="skill-card__installs-label">{{ t('skillCatalog.saved') }}</span>
+              <div v-for="view in (nativeExecution && allowsNativeSkillInstall(item.name) ? [installsView(item)] : [])" :key="'installs'" class="skill-card__installs">
                 <span v-if="view.installs.length === 0 && !view.canAdd" class="skill-card__installs-label">
                   {{ $t('settings.skills.noInstalls') }}
                 </span>
@@ -348,6 +354,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 import { AddIcon, DeleteIcon, FolderIcon } from 'tdesign-icons-vue-next'
 import { useI18n } from 'vue-i18n'
 import { allowsNativeSkillInstall, businessSkillLabel } from '@/config/businessSkills'
+import { brand } from '@/config/branding'
 import SandboxSkillsPanel from '@/components/SandboxSkillsPanel.vue'
 import SkillFilesDrawer from '@/components/SkillFilesDrawer.vue'
 import SandboxBackendBadge from '@/components/settings/SandboxBackendBadge.vue'
@@ -390,6 +397,9 @@ const uiStore = useUIStore()
 const confirmDelete = useConfirmDelete()
 
 const loading = ref(false)
+const catalogError = ref(false)
+const sandboxError = ref(false)
+const nativeExecution = brand.features.nativeSkillExecution
 const records = ref<SandboxConfigRecord[]>([])
 const catalog = ref<SkillCatalogItem[]>([])
 const focusedCatalogId = ref('')
@@ -447,7 +457,7 @@ const maxSkillBundleMB = MAX_SKILL_BUNDLE_SIZE_MB
 
 const addSteps = computed(() => [
   { key: 'register', title: t('settings.skills.addStepRegister') },
-  { key: 'install', title: t('settings.skills.addStepInstall') },
+  ...(nativeExecution ? [{ key: 'install', title: t('settings.skills.addStepInstall') }] : []),
 ])
 
 const addStepDescription = computed(() =>
@@ -470,7 +480,7 @@ const addPrimaryDisabled = computed(() => {
 })
 
 const addPrimaryText = computed(() => {
-  if (addStep.value === 0) return t('common.next')
+  if (addStep.value === 0) return t(nativeExecution ? 'common.next' : 'skillCatalog.save')
   if (addTargetIds.value.length > 0) return pickConfirmText(addPickRows.value, addTargetIds.value)
   return t('settings.skills.addFinish')
 })
@@ -521,11 +531,11 @@ function liveInstalls(item: SkillCatalogItem): SkillCatalogInstall[] {
 }
 
 function canDelete(item: SkillCatalogItem): boolean {
-  return liveInstalls(item).length === 0
+  return !businessSkillLabel(item.name) && liveInstalls(item).length === 0
 }
 
 function targetsFor(item: SkillCatalogItem): SandboxConfigRecord[] {
-  if (!allowsNativeSkillInstall(item.name)) return []
+  if (!nativeExecution || !allowsNativeSkillInstall(item.name)) return []
   const taken = new Set(
     liveInstalls(item)
       .filter((inst) => inst.status === 'installing' || inst.status === 'ready' || inst.status === 'removing')
@@ -914,7 +924,7 @@ function resetAddWizard() {
 
 async function openAdd() {
   resetAddWizard()
-  await loadInstallerModel()
+  if (nativeExecution) await loadInstallerModel()
   showAdd.value = true
 }
 
@@ -934,7 +944,7 @@ function addPreviousStep() {
 }
 
 function openInstall(item: SkillCatalogItem) {
-  if (!allowsNativeSkillInstall(item.name)) return
+  if (!nativeExecution || !allowsNativeSkillInstall(item.name)) return
   installMode.value = 'install'
   installCatalog.value = item
   installSessionIds.value = []
@@ -1049,6 +1059,13 @@ async function registerThenAdvance() {
       return
     }
     registeredCatalog.value = registered
+    if (!nativeExecution) {
+      MessagePlugin.success(t('skillCatalog.saved'))
+      showAdd.value = false
+      await loadCatalog()
+      revealCatalog(registered.id)
+      return
+    }
     addTargetIds.value = defaultAddTargets()
     addStep.value = 1
     MessagePlugin.success(t('settings.skills.registerAccepted'))
@@ -1130,7 +1147,7 @@ function onInstallDrawerConfirm() {
 async function confirmInstall() {
   const item = installCatalog.value
   const targets = [...installTargetIds.value]
-  if (!item || !allowsNativeSkillInstall(item.name) || targets.length === 0) return
+  if (!nativeExecution || !item || !allowsNativeSkillInstall(item.name) || targets.length === 0) return
   const upgrading = pickedOnlyUpgrades(installPickRows.value, targets)
   installing.value = true
   try {
@@ -1197,8 +1214,10 @@ async function loadCatalog(silent = false) {
   try {
     const res = await listSkillCatalog()
     catalog.value = res?.data || []
+    catalogError.value = false
     emit('count', catalog.value.length)
   } catch (e: any) {
+    catalogError.value = true
     if (!silent) MessagePlugin.error(e?.message || t('settings.skills.loadFailed'))
   } finally {
     ensurePoll()
@@ -1208,10 +1227,17 @@ async function loadCatalog(silent = false) {
 async function load() {
   loading.value = true
   try {
-    const [configRes] = await Promise.all([listSandboxConfigs(), loadCatalog()])
-    records.value = configRes?.data || []
-  } catch (e: any) {
-    MessagePlugin.error(e?.message || t('settings.skills.loadFailed'))
+    await loadCatalog()
+    if (nativeExecution) {
+      try {
+        const configRes = await listSandboxConfigs()
+        records.value = configRes?.data || []
+        sandboxError.value = false
+      } catch {
+        records.value = []
+        sandboxError.value = true
+      }
+    }
   } finally {
     loading.value = false
   }
@@ -1279,6 +1305,8 @@ onUnmounted(() => {
 </script>
 
 <style lang="less" scoped>
+.catalog-notice { margin-bottom: 16px; }
+
 @import (reference) '@/components/css/provider-card.less';
 
 @import (reference) '@/components/css/settings-section.less';

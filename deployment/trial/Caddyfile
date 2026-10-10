@@ -33,8 +33,14 @@
     }
     respond @registration 403
 
-    @internal path /swagger* /metrics /debug/* /api/v1/local-browser /api/v1/local-browser/* /api/v1/system/admin /api/v1/system/admin/* /api/v1/auth/auto-setup /api/v1/auth/oidc/* /api/v1/skills /api/v1/skills/* /mcp /mcp/*
+    @internal path /swagger* /metrics /debug/* /api/v1/local-browser /api/v1/local-browser/* /api/v1/system/admin /api/v1/system/admin/* /api/v1/auth/auto-setup /api/v1/auth/oidc/* /mcp /mcp/*
     respond @internal 404
+
+    @skillExecution {
+        path /api/v1/skills /api/v1/skills/*
+        not path_regexp ^/api/v1/skills/catalog(/[a-zA-Z0-9_-]+(/files(/content)?)?)?$
+    }
+    respond @skillExecution 404
 
     @sandbox path /api/v1/sessions/*/sandbox/* /api/v1/sandbox-configs /api/v1/sandbox-configs/*
     respond @sandbox 403

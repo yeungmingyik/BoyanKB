@@ -2279,10 +2279,12 @@ func (r *installConfigRepo) SetCordon(context.Context, uint64, string, time.Time
 func (r *installConfigRepo) ClearCordon(context.Context, uint64, string) error { return nil }
 
 type installSkillRepo struct {
-	mu        sync.Mutex
-	skills    map[string]*types.TenantSkillEntity
-	snapshots map[string]*types.TenantSkillSnapshotEntity
-	catalogs  map[string]*types.TenantSkillCatalogEntity
+	presetStates map[uint64]types.PartnerProvisioningState
+	presetErr    error
+	mu           sync.Mutex
+	skills       map[string]*types.TenantSkillEntity
+	snapshots    map[string]*types.TenantSkillSnapshotEntity
+	catalogs     map[string]*types.TenantSkillCatalogEntity
 	// updateFailsWhen models a transient write failure for one kind of row
 	// state, so a test can fail the terminal bookkeeping write without
 	// disabling every other write the run makes.
@@ -2698,6 +2700,13 @@ func (r *installSkillRepo) CreateCatalog(_ context.Context, e *types.TenantSkill
 	cp := *e
 	r.catalogs[e.ID] = &cp
 	return nil
+}
+
+func (r *installSkillRepo) WithCatalogMutation(_ context.Context, tenantID uint64, fn func(repository.TenantSkillRepository, types.PartnerProvisioningState) error) error {
+	if r.presetErr != nil {
+		return r.presetErr
+	}
+	return fn(r, r.presetStates[tenantID])
 }
 
 func (r *installSkillRepo) GetCatalog(_ context.Context, _ uint64, catalogID string) (*types.TenantSkillCatalogEntity, error) {

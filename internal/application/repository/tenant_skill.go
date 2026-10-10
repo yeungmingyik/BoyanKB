@@ -96,6 +96,7 @@ type TenantSkillRepository interface {
 	DeleteCatalog(ctx context.Context, tenantID uint64, catalogID string) error
 	// ListSkillsByCatalog returns installations of one catalog skill.
 	ListSkillsByCatalog(ctx context.Context, tenantID uint64, catalogID string) ([]*types.TenantSkillEntity, error)
+	WithCatalogMutation(ctx context.Context, tenantID uint64, fn func(TenantSkillRepository, types.PartnerProvisioningState) error) error
 }
 
 type tenantSkillRepository struct{ db *gorm.DB }
@@ -407,7 +408,22 @@ func (r *tenantSkillRepository) DeleteUserEnvVarsByConfig(
 }
 
 func (r *tenantSkillRepository) CreateCatalog(ctx context.Context, e *types.TenantSkillCatalogEntity) error {
-	return r.db.WithContext(ctx).Create(e).Error
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return tx.Create(e).Error
+	})
+}
+
+func (r *tenantSkillRepository) WithCatalogMutation(
+	ctx context.Context, tenantID uint64, fn func(TenantSkillRepository, types.PartnerProvisioningState) error,
+) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var job types.PartnerProvisioningJob
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("tenant_id = ?", tenantID).Take(&job).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		return fn(&tenantSkillRepository{db: tx}, job.State)
+	})
 }
 
 func (r *tenantSkillRepository) GetCatalog(

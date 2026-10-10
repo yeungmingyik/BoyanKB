@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/Tencent/WeKnora/internal/application/repository"
 	apperrors "github.com/Tencent/WeKnora/internal/errors"
 	"github.com/Tencent/WeKnora/internal/logger"
 	"github.com/Tencent/WeKnora/internal/types"
@@ -272,26 +273,31 @@ func (s *TenantSkillService) InstallCatalogToConfigs(
 func (s *TenantSkillService) DeleteCatalog(
 	ctx context.Context, tenantID uint64, catalogID string,
 ) error {
-	catalog, err := s.skills.GetCatalog(ctx, tenantID, catalogID)
-	if err != nil {
-		return err
-	}
-	if catalog == nil {
-		return apperrors.NewNotFoundError("skill not found")
-	}
-	installs, err := s.skills.ListSkillsByCatalog(ctx, tenantID, catalogID)
-	if err != nil {
-		return err
-	}
-	for _, row := range installs {
-		if row == nil {
-			continue
+	var ref string
+	err := s.skills.WithCatalogMutation(ctx, tenantID, func(repo repository.TenantSkillRepository, state types.PartnerProvisioningState) error {
+		catalog, err := repo.GetCatalog(ctx, tenantID, catalogID)
+		if err != nil {
+			return err
 		}
-		return apperrors.NewConflictError(
-			"remove this skill from every sandbox before deleting it from the catalog")
-	}
-	ref := strings.TrimSpace(catalog.BundleRef)
-	if err := s.skills.DeleteCatalog(ctx, tenantID, catalogID); err != nil {
+		if catalog == nil {
+			return apperrors.NewNotFoundError("skill not found")
+		}
+		if presetReferencesCatalog(state, catalog.ID, catalog.Name) {
+			return managedCatalogConflict()
+		}
+		installs, err := repo.ListSkillsByCatalog(ctx, tenantID, catalogID)
+		if err != nil {
+			return err
+		}
+		for _, row := range installs {
+			if row != nil {
+				return apperrors.NewConflictError("remove this skill from every sandbox before deleting it from the catalog")
+			}
+		}
+		ref = strings.TrimSpace(catalog.BundleRef)
+		return repo.DeleteCatalog(ctx, tenantID, catalogID)
+	})
+	if err != nil {
 		return err
 	}
 	if ref != "" {
@@ -303,9 +309,75 @@ func (s *TenantSkillService) DeleteCatalog(
 func (s *TenantSkillService) upsertCatalogFromBundle(
 	ctx context.Context, tenantID uint64, bundle *SkillBundle, archive []byte, requireStore bool,
 ) (*types.TenantSkillCatalogEntity, error) {
-	existing, err := s.skills.GetCatalogByName(ctx, tenantID, bundle.Name)
+	var catalog *types.TenantSkillCatalogEntity
+	var retired []string
+	err := s.skills.WithCatalogMutation(ctx, tenantID, func(repo repository.TenantSkillRepository, state types.PartnerProvisioningState) error {
+		var err error
+		catalog, err = s.upsertCatalogWithPresetGuard(ctx, repo, state, tenantID, bundle, archive, requireStore, &retired)
+		return err
+	})
+	if err == nil {
+		for _, ref := range retired {
+			s.deleteBundleBestEffort(ctx, tenantID, ref)
+		}
+	}
+	return catalog, err
+}
+
+func managedCatalogConflict() error {
+	return apperrors.NewConflictError("此技能由业务预设管理，不能在原生技能目录中覆盖或删除。")
+}
+
+func presetReferencesCatalog(state types.PartnerProvisioningState, id, name string) bool {
+	for key, catalogID := range state.SkillCatalogIDs {
+		if key == name || (id != "" && catalogID == id) {
+			return true
+		}
+	}
+	for key, installed := range state.RestrictedSkills {
+		if key == name || (id != "" && installed.CatalogID == id) {
+			return true
+		}
+	}
+	return false
+}
+
+func identicalManagedCatalog(state types.PartnerProvisioningState, catalog *types.TenantSkillCatalogEntity, bundle *SkillBundle) bool {
+	if catalog == nil || catalog.BundleSHA256 == "" || catalog.BundleSHA256 != bundle.SHA256 || catalog.Name != bundle.Name || catalog.Version != bundle.Version || catalog.Description != bundle.Description || catalog.Instructions != bundle.Instructions {
+		return false
+	}
+	for name, id := range state.SkillCatalogIDs {
+		if (name == catalog.Name || id == catalog.ID) && (name != catalog.Name || id != catalog.ID) {
+			return false
+		}
+	}
+	for name, installed := range state.RestrictedSkills {
+		if name == catalog.Name || installed.CatalogID == catalog.ID {
+			if name != catalog.Name || installed.CatalogID != catalog.ID || installed.Version != bundle.Version || installed.CatalogSHA256 == "" || installed.CatalogSHA256 != bundle.SHA256 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (s *TenantSkillService) upsertCatalogWithPresetGuard(
+	ctx context.Context, repo repository.TenantSkillRepository, state types.PartnerProvisioningState,
+	tenantID uint64, bundle *SkillBundle, archive []byte, requireStore bool, retired *[]string,
+) (*types.TenantSkillCatalogEntity, error) {
+	existing, err := repo.GetCatalogByName(ctx, tenantID, bundle.Name)
 	if err != nil {
 		return nil, err
+	}
+	id := ""
+	if existing != nil {
+		id = existing.ID
+	}
+	if presetReferencesCatalog(state, id, bundle.Name) {
+		if !identicalManagedCatalog(state, existing, bundle) {
+			return nil, managedCatalogConflict()
+		}
+		return existing, nil
 	}
 	now := s.now()
 	if existing != nil {
@@ -325,7 +397,7 @@ func (s *TenantSkillService) upsertCatalogFromBundle(
 		existing.Instructions = bundle.Instructions
 		existing.BundleSHA256 = bundle.SHA256
 		existing.UpdatedAt = now
-		if err := s.skills.UpdateCatalog(ctx, existing); err != nil {
+		if err := repo.UpdateCatalog(ctx, existing); err != nil {
 			// The stored definition still names the old archive, so leave that
 			// archive alone. The object just written is the leak, and it is the
 			// harmless one: the next re-register overwrites that same key.
@@ -334,7 +406,7 @@ func (s *TenantSkillService) upsertCatalogFromBundle(
 			return nil, err
 		}
 		if replaced.oldRef != "" && !replaced.sameDigest && !keepOld {
-			s.deleteBundleBestEffort(ctx, tenantID, replaced.oldRef)
+			*retired = append(*retired, replaced.oldRef)
 		}
 		return existing, nil
 	}
@@ -352,11 +424,11 @@ func (s *TenantSkillService) upsertCatalogFromBundle(
 	if stored {
 		row.BundleSHA256 = bundle.SHA256
 	}
-	if err := s.skills.CreateCatalog(ctx, row); err != nil {
+	if err := repo.CreateCatalog(ctx, row); err != nil {
 		if !isSkillNameConflict(err) {
 			return nil, err
 		}
-		winner, lookupErr := s.skills.GetCatalogByName(ctx, tenantID, bundle.Name)
+		winner, lookupErr := repo.GetCatalogByName(ctx, tenantID, bundle.Name)
 		if lookupErr != nil {
 			return nil, lookupErr
 		}
@@ -367,9 +439,9 @@ func (s *TenantSkillService) upsertCatalogFromBundle(
 		// keyed by its ID, so nothing will ever name it again — the retry below
 		// stores its own copy under the winner's key.
 		if ref := strings.TrimSpace(row.BundleRef); ref != "" {
-			s.deleteBundleBestEffort(ctx, tenantID, ref)
+			*retired = append(*retired, ref)
 		}
-		return s.upsertCatalogFromBundle(ctx, tenantID, bundle, archive, requireStore)
+		return s.upsertCatalogWithPresetGuard(ctx, repo, state, tenantID, bundle, archive, requireStore, retired)
 	}
 	return row, nil
 }

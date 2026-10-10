@@ -4,26 +4,21 @@
       <h2>{{ t('graphSettings.title') }}</h2>
       <p class="section-description">{{ t('graphSettings.description') }}</p>
 
-      <t-alert
-        v-if="!isGraphDatabaseEnabled"
-        theme="warning"
-        style="margin-top: 16px;"
-      >
-        <template #message>
-          <div>{{ t('graphSettings.disabledWarning') }}</div>
-          <t-link v-if="graphGuideUrl" class="graph-guide-link" theme="primary" @click="handleOpenGraphGuide">
-            {{ t('graphSettings.howToEnable') }}
-          </t-link>
-        </template>
-      </t-alert>
     </div>
     <t-alert
-      v-else-if="!isGraphDatabaseEnabled"
-      theme="warning"
+      v-if="graphAvailability !== 'enabled'"
+      :theme="graphAvailability === 'error' ? 'warning' : 'info'"
       class="embedded-graph-alert"
+      role="status"
     >
       <template #message>
-        <div>{{ t('graphSettings.disabledWarning') }}</div>
+        <div>{{ t(graphAvailability === 'loading' ? 'graphSettings.checkingAvailability' : graphAvailability === 'error' ? 'graphSettings.availabilityFailed' : 'graphSettings.disabledWarning') }}</div>
+        <t-link v-if="graphAvailability !== 'loading'" theme="primary" @click="loadSystemInfo(true)">
+          {{ t('common.retry') }}
+        </t-link>
+        <t-link v-if="graphAvailability === 'disabled' && graphGuideUrl" class="graph-guide-link" theme="primary" @click="handleOpenGraphGuide">
+          {{ t('graphSettings.howToEnable') }}
+        </t-link>
       </template>
     </t-alert>
 
@@ -322,6 +317,7 @@
 <script setup lang="ts">
 import { helpUrl } from '@/config/branding'
 import { ref, watch, onMounted, computed } from 'vue'
+import { createGraphAvailabilityLoader, type GraphAvailability } from './graphAvailability'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { useI18n } from 'vue-i18n'
 import { extractTextRelations, fabriText, fabriTag, type Node, type Relation } from '@/api/initialization'
@@ -379,13 +375,8 @@ const tagFabring = ref(false)
 const textFabring = ref(false)
 const extracting = ref(false)
 
-// 系统信息
-const systemInfo = ref<any>(null)
-
-// 计算图数据库是否启用
-const isGraphDatabaseEnabled = computed(() => {
-  return systemInfo.value?.graph_database_engine && systemInfo.value.graph_database_engine !== 'Not Enabled'
-})
+const graphAvailability = ref<GraphAvailability>('loading')
+const isGraphDatabaseEnabled = computed(() => graphAvailability.value === 'enabled')
 
 // Watch for prop changes
 watch(() => props.graphExtract, (newVal) => {
@@ -577,15 +568,13 @@ const clearExtractExample = () => {
 
 const editorResources = useEditorResourcesStore()
 
-// 加载系统信息
-const loadSystemInfo = async (force = false) => {
-  try {
+const loadSystemInfo = createGraphAvailabilityLoader(
+  async (force) => {
     await editorResources.ensureSystemInfo(force)
-    systemInfo.value = editorResources.systemInfo
-  } catch (error: any) {
-    console.error('Failed to load system info:', error)
-  }
-}
+    return editorResources.systemInfo
+  },
+  state => { graphAvailability.value = state },
+)
 
 const graphGuideUrl = helpUrl('knowledge-graph')
 

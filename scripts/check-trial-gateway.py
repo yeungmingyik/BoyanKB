@@ -7,7 +7,7 @@ import urllib.request
 
 
 ORIGINS = {'http://127.0.0.1:8090', 'https://kb.boyantech.xyz'}
-CASES = [('GET', '/login', 200), ('GET', '/api/v1/auth/config', 200), ('POST', '/api/v1/auth/register', 403), ('GET', '/api/v1/system/admin/list', 404), ('GET', '/api/v1/skills', 404), ('GET', '/api/v1/sandbox-configs', 403)]
+CASES = [('GET', '/login', 200), ('GET', '/api/v1/auth/config', 200), ('POST', '/api/v1/auth/register', 403), ('GET', '/api/v1/system/admin/list', 404), ('GET', '/api/v1/skills', 404), ('GET', '/api/v1/skills/catalog', 401), ('GET', '/api/v1/skills/catalog/unknown/files', 401), ('POST', '/api/v1/skills/catalog/unknown/install', 404), ('GET', '/api/v1/sandbox-configs', 403)]
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
