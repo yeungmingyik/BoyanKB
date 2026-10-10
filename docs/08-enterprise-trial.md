@@ -90,6 +90,7 @@ $trialPython = 'D:/CodexData/codex-runtimes/codex-primary-runtime/dependencies/p
 
 ## 本次排障
 
+- 2026-10-10 公网访问再次中断时，8 个容器健康，Cloudflare 连接器已停止；重新启动专用连接器后恢复。原退出原因未验证，仍无开机启动或自动重启。试用网关仅对带版本号的 `/assets/*` 保留上游静态缓存，其余代理响应继续禁止缓存；公网门禁与本机/公网响应头复核通过。恢复命令、浏览器加载限制及证据见 [隧道恢复记录](trial-tunnel.md#2026-10-10-访问中断与恢复)。
 - 原定内部网段与既有 `172.30.0.0/16` 网络重叠，改为专用 `10.239.70.0/24`。换机器前仍应检查网段冲突。
 - Caddy 二进制自带低端口文件 capability，在全部 capability 移除、非 root 模式下不能执行；派生镜像移除该文件 capability，继续使用非 root、只读文件系统与 `no-new-privileges`，监听 8090。
 - Docker Desktop 仅连接 internal 网络时没有实际发布网关端口；增加只连接网关的独立 edge 网络，宿主仍仅监听 loopback。

@@ -39,6 +39,17 @@
     @sandbox path /api/v1/sessions/*/sandbox/* /api/v1/sandbox-configs /api/v1/sandbox-configs/*
     respond @sandbox 403
 
+    @static {
+        method GET HEAD
+        path /assets/*
+    }
+    reverse_proxy @static 10.239.70.3:80 {
+        header_up Host kb.boyantech.xyz
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-For {http.request.header.Cf-Connecting-Ip}
+        header_down Referrer-Policy no-referrer
+    }
+
     reverse_proxy 10.239.70.3:80 {
         header_up Host kb.boyantech.xyz
         header_up X-Forwarded-Proto https

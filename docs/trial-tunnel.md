@@ -93,6 +93,35 @@ $trialPython = 'D:/CodexData/codex-runtimes/codex-primary-runtime/dependencies/p
 
 停止前脚本在同一个 Windows 进程句柄上核对 PID 对应的程序路径和创建时间，匹配后才终止。停止会中断该隧道的现有连接，但不修改 DNS、不删除隧道、不影响其他 cloudflared。状态文件保留，便于追查；不要为绕过身份检查直接删除或编辑它。
 
+## 2026-10-10 访问中断与恢复
+
+排查时 8 个试用容器均健康，但专用连接器状态为 `STOPPED`，原进程 `16444` 已不存在。执行 `start` 后新进程 `14788` 返回 `RUNNING`、`ready=true`，`https://kb.boyantech.xyz/login` 恢复 HTTP 200。此次只启动本机连接器，未修改 DNS、账号或业务数据。
+
+原进程退出原因**未验证**：没有保存退出码或退出前日志，不能归因于某个终端关闭、休眠或网络故障。当前连接器位于 Windows Job 中；曾试验脱离 Job 的启动方式，但无害子进程检查未达到预期，改动已撤回。启动器仍未配置系统服务、开机启动或自动重启；本次恢复不构成持续在线保证。
+
+恢复后的匿名浏览器首次冷加载约 46 秒才显示邮箱和密码表单。网关原先对所有响应设置 `private, no-store`，导致带版本号的前端文件也不能缓存。现仅为 `GET/HEAD /assets/*` 保留 Nginx 的 `public, max-age=31536000, immutable`；HTML、认证、API、下载、Logo 和 favicon 继续 `private, no-store`。拒绝注册、管理入口和沙箱的路由仍先于两条代理路由执行。
+
+本机与公网 14 项响应头检查通过，公网 6 项网关检查通过并保持严格 TLS 校验。会话接口匿名请求返回 401，未放宽认证。证据为 `temp/enterprise-trial/cache-recovery-final-20261010.json` 和 `gateway-cache-final-20261010.json`。品牌资源测试使用新的查询参数以验证回源策略；此前短暂测试使 Cloudflare 缓存了当前 Logo/favicon，原 URL 的已有缓存可能保留至其 4 小时有效期结束，此次没有清空 Cloudflare 缓存或修改区域设置。
+
+最终配置生效后，默认 Chrome User-Agent、严格 TLS、同一匿名浏览器上下文两次导航均完成：表单分别约 38.1 秒、5.7 秒可见，邀请制配置分别约 38.5 秒、6.1 秒完成，公开注册入口隐藏、无横向溢出。报告和截图位于 `temp/enterprise-trial/recovery-ui/2026-10-10T05-27-27-603Z/`。这是两次加载观测，不能保证其他网络耗时相同；第二次资源仍记录传输字节，不能宣称已证明浏览器磁盘缓存命中。外部统计请求由检查器主动阻止，OIDC 配置接口按既有网关规则返回 404。本轮没有提交账号密码或重新执行问答。
+
+恢复命令如下，不需要重新发布 DNS：
+
+```powershell
+& $trialPython -B scripts/run-trial-tunnel.py status
+& $trialPython -B scripts/run-trial-tunnel.py start
+& $trialPython -B scripts/check-trial-gateway.py --base-url https://kb.boyantech.xyz
+```
+
+缓存策略可按下面命令检查；先从 `/login` 的 HTML 中确认实际资源文件名，升级镜像后文件名可能变化：
+
+```powershell
+curl.exe --noproxy '*' -sSI https://kb.boyantech.xyz/assets/main-DAxmnrPN.js
+curl.exe --noproxy '*' -sSI https://kb.boyantech.xyz/login
+```
+
+需要人工验证：在另一台设备或手机移动网络打开正确的 `.xyz` 地址，并完成登录和问答；测试本机锁屏持续访问及重启后的恢复流程。首次冷加载与缓存后的重复访问应分别计时，不能把缓存策略生效等同于首次加载延迟消失。
+
 ## DNS 回滚
 
 回滚前先保留 `tunnel-state.json`，其中 `original_dns` 是 prepare 首次保存的原记录，`original_dns_fingerprint` 是对应指纹。该文件不含令牌。不得用新的 inspect 结果覆盖原记录，也不要回滚整个 DNS 区域。
@@ -113,4 +142,4 @@ $trialPython = 'D:/CodexData/codex-runtimes/codex-primary-runtime/dependencies/p
 
 离线用例验证默认只读、prepare 范围、网关策略、最小子进程环境、令牌不进命令行/输出/状态、令牌账户与隧道绑定、重复启动、PID 复用拒绝、同句柄停止、失败脱敏、等待超时保留进程状态、单条 DNS 发布及竞争修改拒绝。Windows 身份读取测试只查询测试进程自身。
 
-本脚本交付时，真实隧道启动、停止、Cloudflare 发布、外部 HTTPS 访问及 DNS 回滚均为**未验证，需要人工验证**：依次执行上述授权操作，保存不含令牌的状态输出，并在外部设备完成登录与业务功能检查。离线测试没有读取真实 `.env`、启动或停止真实隧道，也没有调用 Cloudflare 写接口。
+2026-10-10 已实际验证 Cloudflare 准备与发布、真实隧道启动及退出后的重新启动、公网 HTTPS 和网关策略。真实停止与 DNS 回滚仍为**未验证，需要人工验证**，应在获准中断试用访问后按上述流程执行。跨设备访问、锁屏与重启后的持续运行也需要人工验证。离线测试没有读取真实 `.env`、启动或停止真实隧道，也没有调用 Cloudflare 写接口。

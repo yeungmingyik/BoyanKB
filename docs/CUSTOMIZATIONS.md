@@ -293,3 +293,14 @@
 | `docker-compose.trial.yml`、`deployment/trial/images.lock.json`、`docs/08-enterprise-trial.md` | 试用站应运行修复后的前端且可以回滚 | 新增 `v0.8.2-trial-login-v2` 镜像，更新前端摘要，旧版保留；仅重建本机 frontend |
 
 升级 TDesign 后核对 `.t-form__controls > .t-input__extra` 是否仍为校验提示节点，验证错误状态而非仅检查空白登录页。2026-10-08 的紧凑布局记录属于历史验收，本次恢复覆盖其中的压缩间距。
+
+## 试用访问恢复与静态缓存
+
+日期：2026-10-10。分支：`feat/trial-access-recovery`。
+
+| 文件 | 原因 | 改动点与验证 |
+| --- | --- | --- |
+| `deployment/trial/Caddyfile` | 网关统一禁止缓存，使重复访问也需下载所有前端资源 | 增加仅匹配 `GET/HEAD /assets/*` 的同级代理，保留 Nginx 带版本号资源的缓存头；原默认代理继续 `private, no-store`；Caddy 配置及路由排序核验、14 项实际响应头检查、公网 6 项门禁检查通过 |
+| `docs/{trial-tunnel,08-enterprise-trial}.md` | 连接器停止导致公网中断，需要准确的恢复与验证范围 | 记录实际重新启动、正确 `.xyz` 入口、缓存边界、退出原因未验证及缺少自动启动/重启；修正旧版文档中全部公网流程未验证的过时说明 |
+
+升级时确认 `/assets/*` 仍仅承载带内容哈希的公开前端文件。保留拒绝路由先于代理的执行顺序；不要直接替换为排序在 `respond` 之前的 `handle`。运行 Caddy 配置校验、`scripts/check-trial-gateway.py` 并检查实际响应头。此次未更换镜像摘要、未修改生产配置，也未更改隧道启动器。
