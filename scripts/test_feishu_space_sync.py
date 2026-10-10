@@ -127,6 +127,161 @@ class FeishuSpaceSyncTests(unittest.TestCase):
         client.request.side_effect = [{"success": True, "data": value} for value in (models, [kb], kb)]
         return client
 
+    def approved_graph(self):
+        kb = self.managed_kb(MODULE["KB_NAME"])
+        kb.update({"id": MODULE["ENTERPRISE_KB_ID"], "summary_model_id": "PRIVATE_MODEL_ID",
+                   "extract_config": {"enabled": True, "text": "PRIVATE_EXTRACTION", "tags": ["course", "product"]}})
+        kb["indexing_strategy"]["graph_enabled"] = True
+        policy = {"version": 1, "space_id": SPACE_ID, "knowledge_base_id": kb["id"],
+                  "summary_model_id": kb["summary_model_id"], "graph_enabled": True,
+                  "extract_config": copy.deepcopy(kb["extract_config"])}
+        return kb, policy
+
+    def test_explicit_graph_policy_allows_exact_configuration_without_writes_or_config_output(self):
+        kb, policy = self.approved_graph()
+        for read_only in (False, True):
+            client = self.kb_client(kb)
+            self.assertEqual(MODULE["knowledge_base"](client, read_only=read_only, enrichment_policy=policy), kb)
+            self.assertTrue(all(call.args[1] == "GET" for call in client.request.call_args_list))
+            report = MODULE["ingestion_policy"](kb, read_only, policy)
+            self.assertTrue(report["enrichment_policy_matches"])
+            self.assertTrue(report["sync_allowed"])
+            self.assertEqual(len(report["extract_config_sha256"]), 64)
+        self.assertNotIn("PRIVATE_MODEL_ID", self.output.getvalue())
+        self.assertNotIn("PRIVATE_EXTRACTION", self.output.getvalue())
+        reordered = copy.deepcopy(kb)
+        reordered["extract_config"] = dict(reversed(list(kb["extract_config"].items())))
+        self.assertTrue(MODULE["ingestion_policy"](reordered, True, policy)["enrichment_policy_matches"])
+
+    def test_explicit_graph_policy_rejects_configuration_drift(self):
+        for field in ("id", "summary_model_id", "graph_enabled", "text", "tags", "enabled", "unknown", "missing_extract"):
+            for read_only in (False, True):
+                kb, policy = self.approved_graph()
+                if field in ("id", "summary_model_id"):
+                    kb[field] = "different"
+                elif field == "graph_enabled":
+                    kb["indexing_strategy"][field] = False
+                elif field == "missing_extract":
+                    kb.pop("extract_config")
+                else:
+                    kb["extract_config"][field] = False if field == "enabled" else "changed"
+                client = self.kb_client(kb)
+                with self.subTest(field=field, read_only=read_only), self.assertRaisesRegex(SafeError, "differs"):
+                    MODULE["knowledge_base"](client, read_only=read_only, enrichment_policy=policy)
+                self.assertTrue(all(call.args[1] == "GET" for call in client.request.call_args_list))
+                report = MODULE["ingestion_policy"](kb, read_only, policy)
+                self.assertFalse(report["enrichment_policy_matches"])
+                self.assertFalse(report["sync_allowed"])
+
+    def test_explicit_graph_policy_rejects_wrong_scope_or_schema_before_api(self):
+        changes = ({"space_id": "other"}, {"knowledge_base_id": "other"}, {"version": True},
+                   {"version": 2}, {"graph_enabled": False}, {"graph_enabled": 1}, {"summary_model_id": ""},
+                   {"summary_model_id": "https://model.example"}, {"extract_config": {"enabled": True, "api_key": "no"}},
+                   {"extract_config": {"enabled": False}}, {"extra": True})
+        for change in changes:
+            _, policy = self.approved_graph()
+            policy.update(change)
+            client = Mock()
+            with self.subTest(change=change), self.assertRaises(SafeError):
+                MODULE["knowledge_base"](client, enrichment_policy=policy)
+            client.request.assert_not_called()
+
+    def test_explicit_graph_policy_preserves_non_graph_guards(self):
+        changes = [{"embedding_model_id": "remote"}, {"description": "other"},
+                   {"vlm_config": {"model_name": "remote"}}, {"image_processing_config": {"model_id": "remote"}}]
+        changes.extend({key: {"enabled": True}} for key in (
+            "question_generation_config", "auto_tag_config", "profile_config", "vlm_config", "asr_config"))
+        for change in changes:
+            kb, policy = self.approved_graph()
+            kb.update(change)
+            client = self.kb_client(kb)
+            with self.subTest(change=change), self.assertRaises(SafeError):
+                MODULE["knowledge_base"](client, read_only=True, enrichment_policy=policy)
+            self.assertTrue(all(call.args[1] == "GET" for call in client.request.call_args_list))
+        for key in ("wiki_enabled", "vector_enabled", "keyword_enabled"):
+            kb, policy = self.approved_graph()
+            kb["indexing_strategy"][key] = not kb["indexing_strategy"][key]
+            with self.subTest(key=key), self.assertRaises(SafeError):
+                MODULE["knowledge_base"](self.kb_client(kb), enrichment_policy=policy)
+
+    def test_explicit_graph_policy_cannot_create_replacement_knowledge_base(self):
+        _, policy = self.approved_graph()
+        client = Mock()
+        models = [{"id": "local-embedding", "type": "Embedding", "source": "local", "status": "active", "name": "bge-m3:latest"}]
+        client.request.side_effect = [{"success": True, "data": models}, {"success": True, "data": []}]
+        with self.assertRaisesRegex(SafeError, "cannot create"):
+            MODULE["knowledge_base"](client, create=True, enrichment_policy=policy)
+        self.assertEqual(client.request.call_count, 2)
+        self.assertTrue(all(call.args[1] == "GET" for call in client.request.call_args_list))
+
+    def test_enrichment_policy_paths_and_json_are_strict(self):
+        _, policy = self.approved_graph()
+        with tempfile.TemporaryDirectory() as folder:
+            root = pathlib.Path(folder).resolve()
+            (root / "temp").mkdir()
+            valid = root / "temp" / "approved.json"
+            valid.write_text(json.dumps(policy), encoding="utf-8")
+            outside = root / "outside.json"
+            outside.write_text(json.dumps(policy), encoding="utf-8")
+            wrong_extension = root / "temp" / "policy.env"
+            wrong_extension.write_text(json.dumps(policy), encoding="utf-8")
+            oversized = root / "temp" / "oversized.json"
+            oversized.write_text(" " * 131073, encoding="utf-8")
+            duplicate = root / "temp" / "duplicate.json"
+            duplicate.write_text('{"version":1,"version":1}', encoding="utf-8")
+            with patch.dict(GLOBALS, {"REPO_ROOT": root}):
+                self.assertEqual(MODULE["load_enrichment_policy"]("temp/approved.json"), policy)
+                for path in (outside, wrong_extension, oversized, duplicate, root / "temp" / "missing.json", "temp/../outside.json", root / "temp"):
+                    with self.subTest(path=str(path)), self.assertRaises(SafeError):
+                        MODULE["load_enrichment_policy"](str(path))
+
+    def test_invalid_policy_path_is_rejected_before_loading_credentials(self):
+        settings = Mock()
+        with patch.dict(GLOBALS, {"load_settings": settings}), patch("sys.argv", ["feishu-space-sync.py", "verify", "--enrichment-policy", "outside.json"]):
+            with self.assertRaises(SafeError):
+                MODULE["main"]()
+        settings.assert_not_called()
+
+    def test_snapshot_records_explicit_enrichment_approval_digest(self):
+        kb, policy = self.approved_graph()
+        with tempfile.TemporaryDirectory() as folder:
+            root = pathlib.Path(folder).resolve()
+            (root / "temp").mkdir()
+            output = root / "temp" / "snapshot.json"
+            with patch.dict(GLOBALS, {"REPO_ROOT": root}):
+                MODULE["write_snapshot"](output, kb, {"id": "source"}, {}, {}, enrichment_policy=policy)
+            snapshot = json.loads(output.read_text(encoding="utf-8"))
+            self.assertTrue(snapshot["ingestion_policy"]["sync_allowed"])
+            self.assertTrue(snapshot["ingestion_policy"]["enrichment_policy_matches"])
+            self.assertNotIn("PRIVATE_MODEL_ID", output.read_text(encoding="utf-8"))
+            self.assertNotIn("PRIVATE_EXTRACTION", output.read_text(encoding="utf-8"))
+
+    def test_explicit_policy_sync_rejects_drift_before_datasource_and_preserves_verify_read_only(self):
+        for verify, drift in ((False, True), (False, False), (True, False)):
+            kb, policy = self.approved_graph()
+            if drift:
+                kb["extract_config"]["text"] = "changed"
+            client = self.kb_client(kb)
+            source = Mock(return_value={"id": "ds1"})
+            sync = Mock(return_value={"items_total": 1})
+            with self.subTest(verify=verify, drift=drift), patch.dict(GLOBALS, {
+                "HttpClient": Mock(), "require_guard": Mock(), "FeishuClient": Mock(), "permissions": Mock(),
+                "inventory": Mock(return_value={"root": {"object_type": "docx"}}), "login": Mock(return_value=client),
+                "datasource": source, "documents": Mock(return_value={}), "await_documents": Mock(return_value={}), "await_sync": sync,
+            }):
+                if drift:
+                    with self.assertRaises(SafeError):
+                        MODULE["synchronize"]({}, enrichment_policy=policy)
+                    source.assert_not_called()
+                    sync.assert_not_called()
+                else:
+                    MODULE["synchronize"]({}, verify=verify, enrichment_policy=policy)
+                    source.assert_called_once_with(client, kb, {}, create=not verify)
+                    if verify:
+                        sync.assert_not_called()
+                    else:
+                        sync.assert_called_once()
+
     def test_read_only_accepts_summary_configuration_without_allowing_sync(self):
         kb = self.managed_kb(MODULE["KB_NAME"])
         kb["summary_model_id"] = "PRIVATE_MODEL_ID"
@@ -426,6 +581,61 @@ class FeishuSpaceSyncTests(unittest.TestCase):
             self.assertIn("400", str(result))
             if type(code) is int:
                 self.assertIn(str(code), str(result))
+
+    def test_explicit_tenant_argument_rejects_ambiguous_ids_before_credentials(self):
+        for value in ("0", "-1", "+10000", "1.0", "01", "10000x", "18446744073709551616"):
+            settings = Mock()
+            with self.subTest(value=value), patch.dict(GLOBALS, {"load_settings": settings}), patch("sys.argv", ["feishu-space-sync.py", "verify", "--tenant-id", value]), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                MODULE["main"]()
+            self.assertEqual(error.exception.code, 2)
+            settings.assert_not_called()
+        self.assertEqual(MODULE["tenant_id_argument"]("10000"), 10000)
+
+    def test_tenant_header_only_applies_to_local_requests(self):
+        for feishu in (False, True):
+            client = MODULE["HttpClient"]("https://open.feishu.cn" if feishu else "http://127.0.0.1:8080", feishu=feishu)
+            client.tenant_id = 10000
+            client.opener = Mock()
+            client.opener.open.return_value = io.BytesIO(b'{"code":0,"success":true}')
+            client.request("/read")
+            headers = dict(client.opener.open.call_args.args[0].header_items())
+            self.assertEqual(headers.get("X-tenant-id"), None if feishu else "10000")
+
+    def test_login_explicit_tenant_does_not_change_active_workspace(self):
+        client = Mock()
+        client.request.return_value = {"token": "PRIVATE_LOGIN_TOKEN", "active_tenant": {"id": 10005}}
+        with patch.dict(GLOBALS, {"HttpClient": Mock(return_value=client)}):
+            actual = MODULE["login"]({"SMOKE_ADMIN_EMAIL": "fixture@example.invalid", "SMOKE_ADMIN_PASSWORD": "fixture-password"}, tenant_id=10000)
+        self.assertIs(actual, client)
+        self.assertEqual(actual.tenant_id, 10000)
+        self.assertEqual(client.request.call_count, 1)
+        self.assertEqual(client.request.call_args.args[:2], ("/api/v1/auth/login", "POST"))
+        self.assertNotIn("PRIVATE_LOGIN_TOKEN", self.output.getvalue())
+
+    def test_explicit_tenant_permission_failure_has_no_default_fallback(self):
+        client = MODULE["HttpClient"]("http://127.0.0.1:8080")
+        client.tenant_id = 10000
+        client.opener = Mock()
+        client.opener.open.side_effect = urllib.error.HTTPError("http://127.0.0.1:8080/read", 403, "private", {}, io.BytesIO(b"PRIVATE_BODY"))
+        with self.assertRaises(ApiError) as error:
+            client.request("/api/v1/knowledge-bases")
+        self.assertEqual(error.exception.code, 403)
+        self.assertEqual(client.opener.open.call_count, 1)
+        self.assertEqual(client.tenant_id, 10000)
+        self.assertNotIn("PRIVATE_BODY", str(error.exception))
+
+    def test_read_only_verification_forwards_explicit_tenant_without_sync(self):
+        client, kb, ds = Mock(), {"id": "kb1"}, {"id": "source1"}
+        login, sync = Mock(return_value=client), Mock()
+        with patch.dict(GLOBALS, {
+            "HttpClient": Mock(), "require_guard": Mock(), "FeishuClient": Mock(), "permissions": Mock(),
+            "inventory": Mock(return_value={"root": {"object_type": "docx"}}), "login": login,
+            "knowledge_base": Mock(return_value=kb), "datasource": Mock(return_value=ds),
+            "documents": Mock(return_value={}), "await_documents": Mock(return_value={}), "await_sync": sync,
+        }):
+            MODULE["synchronize"]({}, verify=True, tenant_id=10000)
+        login.assert_called_once_with({}, tenant_id=10000)
+        sync.assert_not_called()
 
     def test_document_audit_checks_all_docx_without_outputting_object_ids(self):
         client = FakeDocumentAudit()

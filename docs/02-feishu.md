@@ -426,3 +426,34 @@ python scripts/feishu-space-sync.py audit-access --deny-space '<用户指定的�
 | `summary_status=failed`，是否代表正文导入失败 | 2026-10-08 初始配置留空摘要模型，worker 跳过摘要并设置该状态。当前已配置远程摘要模型，既有 failed 状态不能证明未来导入不会调用远程模型。独立检查 `parse_status` 与检索，并按第 5 节确认当前同步策略 |
 | `verify` 或 `snapshot` 成功但 `sync_allowed=false` | 只证明已有数据可对账，摘要配置仍不符合 helper 的导入策略。实际 `sync` 保持拒绝，需先明确摘要处理策略，不要绕过校验 |
 | 日志扫描没有发现凭据，是否保证从未泄漏 | 本次只对指定 app 日志窗口做内存匹配。已部署脱敏修复并通过相关测试，但不能由一次扫描推出全时段保证 |
+
+## 10. 启用知识图谱后的兼容边界
+
+本节对应 `feat/skill-graph-prompt-fixes`，补充并替代第 5 节“增强仍全部关闭”时的 helper 使用前提。上文首次导入与 V1/V2 结果继续作为历史证据；不能据此宣布启用摘要、图谱后的同步已经重新验收。运行配置与图谱抽取的最新结果见 [技能、图谱与中文提示词](12-skill-graph-prompts.md)。
+
+`sync`、`verify`、`snapshot` 新增 `--enrichment-policy` 和 `--tenant-id`。没有传入策略时，原增强检查继续生效：非空摘要模型阻止同步；启用图谱会使知识库配置检查失败，包含只读动作。因此启用图谱后，不能继续直接套用上文不带策略文件的核对命令。
+
+本机总部使用 `--tenant-id 10000` 明确指定请求空间，避免管理员上次访问伙伴空间后登录默认落到 `10005`。该参数只为本机 API 请求设置 `X-Tenant-ID`，不会发送给飞书，也不修改账号记忆的活动空间；目标访问与角色仍由服务端校验，403 不回退到其他空间。省略时保留原登录默认空间行为。凭据继续由 helper 在本机进程内加载，不能把密码放入命令行。
+
+2026-10-10 本地只读核验通过：19 篇、19 个唯一来源 ID，正文解析全部完成；`temp/enterprise-trial/graph-enrichment-policy.json` 与实际模型、八类中文关系和完整抽取配置匹配。数据源仍为 paused、手动增量、空 schedule、`delete_missing=false`。三次实时核对遇到飞书目录连接超时，未执行新同步；启图后的实时源端数量及新增/修改文档图谱更新仍为**未验证**。网络恢复后运行本节 `verify`，再在明确范围内执行 `sync` 检查新文档与图关系；不能用本地数量代替飞书实时对账。
+
+策略只允许版本 `1`、Wiki 空间 `7610776951925509072` 和既有总部知识库 `d9285ed1-0760-474b-ba82-a13347598176`，必须写明具体 `summary_model_id`、`graph_enabled=true` 与完整 `extract_config`。文件必须是仓库 `temp` 内不超过 128KiB 的 JSON；重复或未知字段、来源范围错误、模型或抽取配置与实际库不一致均拒绝。它不能新建或替换知识库，也不修改实际模型或抽取配置。管理员应先审核保存的策略，不能为了通过检查临时放宽策略内容。
+
+假设经审核的文件为 `temp/approved-feishu-enrichment.json`，先执行只读核对：
+
+```powershell
+python scripts/feishu-space-sync.py verify --tenant-id 10000 --enrichment-policy temp/approved-feishu-enrichment.json --timeout 300
+python scripts/feishu-space-sync.py snapshot --tenant-id 10000 --enrichment-policy temp/approved-feishu-enrichment.json --output temp/feishu-graph-policy-before-unique.json --timeout 300
+```
+
+确认本轮同步范围后才执行实际同步；这条命令会写入本地数据并可能调用所批准的远程模型，不能当作只读检查：
+
+```powershell
+python scripts/feishu-space-sync.py sync --tenant-id 10000 --enrichment-policy temp/approved-feishu-enrichment.json --timeout 7200
+```
+
+策略匹配只放行明确批准的摘要和图谱配置。本地 BGE 向量模型、向量与关键词索引、禁止其他增强、固定空间预检、paused/手动同步及 `sync_deletions=false` 等保护继续保留。`local-deepseek-chat` 是远程聊天模型的本地登记 ID；新增文档导入及既有分块的图谱抽取可能向远程模型发送正文，不能称作全本地处理。策略只约束此 helper，不替代后端角色和来源权限。
+
+已有文档补图采用单独的 `/api/v1/knowledge-bases/:id/graph-backfill` 计划与提交接口，不用“重新解析”代替。补图应在执行前后比较分块 ID、正文摘要及数量；任务完成也不证明模型提取的每条关系正确。真实抽取、检索及业务语义结果待本轮验收记录补充。
+
+当前本机包含网关和 Neo4j，共九服务。原 `backup-trial.py` 的七服务流程不适用，也不能删除其保护条件后声称全栈备份成功。图谱变更前可使用在线 PG 与配置局部快照；Neo4j 冷备需要维护窗口并恢复到全新隔离卷验证。具体命令与未覆盖范围见 [局部快照与图谱冷备](graph-partial-backup.md) 和 [试用备份兼容说明](trial-backup.md#九服务栈与图谱兼容边界)。这些局部归档不是完整企业资料、对象文件、模型和运行环境的一致性备份。

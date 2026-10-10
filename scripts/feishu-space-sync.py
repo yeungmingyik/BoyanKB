@@ -1,6 +1,7 @@
 import argparse
 import collections
 import datetime
+import hashlib
 import json
 import os
 import pathlib
@@ -15,6 +16,7 @@ import urllib.request
 
 
 SPACE_ID = "7610776951925509072"
+ENTERPRISE_KB_ID = "d9285ed1-0760-474b-ba82-a13347598176"
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 REQUIRED_SCOPES = frozenset({"wiki:wiki:readonly", "drive:export:readonly", "drive:file:download"})
 DOWNLOAD_ALTERNATIVES = frozenset({"drive:drive:readonly", "drive:file:readonly"})
@@ -147,6 +149,7 @@ class HttpClient:
         self.base = base.rstrip("/")
         self.feishu = feishu
         self.token = ""
+        self.tenant_id = None
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), RejectRedirects())
 
     def request(self, path, method="GET", payload=None):
@@ -155,6 +158,8 @@ class HttpClient:
         headers = {"Accept": "application/json"}
         if self.token:
             headers["Authorization"] = "Bearer " + self.token
+        if not self.feishu and self.tenant_id is not None:
+            headers["X-Tenant-ID"] = str(self.tenant_id)
         body = None
         if payload is not None:
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -484,7 +489,15 @@ def require_guard(base):
     emit("guard", image_label=True, export_mode=True, encryption_key_valid=True, local_embedding=True)
 
 
-def login(settings):
+def tenant_id_argument(value):
+    if not re.fullmatch(r"[1-9][0-9]{0,19}", value) or int(value) > 18446744073709551615:
+        raise argparse.ArgumentTypeError("tenant ID must be a positive unsigned 64-bit integer")
+    return int(value)
+
+
+def login(settings, tenant_id=None):
+    if tenant_id is not None and (type(tenant_id) is not int or not 0 < tenant_id <= 18446744073709551615):
+        fail("Invalid explicit workspace ID.")
     client = HttpClient(settings.get("SMOKE_BASE_URL", "http://127.0.0.1:8080"))
     result = mapping(client.request("/api/v1/auth/login", "POST", {
         "email": required(settings, "SMOKE_ADMIN_EMAIL"),
@@ -497,8 +510,9 @@ def login(settings):
     SECRET_VALUES.add(token)
     if isinstance(result.get("refresh_token"), str):
         SECRET_VALUES.add(result["refresh_token"])
-    if not mapping(result.get("active_tenant") or {}).get("id"):
+    if tenant_id is None and not mapping(result.get("active_tenant") or {}).get("id"):
         fail("The administrator has no active workspace.")
+    client.tenant_id = tenant_id
     return client
 
 
@@ -509,15 +523,82 @@ def local_data(client, path, method="GET", payload=None):
     return result["data"]
 
 
-def ingestion_policy(kb, read_only):
+def json_digest(value):
+    try:
+        data = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    except (TypeError, ValueError):
+        fail("Enrichment policy must contain finite JSON values.")
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def validate_enrichment_policy(policy):
+    fields = {"version", "space_id", "knowledge_base_id", "summary_model_id", "graph_enabled", "extract_config"}
+    if not isinstance(policy, dict) or set(policy) != fields:
+        fail("Enrichment policy has unexpected or missing fields.")
+    if type(policy["version"]) is not int or policy["version"] != 1:
+        fail("Unsupported enrichment policy version.")
+    if policy["space_id"] != SPACE_ID or policy["knowledge_base_id"] != ENTERPRISE_KB_ID:
+        fail("Enrichment policy must name the authorized Wiki space and existing enterprise knowledge base.")
+    identifier(policy["summary_model_id"])
+    extract = policy["extract_config"]
+    if policy["graph_enabled"] is not True or not isinstance(extract, dict) or extract.get("enabled") is not True:
+        fail("Enrichment policy must explicitly enable graph extraction.")
+    if not set(extract).issubset({"enabled", "text", "tags", "nodes", "relations", "custom_instructions"}):
+        fail("Enrichment policy contains unknown extraction settings.")
+    json_digest(policy)
+    return policy
+
+
+def unique_json_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            fail("Enrichment policy contains duplicate JSON fields.")
+        result[key] = value
+    return result
+
+
+def load_enrichment_policy(value):
+    if value is None:
+        return None
+    path = pathlib.Path(value)
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    temporary_root = REPO_ROOT / "temp"
+    if temporary_root.resolve().parent != REPO_ROOT or path.is_symlink():
+        fail("Enrichment policy paths must stay inside repository temp without redirects.")
+    try:
+        path = path.resolve(strict=True)
+        path.relative_to(temporary_root)
+        if path.suffix.lower() != ".json" or not path.is_file() or path.stat().st_size > 131072:
+            fail("Enrichment policy must be a JSON file of at most 128 KiB inside repository temp.")
+        policy = json.loads(path.read_text(encoding="utf-8-sig"), object_pairs_hook=unique_json_object)
+    except (OSError, ValueError):
+        fail("Enrichment policy is missing, invalid, or outside repository temp.")
+    return validate_enrichment_policy(policy)
+
+
+def ingestion_policy(kb, read_only, enrichment_policy=None):
     summary_configured = bool(kb.get("summary_model_id"))
-    return {"validation_mode": "read_only" if read_only else "sync",
-            "summary_model_configured": summary_configured, "sync_allowed": not summary_configured}
+    result = {"validation_mode": "read_only" if read_only else "sync",
+              "summary_model_configured": summary_configured, "sync_allowed": not summary_configured}
+    if enrichment_policy is not None:
+        approved = validate_enrichment_policy(enrichment_policy)
+        matched = (kb.get("id") == approved["knowledge_base_id"]
+                   and kb.get("summary_model_id") == approved["summary_model_id"]
+                   and mapping(kb.get("indexing_strategy")).get("graph_enabled") is True
+                   and json_digest(kb.get("extract_config")) == json_digest(approved["extract_config"]))
+        result.update({"explicit_enrichment_policy": True, "enrichment_policy_matches": matched,
+                       "enrichment_policy_sha256": json_digest(approved),
+                       "extract_config_sha256": json_digest(kb.get("extract_config")), "sync_allowed": matched})
+    return result
 
 
-def knowledge_base(client, create=False, read_only=False):
+def knowledge_base(client, create=False, read_only=False, enrichment_policy=None):
     if create and read_only:
         fail("Read-only verification cannot create a knowledge base.")
+    if enrichment_policy is not None:
+        validate_enrichment_policy(enrichment_policy)
     models = local_data(client, "/api/v1/models")
     if not isinstance(models, list):
         fail("Model list is invalid.")
@@ -533,6 +614,8 @@ def knowledge_base(client, create=False, read_only=False):
     if len(matches) > 1:
         fail("Multiple managed knowledge bases exist; refusing ambiguous selection.")
     if not matches:
+        if enrichment_policy is not None:
+            fail("An approved enrichment policy cannot create or replace its knowledge base.")
         if not create:
             fail("The managed Feishu knowledge base does not exist.")
         kb = mapping(local_data(client, "/api/v1/knowledge-bases", "POST", {
@@ -553,7 +636,7 @@ def knowledge_base(client, create=False, read_only=False):
     strategy = mapping(kb.get("indexing_strategy"))
     if strategy.get("vector_enabled") is not True or strategy.get("keyword_enabled") is not True:
         fail("The managed knowledge base must enable vector and keyword indexes.")
-    if strategy.get("wiki_enabled") or strategy.get("graph_enabled"):
+    if strategy.get("wiki_enabled") or (strategy.get("graph_enabled") and enrichment_policy is None):
         fail("The managed knowledge base enables unexpected enrichment.")
     for key in ("question_generation_config", "auto_tag_config", "profile_config", "vlm_config", "asr_config"):
         if mapping(kb.get(key) or {}).get("enabled"):
@@ -562,8 +645,10 @@ def knowledge_base(client, create=False, read_only=False):
     if vlm.get("model_name") or vlm.get("base_url") or mapping(kb.get("image_processing_config") or {}).get("model_id"):
         fail("Legacy image model enrichment must remain disabled.")
     identifier(kb.get("id"))
-    policy = ingestion_policy(kb, read_only)
+    policy = ingestion_policy(kb, read_only, enrichment_policy)
     emit("ingestion_policy", **policy)
+    if enrichment_policy is not None and not policy["enrichment_policy_matches"]:
+        fail("Knowledge base enrichment differs from the explicitly approved policy; no changes were made.")
     if not read_only and not policy["sync_allowed"]:
         fail("Sync is blocked because a summary model is configured; read-only verify or snapshot remains available.")
     emit("knowledge_base", knowledge_base_id=kb["id"])
@@ -725,7 +810,7 @@ def await_sync(client, ds, timeout):
         time.sleep(min(5, max(0, deadline - time.monotonic())))
 
 
-def synchronize(settings, verify=False, timeout=7200):
+def synchronize(settings, verify=False, timeout=7200, enrichment_policy=None, tenant_id=None):
     base = settings.get("SMOKE_BASE_URL", "http://127.0.0.1:8080")
     HttpClient(base)
     require_guard(base)
@@ -734,8 +819,8 @@ def synchronize(settings, verify=False, timeout=7200):
     nodes = inventory(feishu)
     if not any(row["object_type"] in SUPPORTED_TYPES for row in nodes.values()):
         fail("There are no supported documents to import.")
-    client = login(settings)
-    kb = knowledge_base(client, create=not verify, read_only=verify)
+    client = login(settings, tenant_id=tenant_id)
+    kb = knowledge_base(client, create=not verify, read_only=verify, enrichment_policy=enrichment_policy)
     ds = datasource(client, kb, settings, create=not verify)
     before = documents(client, kb["id"], ds["id"], nodes)
     counts = None
@@ -773,9 +858,9 @@ def snapshot_path(value, writing=False):
     return path
 
 
-def write_snapshot(path, kb, ds, nodes, rows):
+def write_snapshot(path, kb, ds, nodes, rows, enrichment_policy=None):
     payload = {"version": 1, "space_id": SPACE_ID, "knowledge_base_id": kb["id"], "data_source_id": ds["id"],
-               "ingestion_policy": ingestion_policy(kb, read_only=True), "documents": []}
+               "ingestion_policy": ingestion_policy(kb, read_only=True, enrichment_policy=enrichment_policy), "documents": []}
     for external_id, row in sorted(rows.items()):
         node = nodes[external_id.split("#", 1)[0]]
         payload["documents"].append({key: row[key] for key in ("external_id", "knowledge_id", "file_hash", "source_updated_at", "updated_at")})
@@ -861,6 +946,8 @@ def main():
     for name in ("sync", "verify", "snapshot"):
         command = actions.add_parser(name)
         command.add_argument("--timeout", type=int, default=7200)
+        command.add_argument("--enrichment-policy")
+        command.add_argument("--tenant-id", type=tenant_id_argument)
         if name == "verify":
             command.add_argument("--node-token")
             command.add_argument("--expect-text")
@@ -868,6 +955,7 @@ def main():
         elif name == "snapshot":
             command.add_argument("--output", required=True)
     args = parser.parse_args()
+    enrichment_policy = load_enrichment_policy(getattr(args, "enrichment_policy", None))
     settings = load_settings()
     if args.action == "permissions":
         permissions(FeishuClient(settings), args.apply)
@@ -884,9 +972,9 @@ def main():
         baseline = snapshot_path(args.baseline) if args.action == "verify" and args.baseline else None
         if args.action == "verify" and (bool(args.node_token) != bool(args.expect_text) or baseline is not None and not args.node_token):
             fail("Probe verification requires both --node-token and --expect-text; --baseline also requires them.")
-        client, kb, ds, nodes, rows = synchronize(settings, verify=args.action != "sync", timeout=args.timeout)
+        client, kb, ds, nodes, rows = synchronize(settings, verify=args.action != "sync", timeout=args.timeout, enrichment_policy=enrichment_policy, tenant_id=args.tenant_id)
         if output is not None:
-            write_snapshot(output, kb, ds, nodes, rows)
+            write_snapshot(output, kb, ds, nodes, rows, enrichment_policy=enrichment_policy)
         if args.action == "verify" and args.node_token:
             verify_marker(client, kb, ds, nodes, rows, args.node_token, args.expect_text, baseline)
 
