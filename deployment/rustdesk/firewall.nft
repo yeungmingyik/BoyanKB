@@ -1,0 +1,6 @@
+table inet rustdesk {
+    chain input {
+        type filter hook input priority -5; policy accept;
+        tcp dport { 21118, 21119 } drop
+    }
+}

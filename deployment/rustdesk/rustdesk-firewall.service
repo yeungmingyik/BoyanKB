@@ -1,0 +1,21 @@
+[Unit]
+Description=RustDesk port restrictions
+Before=rustdesk-hbbs.service rustdesk-hbbr.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nft -f /opt/rustdesk/config/firewall.nft
+ExecStop=/usr/sbin/nft delete table inet rustdesk
+RemainAfterExit=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+
+[Install]
+WantedBy=multi-user.target
