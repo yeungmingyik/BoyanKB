@@ -336,7 +336,7 @@
 | 文件 | 原因 | 改动点与验证 |
 | --- | --- | --- |
 | `docker-compose.tencent.yml`、`deployment/tencent/{Caddyfile,frontend-entrypoint.sh,redis-entrypoint.sh,env.example,images.lock.json,validate-config.py}` | 将九服务和本地模型迁到4核8GB独立云主机，保留本机回退 | 独立项目和网络、回环入口、九镜像固定摘要、七数据卷、资源和任务并发限制；静态配置检查通过，实际数据与业务验收另记 |
-| `docker-compose.tencent-ip-https.yml`、`deployment/tencent/{Caddyfile.ip-https,validate-ip-https.py}` | 无域名内部测试也需要加密登录与来源限制 | LE IP短期证书、仅TCP443公网发布、HTTP来源白名单、专用证书卷与手动初始化；Caddy适配与静态验证通过，实际签发和续期分别验收 |
+| `docker-compose.tencent-ip-https.yml`、`deployment/tencent/{Caddyfile.ip-https,validate-ip-https.py}` | 无域名内部测试也需要加密登录与可配置来源 | LE IP短期证书、仅TCP443公网发布、环境变量控制HTTP来源、专用证书卷与手动初始化；初始白名单已按用户要求通过云端环境覆盖为所有来源，邀请制及后端授权保留 |
 | `scripts/{init-tencent-access,tencent-ssh,tencent-images,tencent-transfer}.py`、对应测试、`deployment/tencent/install-host.sh` | SSH信任、镜像版本与大文件传输必须可核验 | 专用公钥、控制台指纹固定、严格主机校验；镜像receipt、私有路径白名单、二进制断点续传与远端SHA256；不传输SSH私钥或Cloudflare令牌 |
 | `scripts/{tencent-snapshot,tencent-restore}.py`、对应测试 | 旧七服务备份不能覆盖当前Redis、Neo4j与模型缓存 | 新格式一致性快照、新云卷恢复、逐文件库存和数据摘要、失败保留现场；原备份保护不修改，真实整栈恢复另记 |
 | `scripts/tencent-accounts.py`、对应测试 | 只替换云端两个测试账号，不能转移旧个人聊天 | 新UUID、新账号先登录验证、事务内移交总部资源、旧账号软退役与撤销令牌；计划摘要和有效备份门禁；空间频道历史保留 |
@@ -347,5 +347,7 @@
 镜像导出保留原 OCI 索引，不向 `docker image save` 传递 `--platform`；源端仍核验 Linux/amd64。`scripts/test_tencent_images.py` 验证原索引归档、错误源镜像拒绝和已有归档保护。目标机必须同时验证 tag 与锁定摘要引用，不能以平台摘要差异为由跳过版本检查。
 
 首次云端启动修复：`redis-entrypoint.sh` 先以gosu切换redis身份，避免受限root遍历恢复的0700目录；无网临时容器的认证、权限与AOF测试通过。`tencent-restore.py` 仅对两份YAML和两份Caddy配置设置root所有、服务组可读的0640，保持环境文件0600，拒绝软硬链接；25项恢复测试通过。九服务及HTTPS已上线，用户要求暂缓业务验收；附加图谱解析检查仍未通过，详见部署记录。
+
+2026-10-10 网页来源调整，分支 `feat/tencent-public-web-access`：按用户要求，仅将云端 `/opt/boyankb/.env.tencent` 的 `WEB_ALLOWED_CIDRS` 覆盖为 `"0.0.0.0/0 ::/0"` 并重建 gateway。新增 `scripts/tencent-web-access.py`，默认预览，显式应用时私有备份、拒绝重复键、比较有效Compose仅有目标变量变化，并核对其他八个容器ID、端口和健康状态。登录页向所有来源开放，公开注册关闭、登录与RBAC、SSH来源限制、数据库无宿主端口等规则保持原配置。仓库的网关规则和Compose默认值未改；重新部署必须带实际环境文件。设置、白名单回退及200/401/403/404和端口检查命令见 `deployment/tencent/README.md`，变更后实际检查结果以部署记录为准，旧白名单拒绝报告仅为历史记录。
 
 升级时先在隔离测试环境构建新定制镜像，更新本配置的镜像锁与兼容性检查，再演练新快照格式恢复和账号权限。不能直接将七服务生产模板覆盖到本九服务部署，不得把数据恢复通过写成全部业务验收通过。公网入口、账号和数据以 [腾讯云部署记录](13-tencent-deployment.md) 为准。

@@ -2,7 +2,7 @@
 
 目标主机为 `193.112.17.218`，广东地域，Ubuntu 24.04、x86_64、4 核 8GB、5Mbps。部署目录为 `/opt/boyankb`，Compose 项目为 `boyankb-tencent`。本机 `weknora-local` 保留，Cloudflare 隧道和域名解析不切换。
 
-本方案用于受限来源的内部测试。公开 IP 不是正式对外服务免备案的替代方案；正式合作伙伴上线前应完成腾讯云要求的备案与服务合规检查。[腾讯云备案 API 常见问题](https://cloud.tencent.com/document/api/243/19630)、[备案常见问题](https://cloud.tencent.com/document/product/243/18910)。
+本方案用于邀请制账号的内部测试，登录页按用户要求向所有来源开放。公开 IP 不是正式对外服务免备案的替代方案；正式合作伙伴上线前应完成腾讯云要求的备案与服务合规检查。[腾讯云备案 API 常见问题](https://cloud.tencent.com/document/api/243/19630)、[备案常见问题](https://cloud.tencent.com/document/product/243/18910)。
 
 ## 入口和账号
 
@@ -23,7 +23,7 @@
 
 仅发布 TCP 443 和受管理电脑 IP 限制的 SSH 22。数据库、Redis、Ollama、Neo4j、解析及渲染服务无宿主端口。`127.0.0.1:18080` 是服务器本地诊断入口。
 
-443 来源允许所有 IPv4 地址，以便 Let's Encrypt 执行 TLS-ALPN-01 验证。网页另外由 `WEB_ALLOWED_CIDRS` 限制，默认 `218.104.190.149/32`，不信任客户端伪造的代理来源头。办公出口变化需同时检查 SSH 来源和网页白名单。80 与 UDP 443 无需开放。
+443 来源允许所有 IPv4 地址，供网页访问及 Let's Encrypt TLS-ALPN-01 验证。2026-10-10 按用户要求，将服务器 `.env.tencent` 的 `WEB_ALLOWED_CIDRS` 设为 `"0.0.0.0/0 ::/0"`，所有来源均可打开登录页；IPv6 CIDR 不代表该服务器已提供 IPv6 公网入口。公开注册仍关闭，知识库、智能体、技能和文件仍由登录身份与空间权限控制。SSH 22 继续限制管理电脑来源，80 与 UDP 443 无需开放。设置与回退命令见 [入口来源配置](../deployment/tencent/README.md#调整入口来源)。
 
 Caddy 使用真实 IP SAN 证书，shortlived profile 有效期约160小时，证书卷持久化；首次成功签发不证明续期已验证。保持443可达，后续核对证书序列号与有效期更新。[Let's Encrypt IP 证书](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability)。
 
@@ -40,7 +40,7 @@ Caddy 使用真实 IP SAN 证书，shortlived profile 有效期约160小时，�
 7. 云端加载镜像后复验九个 Image ID、平台及摘要引用可解析。无浮动版本回退、无自动拉取。
 8. `scripts/tencent-restore.py` 默认只验证；显式恢复仅允许新云端卷，拒绝覆盖已有容器或卷。先验证卷清单和数据库摘要，再启动业务服务。失败保留目标供诊断，不自动删库或删卷。
 9. 制作并验证交接前 PG 备份，再运行 `scripts/tencent-accounts.py` 生成计划；使用输出的计划摘要及备份摘要显式 apply。旧账号只在新账号登录、角色和资料保护检查通过后停用。
-10. 初始化专用证书卷，叠加 IP HTTPS 配置启动；具体命令见 [部署配置说明](../deployment/tencent/README.md)。实际验证证书、来源限制、注册关闭、技能、问答和文件。
+10. 初始化专用证书卷，叠加 IP HTTPS 配置启动；具体命令见 [部署配置说明](../deployment/tencent/README.md)。实际验证证书、登录与授权边界、注册关闭、技能、问答和文件。
 
 ## 验证与回退
 
@@ -56,7 +56,9 @@ curl --noproxy '*' -fSI https://193.112.17.218/login
 
 `readonly` 会登录和读取授权资料，不创建业务内容；登录本身会生成认证记录。`tencent-runtime.py` 核对九服务、图谱范围、APOC能力与并发配置，只写私有报告。`exercise` 以新成员身份创建中文业务会话、问答和 Word/PPT 文件并消耗模型额度，保留输出与报告，不自动删除。脚本逐次核对任务与大纲绑定，演练确认和审校，不能绕过阻断；自动点击确认不代替业务人员审阅。检索结果属于企业库不代表答案引用已经准确，脚本自动通过不代替事实审查和原生 Office 打开检查。
 
-需要人工验证：分别用两个账号在独立浏览器会话登录，核对仅总部成员关系、技能可用、成员不能管理团队；用 Word/PowerPoint 打开产物确认无修复提示及版面正常；逐条核对回答与来源；用知识库没有的问题确认明确说明缺少依据。从未加入白名单的另一网络访问应403，即使伪造转发头也应拒绝。续期窗口后再次核验证书更新。
+入口最小检查：`GET /login` 应为200；未携带令牌的 `GET /api/v1/knowledge-bases` 应为401；`POST /api/v1/auth/register` 应为403；`GET /api/v1/system/admin` 应为404。通过 Docker 端口清单确认数据库、Redis、Neo4j 等内部服务没有宿主发布端口。命令见 [部署配置说明](../deployment/tencent/README.md#入口检查)。这些检查不代替业务验收。
+
+需要人工验证：从手机移动网络等另一出口打开登录页，应能访问；分别用两个账号在独立浏览器会话登录，核对仅总部成员关系、技能可用、成员不能管理团队；用 Word/PowerPoint 打开产物确认无修复提示及版面正常；逐条核对回答与来源；用知识库没有的问题确认明确说明缺少依据。续期窗口后再次核验证书更新。
 
 回退优先停止云端入口并继续使用原本机部署；不把云端修改覆盖回本机。数据库恢复、删除卷或切换生产入口前再次确认具体目标与影响。不可用 `docker compose down -v` 清理失败现场。
 
@@ -86,8 +88,12 @@ HTTPS使用Let's Encrypt YE1签发的IP SAN证书，本次有效期为UTC `2026-
 
 附加只读图谱检查 `tencent-runtime.py` 返回 `CYPHER_SINGLE_RESULT_REQUIRED`，尚未定位是哪条Cypher返回行数与解析器预期不符。Neo4j容器健康且冷备文件库存一致，但这不能替代云端实体/关系数量、APOC功能和应用图谱查询验证。不能把该脚本记录写成通过；后续分别定位其六条聚合/版本查询的列数与行数，修复解析或实际配置后重跑。源端384实体、326关系是迁移基线，云端语义计数暂为未验证。
 
-云机通过443回环连接的非白名单来源已返回403，附加伪造的X-Forwarded-For、Cf-Connecting-Ip及Forwarded头仍为403，两次均通过真实TLS验证；报告为 `/opt/boyankb/https-denial-report.json`。这不是独立外网出口测试。
+初始白名单配置曾对云机443回环连接返回403，附加伪造的X-Forwarded-For、Cf-Connecting-Ip及Forwarded头仍为403；旧报告为 `/opt/boyankb/https-denial-report.json`。该结果仅记录调整前的来源限制，不能作为当前入口仍限制其他IP的证据。
 
-证书自动续期尚未跨周期验证；另一个外网出口的白名单拒绝仍需要人工验证。飞书数据源继续暂停且无定时同步；选定云端为唯一同步实例后，再恢复计划。通用代码沙箱仍关闭。当前是受限来源的内部测试上线，不代表生产或完整业务验收通过。
+2026-10-10 后续按用户要求取消网页来源限制，仅调整服务器 `WEB_ALLOWED_CIDRS` 并重建 gateway；登录、邀请制、RBAC、SSH来源限制和数据库端口隔离保持原配置。实际核验九服务全部健康，其余八个容器ID不变，网关宿主端口不变，内部服务没有宿主发布端口。原环境文件备份为 `/opt/boyankb/backups/web-access-20261010T100816Z-305e58b3.env`，权限0600；变更报告为 `/opt/boyankb/web-access-report.json`。
 
-部署分支仍为 `feat/tencent-cloud-deployment`。因并行任务切换了主目录分支，后续修复和本文在独立工作目录 `D:/BoyanKB/WeKnora-worktrees/tencent-cloud-deployment` 提交；凭据和迁移文件仍位于原目录 `D:/BoyanKB/WeKnora/temp/tencent-cloud`，不迁入Git。
+原先被拒绝的云机443回环来源现已通过可信TLS取得登录页200；未登录的知识库及身份API为401，公开注册403，Swagger404。新结果记录为 `/opt/boyankb/web-access-checks.json`。本机公网登录页也为200，内部管理API为404，TLS验证通过。此次没有登录、生成会话或执行业务模型请求；独立手机/其他外网出口的真实访问仍待人工确认。
+
+证书自动续期尚未跨周期验证；另一个外网出口的登录页访问仍需要人工验证。飞书数据源继续暂停且无定时同步；选定云端为唯一同步实例后，再恢复计划。通用代码沙箱仍关闭。当前是邀请制内部测试上线，不代表生产或完整业务验收通过。
+
+初次部署使用 `feat/tencent-cloud-deployment`，后续网页来源调整使用 `feat/tencent-public-web-access`。因并行任务切换了主目录分支，后续修复和本文在独立工作目录 `D:/BoyanKB/WeKnora-worktrees/tencent-cloud-deployment` 提交；凭据和迁移文件仍位于原目录 `D:/BoyanKB/WeKnora/temp/tencent-cloud`，不迁入Git。

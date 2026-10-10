@@ -64,9 +64,9 @@ Web 内网固定为 `10.239.80.0/24`；启动前确认目标机不存在冲突�
 
 叠加 `docker-compose.tencent-ip-https.yml` 后，浏览器入口为 `https://193.112.17.218`。基础 Compose 与原 `Caddyfile` 不变；新配置保留全部注册、内部接口、技能、沙箱、上传大小、缓存和请求头过滤规则。`127.0.0.1:18080` 继续用于服务器本地健康检查和 SSH 转发诊断，不对公网发布。应用外部链接固定为 HTTPS，即使示例环境文件仍设置旧 HTTP origin，也不会生成明文公网登录地址。
 
-公网网页仅允许 `WEB_ALLOWED_CIDRS` 指定的直接连接来源，默认 `218.104.190.149/32`。多个 CIDR 使用空格分隔，写入服务器 `.env.tencent`，例如 `WEB_ALLOWED_CIDRS="218.104.190.149/32 203.0.113.8/32"`；后一地址是文档示例，实际应替换为已确认的办公出口。来源不匹配返回 403，伪造 `X-Forwarded-For` 或 `Cf-Connecting-Ip` 不会获得访问权限。办公出口变化后须先更新白名单并重建网关；不要将其改为 `0.0.0.0/0`。腾讯云公网入口使用直接连接，不在网关前叠加未配置的 CDN 或反向代理。
+公网网页来源由 `WEB_ALLOWED_CIDRS` 控制。2026-10-10 按用户要求，服务器 `.env.tencent` 设置为 `WEB_ALLOWED_CIDRS="0.0.0.0/0 ::/0"`，所有来源可打开登录页。公开注册仍关闭，资料、智能体、技能和文件必须通过既有登录及空间授权。Compose 未设置变量时仍回落到原白名单 `218.104.190.149/32`，部署和重建时必须带 `--env-file .env.tencent`。IPv6 CIDR 不代表当前主机已提供 IPv6 公网入口。腾讯云公网入口使用直接连接，不在网关前叠加未配置的 CDN 或反向代理。
 
-云防火墙和宿主防火墙需要保留 TCP 22 仅允许管理电脑来源，新增 TCP 443 允许 `0.0.0.0/0`。443 对公网开放是为了证书验证，网页权限仍由上述白名单限制。无需开放 TCP 80、UDP 443 或任何数据库端口。不要仅在首次发证时开放443，续期同样需要它持续可达。
+云防火墙和宿主防火墙保留 TCP 22 仅允许管理电脑来源，TCP 443 允许 `0.0.0.0/0`，供网页访问和证书验证。无需开放 TCP 80、UDP 443 或任何数据库端口。不要仅在首次发证时开放443，续期同样需要它持续可达。
 
 新网关显式使用 Let's Encrypt ACME `shortlived` profile 和 TLS-ALPN-01，不使用自签或内部 CA。IP 证书有效期160小时，Caddy 自动续期；配置剩余寿命比例为0.5，CA的 ARI 建议窗口可能优先决定时间。`default_sni` 支持不发送SNI的IP访问客户端，避免容器内网地址与公网地址不同导致选证书失败。TLS验证发生在HTTP业务路由之前，来源白名单不会阻断验证。服务器需要能解析并通过出站443访问LE服务，系统时间须准确。[LE IP证书说明](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability)、[挑战类型](https://letsencrypt.org/docs/challenge-types/)、[Caddy续期设置](https://caddyserver.com/docs/caddyfile/options#renewal-window-ratio)。
 
@@ -84,14 +84,57 @@ docker compose --env-file .env.tencent -f docker-compose.tencent.yml -f docker-c
 
 本地配置验证使用 `env.example`，不会读取真实密钥；同时检查路由与基础配置一致、两个宿主端口、HTTPS origin、持久卷和初始化范围。2026-10-10 新配置已在Caddy 2.11.7完成 `adapt --validate`，没有启动源栈或请求证书。适配器对显式转发头给出的冗余警告不影响配置有效性；这些头保留原入口规则。
 
-实际上线后，从白名单内电脑执行：
+### 调整入口来源
+
+以 root 在服务器执行。默认只预览原来源和目标来源，不输出环境文件中的其他值：
+
+```bash
+cd /opt/boyankb
+python3 -B scripts/tencent-web-access.py --allow '0.0.0.0/0' '::/0'
+```
+
+确认预览后应用，向所有来源开放登录页：
+
+```bash
+python3 -B scripts/tencent-web-access.py --allow '0.0.0.0/0' '::/0' --apply
+```
+
+脚本校验云主机与私有文件，拒绝重复配置键，先在 `/opt/boyankb/backups/` 保存 root/0600 备份，再仅修改 `.env.tencent` 的 `WEB_ALLOWED_CIDRS`。它比较前后有效Compose配置，确认只有来源变量变化，仅重建 gateway，并检查其余八个容器ID、端口映射和九服务健康状态。结果写入私有 `/opt/boyankb/web-access-report.json`。无需修改Caddy规则或重启数据库。
+
+```bash
+docker compose --env-file .env.tencent -f docker-compose.tencent.yml -f docker-compose.tencent-ip-https.yml ps
+```
+
+如需回退到原管理电脑白名单，先预览再应用。若办公出口已变更，应填经确认的新出口CIDR。无需更改SSH规则或开放数据库端口。
+
+```bash
+python3 -B scripts/tencent-web-access.py --allow '218.104.190.149/32'
+python3 -B scripts/tencent-web-access.py --allow '218.104.190.149/32' --apply
+```
+
+### 入口检查
+
+从外网电脑执行，以下命令均不携带账号或令牌：
 
 ```bash
 curl --noproxy '*' -fSI https://193.112.17.218/login
+curl --noproxy '*' -sS -o /dev/null -w '%{http_code}\n' https://193.112.17.218/api/v1/knowledge-bases
+curl --noproxy '*' -sS -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' -d '{}' https://193.112.17.218/api/v1/auth/register
+curl --noproxy '*' -sS -o /dev/null -w '%{http_code}\n' https://193.112.17.218/api/v1/system/admin
 openssl s_client -connect 193.112.17.218:443 -servername 193.112.17.218 </dev/null 2>/dev/null | openssl x509 -noout -issuer -dates -ext subjectAltName
 ```
 
-`curl` 必须不带 `-k` 成功，证书应包含IP SAN `193.112.17.218`，并处于有效期内。从未加入白名单的另一出口访问应得到403，即使附加 `X-Forwarded-For: 218.104.190.149` 也应拒绝。网关本地健康检查只验证HTTP诊断入口，不证明公网TLS或证书续期正常。首次发证、双来源限制和真正续期尚未验证，需要云端启动后检查证书序列号/有效期在续期窗口后更新。不要为测试反复清除证书卷申请新证书。
+预期依次为登录页200、未登录知识库请求401、注册403、内部接口404。`curl` 必须不带 `-k`，证书应包含IP SAN `193.112.17.218`，并处于有效期内。需要人工验证：换用手机移动网络等另一个出口打开登录页，确认可访问；页面可打开不代表未登录可读取资料。
+
+在服务器核对容器端口：
+
+```bash
+docker ps --filter label=com.docker.compose.project=boyankb-tencent --format 'table {{.Names}}\t{{.Ports}}'
+```
+
+只有 gateway 应出现宿主端口映射，即 `0.0.0.0:443->443/tcp` 和 `127.0.0.1:18080->8090/tcp`。数据库、Redis、Neo4j、Ollama、解析和渲染服务不得出现宿主端口映射；镜像自身声明的裸端口不等于对外发布。SSH继续使用既有来源限制。
+
+上述为本次调整的核验方法，实际结果见部署记录。初始证书签发与可信TLS登录已通过，真正续期尚未跨周期验证。网关本地健康检查只验证HTTP诊断入口，不证明公网TLS或证书续期正常。后续检查证书序列号/有效期在续期窗口后更新，不要为测试反复清除证书卷申请新证书。
 
 ## 私有文件传输与断点续传
 
