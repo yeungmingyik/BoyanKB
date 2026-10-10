@@ -63,7 +63,7 @@ func writePartnerResult(c *gin.Context, value any, status int, err error) {
 
 func (h *PartnerProvisioningHandler) Create(c *gin.Context) {
 	var in service.PartnerProvisioningInput
-	if !bindPartnerBody(c, &in) {
+	if !bindPartnerCreateBody(c, &in) {
 		return
 	}
 	job, created, err := h.service.Provision(c.Request.Context(), in)
@@ -72,6 +72,22 @@ func (h *PartnerProvisioningHandler) Create(c *gin.Context) {
 		status = http.StatusCreated
 	}
 	writePartnerResult(c, job, status, err)
+}
+
+func bindPartnerCreateBody(c *gin.Context, in *service.PartnerProvisioningInput) bool {
+	var body struct {
+		service.PartnerProvisioningInput
+		TargetTenantID json.RawMessage `json:"target_tenant_id"`
+	}
+	if !bindPartnerBody(c, &body) {
+		return false
+	}
+	*in = body.PartnerProvisioningInput
+	if len(body.TargetTenantID) != 0 && (json.Unmarshal(body.TargetTenantID, &in.TargetTenantID) != nil || in.TargetTenantID == 0) {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid_partner_request"})
+		return false
+	}
+	return true
 }
 
 func (h *PartnerProvisioningHandler) Get(c *gin.Context) {

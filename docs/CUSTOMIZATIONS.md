@@ -254,5 +254,9 @@
 | `frontend/src/views/toolbox/BusinessSkills.vue`、`frontend/src/i18n/businessSkills.ts` | 普通使用说明直接暴露完整技能协议 | 默认场景、输入和确认流程说明；原协议折叠至技术详情，未开通时联系管理员 |
 | `frontend/src/views/chat/components/{AgentStreamDisplay,BusinessDocumentToolResult}.vue`、`frontend/src/utils/{agent-tool-icons,business-document-display}.ts` | 文件工具流显示内部工具名和原始成功结果 | 中文名称与状态，技术字段折叠；错误仍可见，确认与下载门禁不变 |
 | `docs/07-partner-delivery.md` | 交付审查不能将测试数据改名后当成正式内容 | 已知资源 ID 清单、保留范围、只读检查和现有生产配置差距 |
+| `internal/application/service/partner_provisioning.go`、`internal/handler/partner_provisioning.go` | 总部和已有空间无法使用新建伙伴专用的开通路径 | 可选已有目标，双侧 Owner 和本人 Web 管理员校验；总部免跨空间组织、保持资料范围与技能校验；拒绝含糊目标字段，旧请求哈希兼容 |
+| `scripts/onboard-partner.py`、`presets/workspaces/headquarters.example.json` | 已有空间需要幂等开通且不能误覆盖配置 | 默认计划；总部不改成员、不建共享；已有沙箱只读验证、已存 Agent 校验不覆盖；授权、漂移与重跑测试 |
+| `scripts/audit-delivery.py` | 运行数据清理必须先列出具体对象 | 校验 Compose 项目与数据库服务，固定只读查询、脱敏输出、强验收标记与人工复核分开，无 apply 入口 |
+| `docker/Dockerfile.app-boyankb`、`deployment/document-renderer/Dockerfile.dockerignore` | 交付镜像不应携带验收包或无关本机上下文 | 应用仅复制预设运行文件，渲染器上下文白名单限定代码和模板；实际镜像构建及资源核对 |
 
 升级时检查聊天工具事件字段和技能详情响应契约，重跑状态展示测试、类型检查与构建，再用普通伙伴身份验证中文说明、真实错误、确认和下载。不要改不可变的 `skills/boyan` 或 `presets/boyan/v1` 来调整界面用语。

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "partner_key": "boyan-headquarters",
+  "name": "总部业务",
+  "description": "总部知识问答、方案制作与内容审校",
+  "hq_tenant_id": 10000,
+  "target_tenant_id": 10000,
+  "hq_knowledge_base_ids": ["d9285ed1-0760-474b-ba82-a13347598176"],
+  "preset": "presets/boyan/v1/manifest.json",
+  "models": {
+    "chat": "local-deepseek-chat",
+    "embedding": "local-embedding"
+  },
+  "members": []
+}

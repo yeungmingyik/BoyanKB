@@ -37,6 +37,7 @@ type PartnerProvisioningInput struct {
 	HQTenantID         uint64   `json:"hq_tenant_id"`
 	HQKnowledgeBaseIDs []string `json:"hq_knowledge_base_ids"`
 	SpecHash           string   `json:"spec_hash"`
+	TargetTenantID     uint64   `json:"target_tenant_id,omitempty"`
 }
 
 type PartnerProvisioningUpdate struct {
@@ -89,8 +90,9 @@ func partnerActor(ctx context.Context) (string, uint64, error) {
 		return "", 0, ErrPartnerForbidden
 	}
 	uid, ok := types.UserIDFromContext(ctx)
+	principal, hasPrincipal := types.PrincipalFromContext(ctx)
 	tenant, _ := ctx.Value(types.TenantIDContextKey).(uint64)
-	if !ok || uid == "" || types.IsSyntheticUserID(uid) || tenant == 0 {
+	if !ok || uid == "" || types.IsSyntheticUserID(uid) || tenant == 0 || !hasPrincipal || principal.Type != types.PrincipalWebUser || principal.ID != uid {
 		return "", 0, ErrPartnerForbidden
 	}
 	return uid, tenant, nil
@@ -140,6 +142,18 @@ func (s *PartnerProvisioningService) Provision(ctx context.Context, in PartnerPr
 		if err := authorizePartner(tx, uid, hq); err != nil {
 			return err
 		}
+		if in.TargetTenantID != 0 {
+			if err := requirePartnerOwner(tx, uid, in.TargetTenantID); err != nil {
+				return err
+			}
+			var target types.Tenant
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id").Where("id = ?", in.TargetTenantID).First(&target).Error; err != nil {
+				return err
+			}
+			if err := requirePartnerSandboxDisabled(tx, in.TargetTenantID); err != nil {
+				return err
+			}
+		}
 		findErr := tx.Where("partner_key = ?", in.PartnerKey).First(&job).Error
 		if findErr == nil {
 			if job.RequestHash != hash || job.HQTenantID != hq {
@@ -156,6 +170,20 @@ func (s *PartnerProvisioningService) Provision(ctx context.Context, in PartnerPr
 		}
 		if count != int64(len(in.HQKnowledgeBaseIDs)) {
 			return ErrPartnerInvalid
+		}
+		if in.TargetTenantID != 0 {
+			if err := tx.Model(&types.PartnerProvisioningJob{}).Where("tenant_id = ?", in.TargetTenantID).Count(&count).Error; err != nil {
+				return err
+			}
+			if count != 0 {
+				return ErrPartnerConflict
+			}
+			job = types.PartnerProvisioningJob{PartnerKey: in.PartnerKey, RequestHash: hash, SpecHash: in.SpecHash, HQTenantID: hq, HQKnowledgeBaseIDs: in.HQKnowledgeBaseIDs, TenantID: in.TargetTenantID, OwnerUserID: uid, Status: "provisioning", State: types.PartnerProvisioningState{}, Revision: 1}
+			if err := tx.Create(&job).Error; err != nil {
+				return err
+			}
+			created = true
+			return nil
 		}
 		gb := int64(10)
 		if s.settings != nil {
@@ -284,6 +312,9 @@ func validatePartnerState(tx *gorm.DB, job *types.PartnerProvisioningJob, state 
 	if len(state.AgentIDs) > 3 || len(state.SkillCatalogIDs) > 9 {
 		return ErrPartnerInvalid
 	}
+	if job.HQTenantID == job.TenantID && state.OrganizationID != "" {
+		return ErrPartnerInvalid
+	}
 	if state.OrganizationID != "" {
 		var org types.Organization
 		if err := tx.Where("id = ? AND owner_tenant_id = ? AND owner_id = ?", state.OrganizationID, job.HQTenantID, job.OwnerUserID).First(&org).Error; err != nil {
@@ -323,6 +354,11 @@ func validatePartnerState(tx *gorm.DB, job *types.PartnerProvisioningJob, state 
 		}
 	}
 	if state.KnowledgeBaseID != "" {
+		for _, id := range job.HQKnowledgeBaseIDs {
+			if state.KnowledgeBaseID == id {
+				return ErrPartnerInvalid
+			}
+		}
 		var kb types.KnowledgeBase
 		if err := tx.Where("id = ? AND tenant_id = ?", state.KnowledgeBaseID, job.TenantID).First(&kb).Error; err != nil {
 			return ErrPartnerInvalid
@@ -331,9 +367,8 @@ func validatePartnerState(tx *gorm.DB, job *types.PartnerProvisioningJob, state 
 			if state.ContributorUserID == "" || kb.CreatorID != state.ContributorUserID {
 				return ErrPartnerInvalid
 			}
-			var member types.TenantMember
-			if err := tx.Where("tenant_id = ? AND user_id = ? AND role = ? AND status = ?", job.TenantID, state.ContributorUserID, types.TenantRoleContributor, types.TenantMemberStatusActive).First(&member).Error; err != nil {
-				return ErrPartnerInvalid
+			if err := requirePartnerKnowledgeCreator(tx, job, state.ContributorUserID); err != nil {
+				return err
 			}
 		}
 	}
@@ -389,15 +424,18 @@ func validatePartnerState(tx *gorm.DB, job *types.PartnerProvisioningJob, state 
 		}
 	}
 	if ready {
-		if state.OrganizationID == "" || state.KnowledgeBaseID == "" || len(state.AgentIDs) != 3 || len(state.RestrictedSkills) != 9 || len(state.SkillCatalogIDs) != 9 {
+		if (job.HQTenantID != job.TenantID && state.OrganizationID == "") || state.KnowledgeBaseID == "" || len(state.AgentIDs) != 3 || len(state.RestrictedSkills) != 9 || len(state.SkillCatalogIDs) != 9 {
 			return ErrPartnerInvalid
 		}
 		var count int64
-		if err := tx.Model(&types.TenantSandboxConfigEntity{}).Where("tenant_id = ? AND name = ?", job.TenantID, types.SandboxWorkspacePolicyConfigName).Count(&count).Error; err != nil {
+		if err := tx.Model(&types.KnowledgeBase{}).Where("tenant_id = ? AND id IN ?", job.HQTenantID, []string(job.HQKnowledgeBaseIDs)).Count(&count).Error; err != nil {
 			return err
 		}
-		if count != 1 {
+		if len(job.HQKnowledgeBaseIDs) == 0 || count != int64(len(job.HQKnowledgeBaseIDs)) {
 			return ErrPartnerInvalid
+		}
+		if err := requirePartnerSandboxDisabled(tx, job.TenantID); err != nil {
+			return err
 		}
 		for name, skill := range state.RestrictedSkills {
 			if !skill.Enabled || state.SkillCatalogIDs[name] != skill.CatalogID {
@@ -411,6 +449,33 @@ func validatePartnerState(tx *gorm.DB, job *types.PartnerProvisioningJob, state 
 	return nil
 }
 
+func requirePartnerSandboxDisabled(tx *gorm.DB, tenantID uint64) error {
+	var configs []types.TenantSandboxConfigEntity
+	if err := tx.Select("id", "name", "sandbox_type").Where("tenant_id = ?", tenantID).Find(&configs).Error; err != nil {
+		return err
+	}
+	if len(configs) != 1 || configs[0].Name != types.SandboxWorkspacePolicyConfigName || configs[0].SandboxType != "disabled" {
+		return ErrPartnerInvalid
+	}
+	return nil
+}
+
+func requirePartnerKnowledgeCreator(tx *gorm.DB, job *types.PartnerProvisioningJob, userID string) error {
+	role := types.TenantRoleContributor
+	if job.HQTenantID == job.TenantID && userID == job.OwnerUserID {
+		role = types.TenantRoleOwner
+	}
+	var member types.TenantMember
+	if err := tx.Where("tenant_id = ? AND user_id = ? AND role = ? AND status = ?", job.TenantID, userID, role, types.TenantMemberStatusActive).First(&member).Error; err != nil {
+		return ErrPartnerInvalid
+	}
+	var user types.User
+	if err := tx.Select("id").Where("id = ? AND is_active = ?", userID, true).First(&user).Error; err != nil {
+		return ErrPartnerInvalid
+	}
+	return nil
+}
+
 func (s *PartnerProvisioningService) AssignKnowledgeCreator(ctx context.Context, key, holder string, revision uint64, userID string) (*types.PartnerProvisioningJob, error) {
 	return s.withJob(ctx, key, func(tx *gorm.DB, job *types.PartnerProvisioningJob) error {
 		if err := s.checkLease(job, holder, revision); err != nil {
@@ -419,13 +484,8 @@ func (s *PartnerProvisioningService) AssignKnowledgeCreator(ctx context.Context,
 		if job.State.KnowledgeBaseID == "" || userID == "" {
 			return ErrPartnerInvalid
 		}
-		var member types.TenantMember
-		if err := tx.Where("tenant_id = ? AND user_id = ? AND role = ? AND status = ?", job.TenantID, userID, types.TenantRoleContributor, types.TenantMemberStatusActive).First(&member).Error; err != nil {
-			return ErrPartnerInvalid
-		}
-		var user types.User
-		if err := tx.Where("id = ? AND is_active = ?", userID, true).First(&user).Error; err != nil {
-			return ErrPartnerInvalid
+		if err := requirePartnerKnowledgeCreator(tx, job, userID); err != nil {
+			return err
 		}
 		var kb types.KnowledgeBase
 		if err := tx.Where("id = ? AND tenant_id = ?", job.State.KnowledgeBaseID, job.TenantID).First(&kb).Error; err != nil {

@@ -53,13 +53,13 @@ class FakeClient:
         if path == "/api/v1/auth/me":
             result = {"user": {"id": "operator", "is_system_admin": True, "can_access_all_tenants": False}}
         elif path == "/api/v1/tenants/10000/members":
-            result = {"members": [{"user_id": "operator", "role": "owner"}]}
+            result = {"members": [{"user_id": "operator", "role": "owner", "status": "active"}]}
         elif path.startswith("/api/v1/models/"):
             model_id = path.rsplit("/", 1)[1]
             result = {"id": model_id, "type": "Embedding" if model_id == "local-embedding" else "KnowledgeQA", "status": "active"}
         elif path == MODULE.PREFIX:
             if self.job is None:
-                self.job = {"partner_key": payload["partner_key"], "spec_hash": payload["spec_hash"], "tenant_id": 10001, "owner_user_id": "operator", "status": "provisioning", "state": {}, "revision": 1}
+                self.job = {"partner_key": payload["partner_key"], "spec_hash": payload["spec_hash"], "tenant_id": payload.get("target_tenant_id", 10001), "owner_user_id": "operator", "status": "provisioning", "state": {}, "revision": 1}
             else:
                 MODULE.require(self.job["spec_hash"] == payload["spec_hash"], "spec_changed")
             result = self.job
@@ -111,10 +111,10 @@ class FakeClient:
         elif path.endswith("/shares"):
             result = {}
         elif path == "/api/v1/knowledge-bases":
-            self.kb = {**payload, "tenant_id": 10001, "creator_id": "operator"}
+            self.kb = {**payload, "tenant_id": tenant, "creator_id": "operator"}
             result = self.kb
         elif path.startswith("/api/v1/knowledge-bases/"):
-            if tenant == 10000:
+            if path.rsplit("/", 1)[1] in self.plan["manifest"]["hq_knowledge_base_ids"] and tenant == 10000:
                 result = {"id": path.rsplit("/", 1)[1], "tenant_id": 10000, "embedding_model_id": "local-embedding"}
             elif self.kb:
                 result = self.kb
@@ -150,6 +150,94 @@ class FakeClient:
 
 
 class OnboardTests(unittest.TestCase):
+    def headquarters_plan(self):
+        value = manifest()
+        value.update({"partner_key": "headquarters", "name": "总部业务", "target_tenant_id": 10000, "members": []})
+        value.pop("contributor_email")
+        return plan_for(value)
+
+    def test_existing_headquarters_installs_without_members_shares_or_sandbox_writes(self):
+        plan = self.headquarters_plan()
+        client = FakeClient(plan)
+        first = MODULE.Onboarder(client, plan).run()
+        second = MODULE.Onboarder(client, plan).run()
+        self.assertEqual(first["tenant_id"], 10000)
+        self.assertEqual(first["status"], "ready")
+        self.assertEqual(first["state"], second["state"])
+        self.assertEqual(len(client.agents), 3)
+        self.assertEqual(len(client.catalog), 9)
+        self.assertEqual(client.kb["creator_id"], "operator")
+        self.assertIsNone(client.org)
+        self.assertFalse(any("/organizations" in path or path.endswith("/shares") or path == "/api/v1/shared-knowledge-bases" for _, path in client.calls))
+        self.assertFalse(any(method != "GET" and ("/members" in path or "/sandbox-configs" in path) for method, path in client.calls))
+
+    def test_headquarters_mode_cannot_modify_members(self):
+        value = manifest()
+        value["target_tenant_id"] = 10000
+        with self.assertRaisesRegex(MODULE.OnboardError, "headquarters_members_unchanged"):
+            plan_for(value)
+        value["members"] = []
+        with self.assertRaisesRegex(MODULE.OnboardError, "headquarters_contributor_not_required"):
+            plan_for(value)
+
+    def test_target_identifier_is_a_positive_integer(self):
+        for target in (None, 0, -1, True, "10000", 1.5):
+            with self.subTest(target=target):
+                value = manifest()
+                value["target_tenant_id"] = target
+                with self.assertRaisesRegex(MODULE.OnboardError, "target_tenant_id"):
+                    plan_for(value)
+
+    def test_existing_workspace_sandbox_must_be_disabled_before_any_creation(self):
+        plan = self.headquarters_plan()
+        client = FakeClient(plan)
+        original = client.request
+        def request(method, path, *args, **kwargs):
+            if path == "/api/v1/sandbox-configs":
+                return {"data": [], "workspace_scripts_disabled": False}
+            return original(method, path, *args, **kwargs)
+        with patch.object(client, "request", side_effect=request):
+            with self.assertRaisesRegex(MODULE.OnboardError, "sandbox_policy_failed"):
+                MODULE.Onboarder(client, plan).run()
+        self.assertIsNone(client.job)
+        self.assertFalse(any(method != "GET" for method, _ in client.calls))
+
+    def test_existing_target_owner_required(self):
+        value = manifest()
+        value["target_tenant_id"] = 10001
+        plan = plan_for(value)
+        client = FakeClient(plan)
+        client.members = [{"user_id": "operator", "role": "admin", "status": "active"}]
+        with self.assertRaisesRegex(MODULE.OnboardError, "target_owner_required"):
+            MODULE.Onboarder(client, plan).run()
+        self.assertIsNone(client.job)
+
+    def test_existing_custom_agent_is_not_overwritten_by_installation(self):
+        plan = self.headquarters_plan()
+        client = FakeClient(plan)
+        custom = copy.deepcopy(plan["agents"]["mentor"])
+        custom.update({"id": "existing-custom", "created_by": "operator", "is_builtin": False})
+        custom["config"]["system_prompt"] = "用户自定义内容"
+        client.agents.append(custom)
+        with self.assertRaisesRegex(MODULE.OnboardError, "existing_agent_requires_review"):
+            MODULE.Onboarder(client, plan).run()
+        self.assertEqual(client.agents[0]["config"]["system_prompt"], "用户自定义内容")
+        self.assertNotIn(("PUT", "/api/v1/agents/existing-custom"), client.calls)
+
+    def test_existing_workspace_repeat_preserves_agent_metadata_and_rejects_config_drift(self):
+        plan = self.headquarters_plan()
+        client = FakeClient(plan)
+        MODULE.Onboarder(client, plan).run()
+        client.agents[0]["avatar"] = "用户头像"
+        client.agents[0]["config"]["additional_default_field"] = ""
+        MODULE.Onboarder(client, plan).run()
+        self.assertEqual(client.agents[0]["avatar"], "用户头像")
+        client.agents[0]["config"]["web_search_enabled"] = True
+        with self.assertRaisesRegex(MODULE.OnboardError, "existing_agent_requires_review"):
+            MODULE.Onboarder(client, plan).run()
+        self.assertTrue(client.agents[0]["config"]["web_search_enabled"])
+        self.assertFalse(any(method == "PUT" and path.startswith("/api/v1/agents/") for method, path in client.calls))
+
     def test_transport_accepts_https_and_exact_loopback_only(self):
         for origin in ("https://example.test", "http://127.0.0.1:8080"):
             with self.subTest(origin=origin):

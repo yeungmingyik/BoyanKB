@@ -86,12 +86,16 @@ def deterministic_archive(directory):
 def load_plan(path):
     manifest_path = Path(path).resolve()
     manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
-    allowed = {"schema_version", "partner_key", "name", "description", "hq_tenant_id", "hq_knowledge_base_ids", "preset", "models", "members", "contributor_email"}
+    allowed = {"schema_version", "partner_key", "name", "description", "hq_tenant_id", "target_tenant_id", "hq_knowledge_base_ids", "preset", "models", "members", "contributor_email"}
     require(isinstance(manifest, dict) and set(manifest) <= allowed, "invalid_manifest_fields")
     require(manifest.get("schema_version") == 1, "manifest_version")
     require(bool(re.fullmatch(r"[a-z0-9][a-z0-9_-]{2,63}", manifest.get("partner_key", ""))), "partner_key")
     require(0 < len(manifest.get("name", "").strip()) <= 120, "partner_name")
     require(str(manifest.get("hq_tenant_id", "")).isdigit() and int(manifest["hq_tenant_id"]) > 0, "hq_tenant_id")
+    target = manifest.get("target_tenant_id")
+    if "target_tenant_id" in manifest:
+        require(type(target) is int and target > 0, "target_tenant_id")
+    headquarters = target == int(manifest["hq_tenant_id"])
     ids = manifest.get("hq_knowledge_base_ids")
     require(isinstance(ids, list) and 1 <= len(ids) <= 32 and len(set(ids)) == len(ids), "hq_knowledge_base_ids")
     for item in ids:
@@ -106,7 +110,7 @@ def load_plan(path):
     if models.get("rerank"):
         identifier(models["rerank"])
     members = manifest.get("members", [])
-    require(isinstance(members, list) and 1 <= len(members) <= 100, "members_required")
+    require(isinstance(members, list) and (len(members) == 0 if headquarters else 1 <= len(members) <= 100), "headquarters_members_unchanged" if headquarters else "members_required")
     emails = set()
     for member in members:
         require(isinstance(member, dict) and set(member) == {"email", "role"}, "member_fields")
@@ -116,7 +120,8 @@ def load_plan(path):
         member["email"] = email
         emails.add(email)
     contributor = manifest.get("contributor_email", "").strip().lower()
-    require(any(m["email"] == contributor and m["role"] == "contributor" for m in members), "contributor_required")
+    require(not contributor if headquarters else any(m["email"] == contributor and m["role"] == "contributor" for m in members), "headquarters_contributor_not_required" if headquarters else "contributor_required")
+    manifest["members"] = members
     manifest["contributor_email"] = contributor
     preset_path = local_path(ROOT, manifest.get("preset", "presets/boyan/v1/manifest.json"))
     preset = json.loads(preset_path.read_text(encoding="utf-8-sig"))
@@ -251,6 +256,14 @@ def rows(body):
     raise OnboardError("unexpected_list_response")
 
 
+def preset_config_matches(saved, wanted):
+    if isinstance(wanted, dict):
+        return isinstance(saved, dict) and all(preset_config_matches(saved.get(key), value) for key, value in wanted.items())
+    if saved is None and wanted in ("", False, 0, [], None):
+        return True
+    return saved == wanted
+
+
 class Onboarder:
     def __init__(self, client, plan, timeout=300):
         self.client, self.plan, self.timeout = client, plan, timeout
@@ -261,6 +274,8 @@ class Onboarder:
         self.holder = str(uuid.uuid4())
         self.job = None
         self.last_renew = 0
+        self.actor_id = None
+        self.headquarters = self.manifest.get("target_tenant_id") == self.hq
 
     def request(self, method, path, payload=None, tenant=None, operation="api", **kwargs):
         if self.job and time.monotonic() - self.last_renew >= 60 and path != self.path + "/lease":
@@ -293,6 +308,13 @@ class Onboarder:
         member_query = urllib.parse.urlencode({"q": me.get("email", ""), "page_size": 100})
         members = rows(self.request("GET", f"/api/v1/tenants/{self.hq}/members?" + member_query, tenant=self.hq))
         require(any(str(m.get("user_id")) == str(me["id"]) and m.get("role") == "owner" for m in members), "hq_owner_required")
+        self.actor_id = identifier(me["id"])
+        target = self.manifest.get("target_tenant_id")
+        if target:
+            target_members = rows(self.request("GET", f"/api/v1/tenants/{target}/members?" + member_query, tenant=target))
+            require(any(str(m.get("user_id")) == self.actor_id and m.get("role") == "owner" and m.get("status") == "active" for m in target_members), "target_owner_required")
+            self.validate_models(target)
+            self.require_disabled_sandbox(target)
         self.validate_models(self.hq)
         for kb_id in self.manifest["hq_knowledge_base_ids"]:
             kb = self.request("GET", "/api/v1/knowledge-bases/" + identifier(kb_id), tenant=self.hq)["data"]
@@ -304,6 +326,8 @@ class Onboarder:
         self.preflight()
         payload = {k: self.manifest[k] for k in ("partner_key", "name", "description", "hq_tenant_id", "hq_knowledge_base_ids")}
         payload["spec_hash"] = self.plan["spec_hash"]
+        if self.manifest.get("target_tenant_id"):
+            payload["target_tenant_id"] = self.manifest["target_tenant_id"]
         self.job = self.request("POST", PREFIX, payload, tenant=self.hq, operation="provision")["data"]
         self.last_renew = time.monotonic()
         self.lease()
@@ -335,7 +359,11 @@ class Onboarder:
 
     def sandbox_policy(self):
         tenant = self.job["tenant_id"]
-        self.request("PUT", "/api/v1/sandbox-configs/workspace-policy", {"scripts_disabled": True}, tenant=tenant)
+        if not self.manifest.get("target_tenant_id"):
+            self.request("PUT", "/api/v1/sandbox-configs/workspace-policy", {"scripts_disabled": True}, tenant=tenant)
+        self.require_disabled_sandbox(tenant)
+
+    def require_disabled_sandbox(self, tenant):
         body = self.request("GET", "/api/v1/sandbox-configs", tenant=tenant)
         require(body.get("workspace_scripts_disabled") is True and rows(body) == [], "sandbox_policy_failed")
 
@@ -348,6 +376,9 @@ class Onboarder:
             require(model.get("id") == model_id and model.get("type") == kind and model.get("status") == "active", "model_binding_unavailable")
 
     def members(self):
+        if self.headquarters:
+            require(self.actor_id == self.job["owner_user_id"], "headquarters_owner_mismatch")
+            return self.actor_id
         tenant = self.job["tenant_id"]
         path = f"/api/v1/tenants/{tenant}/members"
         contributor = None
@@ -365,6 +396,9 @@ class Onboarder:
         return contributor
 
     def organization(self):
+        if self.headquarters:
+            require(not self.job["state"].get("organization_id"), "headquarters_organization_not_allowed")
+            return
         state = self.job["state"]
         name = "boyan-partner-" + self.key
         if not state.get("organization_id"):
@@ -461,7 +495,13 @@ class Onboarder:
                 require(len(existing) == 1, "recorded_agent_missing")
             if existing:
                 agent_id = identifier(existing[0]["id"])
-                self.request("PUT", "/api/v1/agents/" + agent_id, payload, tenant=tenant, operation="agent_reconcile")
+                if self.manifest.get("target_tenant_id"):
+                    saved = self.request("GET", "/api/v1/agents/" + agent_id, tenant=tenant)["data"]
+                    require(saved.get("created_by") == self.job["owner_user_id"] and not saved.get("is_builtin") and preset_config_matches(saved.get("config", {}), payload["config"]), "existing_agent_requires_review")
+                    if not known:
+                        require(all(saved.get(field) == payload.get(field) for field in ("name", "description", "avatar")), "existing_agent_requires_review")
+                else:
+                    self.request("PUT", "/api/v1/agents/" + agent_id, payload, tenant=tenant, operation="agent_reconcile")
             else:
                 agent_id = identifier(self.request("POST", "/api/v1/agents", payload, tenant=tenant, operation="agent_create")["data"]["id"])
             self.job["state"].setdefault("agent_ids", {})[key] = agent_id
@@ -471,12 +511,17 @@ class Onboarder:
         tenant = self.job["tenant_id"]
         self.sandbox_policy()
         kb = self.request("GET", "/api/v1/knowledge-bases/" + self.job["state"]["knowledge_base_id"], tenant=tenant)["data"]
-        require(kb.get("creator_id") and kb["creator_id"] != self.job["owner_user_id"], "contributor_ownership_missing")
+        require(kb.get("creator_id") == self.job["owner_user_id"] if self.headquarters else kb.get("creator_id") and kb["creator_id"] != self.job["owner_user_id"], "knowledge_creator_mismatch")
         require(kb.get("summary_model_id", "") == "" and not kb.get("indexing_strategy", {}).get("wiki_enabled") and not kb.get("indexing_strategy", {}).get("graph_enabled"), "partner_kb_unsafe_pipeline")
-        shared = rows(self.request("GET", "/api/v1/shared-knowledge-bases", tenant=tenant))
-        for kb_id in self.manifest["hq_knowledge_base_ids"]:
-            matches = [item for item in shared if (item.get("knowledge_base") or {}).get("id") == kb_id]
-            require(matches and all(item.get("effective_permission", item.get("permission")) == "viewer" for item in matches), "hq_share_not_read_only")
+        if self.headquarters:
+            for kb_id in self.manifest["hq_knowledge_base_ids"]:
+                source = self.request("GET", "/api/v1/knowledge-bases/" + identifier(kb_id), tenant=tenant)["data"]
+                require(str(source.get("tenant_id")) == str(tenant), "headquarters_source_not_owned")
+        else:
+            shared = rows(self.request("GET", "/api/v1/shared-knowledge-bases", tenant=tenant))
+            for kb_id in self.manifest["hq_knowledge_base_ids"]:
+                matches = [item for item in shared if (item.get("knowledge_base") or {}).get("id") == kb_id]
+                require(matches and all(item.get("effective_permission", item.get("permission")) == "viewer" for item in matches), "hq_share_not_read_only")
         for key, agent_id in self.job["state"]["agent_ids"].items():
             saved = self.request("GET", "/api/v1/agents/" + identifier(agent_id), tenant=tenant)["data"]
             wanted = self.agent_payload(key)
@@ -515,6 +560,9 @@ def main(argv=None):
         require(0 <= args.timeout <= 3600, "invalid_readiness_timeout")
         plan = load_plan(args.manifest)
         result = {"mode": "plan", "partner_key": plan["manifest"]["partner_key"], "spec_hash": plan["spec_hash"], "agents": 3, "restricted_skills": 9, "new_accounts": False}
+        if plan["manifest"].get("target_tenant_id"):
+            result["target_tenant_id"] = plan["manifest"]["target_tenant_id"]
+            result["creates_workspace"] = False
         if args.apply:
             require(args.base_url, "base_url_required")
             client = Client(args.base_url, args.ca_file, read_environment(args.env_file), apply=True)

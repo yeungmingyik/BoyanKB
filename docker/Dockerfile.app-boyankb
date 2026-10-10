@@ -20,7 +20,8 @@ COPY --from=builder --chown=appuser:appuser /app/WeKnora /app/WeKnora
 COPY --chown=appuser:appuser branding/brand.json /app/branding/brand.json
 COPY --chown=appuser:appuser branding/prompt_templates/agent_system_prompt.yaml /app/config/prompt_templates/agent_system_prompt.yaml
 COPY --chown=appuser:appuser branding/prompt_templates/system_prompt.yaml /app/config/prompt_templates/system_prompt.yaml
-COPY --chown=appuser:appuser presets/boyan/v1 /app/presets/boyan/v1
+COPY --chown=appuser:appuser presets/boyan/v1/manifest.json presets/boyan/v1/common-rules.md presets/boyan/v1/workflow-guide.md /app/presets/boyan/v1/
+COPY --chown=appuser:appuser presets/boyan/v1/agents /app/presets/boyan/v1/agents
 COPY --chown=appuser:appuser skills/boyan /app/skills/boyan
 COPY --chown=appuser:appuser migrations /app/migrations
 COPY LICENSE /usr/share/licenses/upstream/LICENSE

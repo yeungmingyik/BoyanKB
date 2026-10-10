@@ -15,6 +15,19 @@
 
 正式模式需同时支持新建伙伴空间和给已有空间启用业务能力。总部使用相同的权限和来源校验；不通过全局放开知识库、原生代码执行或前端标志实现开通。已有空间的成员角色、沙箱策略、同名自定义智能体不得被安装程序静默覆盖。
 
+开通清单新增可选 `target_tenant_id`，省略时仍创建新的伙伴空间。指定时必须是已有有效空间，操作账号同时具有系统管理员、总部 Owner 和目标空间 Owner 权限。总部使用 `target_tenant_id == hq_tenant_id`、空 `members`，不创建合作组织或跨空间共享，也不新建账号；另建总部工作资料库，业务事实来源仍限定为清单中的总部知识库。工作资料不会自动成为总部权威资料。
+
+已有空间必须已禁用代码沙箱，安装程序只读验证，不能替它关闭现有其他功能。遇到同名但配置不同的自定义智能体会停止供管理员检查；重复执行只核对已登记的智能体，不覆盖用户元数据或配置漂移。已安装预设的空间不能换一个幂等键重复开户。
+
+本机总部示例为 `presets/workspaces/headquarters.example.json`；其中空间和知识库 ID 只适用于当前本机，迁移环境需核对实际 ID。默认只生成本地计划，不联网或读取凭据：
+
+```bash
+bash scripts/onboard-partner.sh --manifest presets/workspaces/headquarters.example.json
+bash scripts/onboard-partner.sh --manifest presets/workspaces/headquarters.example.json --base-url http://127.0.0.1:8080 --env-file .env --apply --report temp/partner-delivery/headquarters-installed.json
+```
+
+执行模式使用 `.env` 中的 `ONBOARD_ADMIN_EMAIL` 和 `ONBOARD_ADMIN_PASSWORD`，或环境中的管理员 Token；不要把密钥写入命令。源知识库、模型、三名智能体、九项技能和渲染健康全部通过检查后才标记 ready。随后总部成员可直接进入“工具箱 → 业务技能”，无需切换到验收伙伴。
+
 ## 已发现的数据清理范围
 
 依据只读数据库快照 `temp/partner-delivery/audit-script-verified.json`。清单中的每条资源都有实际 ID，执行前应重新核对。此表是待审批清单，不是已删除记录。

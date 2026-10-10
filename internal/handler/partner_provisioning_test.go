@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tencent/WeKnora/internal/application/service"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -61,4 +62,36 @@ func TestPartnerProvisioningHTTPHidesInternalErrorDetails(t *testing.T) {
 	require.Equal(t, http.StatusInternalServerError, w.Code)
 	require.NotContains(t, w.Body.String(), "secret")
 	require.NotContains(t, w.Body.String(), "SQL")
+}
+
+func TestPartnerProvisioningHTTPTargetMustBeOmittedOrPositiveInteger(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, test := range []struct {
+		body   string
+		target uint64
+		valid  bool
+	}{
+		{`{"partner_key":"example"}`, 0, true},
+		{`{"partner_key":"example","target_tenant_id":10000}`, 10000, true},
+		{`{"target_tenant_id":null}`, 0, false},
+		{`{"target_tenant_id":0}`, 0, false},
+		{`{"target_tenant_id":-1}`, 0, false},
+		{`{"target_tenant_id":1.5}`, 0, false},
+		{`{"target_tenant_id":"10000"}`, 0, false},
+		{`{"target_tenant_id":10000,"headquarters_mode":true}`, 0, false},
+	} {
+		t.Run(test.body, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPost, "/provision", strings.NewReader(test.body))
+			var in service.PartnerProvisioningInput
+			require.Equal(t, test.valid, bindPartnerCreateBody(c, &in))
+			if test.valid {
+				require.Equal(t, test.target, in.TargetTenantID)
+				require.Equal(t, "example", in.PartnerKey)
+			} else {
+				require.Equal(t, http.StatusBadRequest, w.Code)
+			}
+		})
+	}
 }
