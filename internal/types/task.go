@@ -293,7 +293,15 @@ type ExtractChunkPayload struct {
 	// ChunkIndex is the 0-based ordinal of this chunk inside the parent
 	// knowledge's text-chunk set, used as the subspan name suffix
 	// ("postprocess.graph.chunk[3]") so the timeline preserves order.
-	ChunkIndex int `json:"chunk_index,omitempty"`
+	ChunkIndex    int                   `json:"chunk_index,omitempty"`
+	GraphBackfill *GraphBackfillBinding `json:"graph_backfill,omitempty"`
+}
+
+type GraphBackfillBinding struct {
+	KnowledgeBaseID string `json:"knowledge_base_id"`
+	RequestedBy     string `json:"requested_by"`
+	ConfigHash      string `json:"config_hash"`
+	ContentHash     string `json:"content_hash"`
 }
 
 // DocumentProcessPayload represents the document process task payload

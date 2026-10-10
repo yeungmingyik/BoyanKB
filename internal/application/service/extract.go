@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -109,19 +110,26 @@ func NewChunkExtractTask(
 		Attempt:     attempt,
 		ChunkIndex:  chunkIndex,
 	}
+	return enqueueChunkExtractTask(ctx, client, taskPayload)
+}
+
+func enqueueChunkExtractTask(ctx context.Context, client interfaces.TaskEnqueuer, taskPayload types.ExtractChunkPayload, options ...asynq.Option) (bool, error) {
+	if strings.ToLower(os.Getenv("NEO4J_ENABLE")) != "true" {
+		return false, ErrGraphBackfillUnavailable
+	}
 	langfuse.InjectTracing(ctx, &taskPayload)
 	payload, err := json.Marshal(taskPayload)
 	if err != nil {
 		return false, err
 	}
-	task := asynq.NewTask(types.TypeChunkExtract, payload,
-		asynq.Queue(types.QueueGraph), asynq.MaxRetry(3), asynq.Timeout(30*time.Minute))
+	options = append([]asynq.Option{asynq.Queue(types.QueueGraph), asynq.MaxRetry(3), asynq.Timeout(30 * time.Minute)}, options...)
+	task := asynq.NewTask(types.TypeChunkExtract, payload, options...)
 	info, err := client.Enqueue(task)
 	if err != nil {
 		logger.Errorf(ctx, "failed to enqueue task: %v", err)
-		return false, fmt.Errorf("failed to enqueue task: %v", err)
+		return false, fmt.Errorf("failed to enqueue task: %w", err)
 	}
-	logger.Infof(ctx, "enqueued task: id=%s queue=%s chunk=%s", info.ID, info.Queue, chunkID)
+	logger.Infof(ctx, "enqueued task: id=%s queue=%s chunk=%s", info.ID, info.Queue, taskPayload.ChunkID)
 	return true, nil
 }
 
@@ -189,7 +197,8 @@ type ChunkExtractService struct {
 	// spanTracker records this graph-extract task's subspan under the
 	// parent attempt's postprocess stage so the trace viewer shows real
 	// per-chunk graph extraction time rather than the upstream's enqueue.
-	spanTracker SpanTracker
+	spanTracker   SpanTracker
+	graphBackfill *GraphBackfillService
 }
 
 // NewChunkExtractService creates a new chunk extract service
@@ -201,6 +210,7 @@ func NewChunkExtractService(
 	chunkRepo interfaces.ChunkRepository,
 	graphEngine interfaces.RetrieveGraphRepository,
 	spanTracker SpanTracker,
+	graphBackfill *GraphBackfillService,
 ) interfaces.TaskHandler {
 	return &ChunkExtractService{
 		template:          config.ExtractManager.ExtractGraph,
@@ -210,6 +220,7 @@ func NewChunkExtractService(
 		chunkRepo:         chunkRepo,
 		graphEngine:       graphEngine,
 		spanTracker:       spanTracker,
+		graphBackfill:     graphBackfill,
 	}
 }
 
@@ -230,6 +241,17 @@ func (s *ChunkExtractService) Handle(ctx context.Context, t *asynq.Task) error {
 	ctx = logger.WithRequestID(ctx, uuid.New().String())
 	ctx = logger.WithField(ctx, "extract", p.ChunkID)
 	ctx = context.WithValue(ctx, types.TenantIDContextKey, p.TenantID)
+	if p.GraphBackfill != nil {
+		if s.graphBackfill == nil {
+			return ErrGraphBackfillUnavailable
+		}
+		if err := s.graphBackfill.ValidateTask(ctx, p); err != nil {
+			if errors.Is(err, ErrGraphBackfillChanged) || errors.Is(err, ErrGraphBackfillDenied) || errors.Is(err, ErrGraphBackfillInvalid) {
+				return fmt.Errorf("%w: %w", err, asynq.SkipRetry)
+			}
+			return err
+		}
+	}
 
 	// A newer attempt (re-upload / edit / reparse) has superseded this one:
 	// skip before opening the span or registering the FinalizeSubtask defer.
@@ -266,9 +288,11 @@ func (s *ChunkExtractService) Handle(ctx context.Context, t *asynq.Task) error {
 		// completed (or terminally-failed) per-chunk extract releases its
 		// slot in pending_subtasks_count. KnowledgeID is the new (post-#? )
 		// payload field; legacy in-flight tasks without it are skipped.
-		finalizeSubtaskDetached(ctx, s.knowledgeRepo, p.KnowledgeID,
-			fmt.Sprintf("graph_chunk[%d]", p.ChunkIndex),
-			handleErr, false, isFinalAsynqAttempt(ctx))
+		if p.GraphBackfill == nil {
+			finalizeSubtaskDetached(ctx, s.knowledgeRepo, p.KnowledgeID,
+				fmt.Sprintf("graph_chunk[%d]", p.ChunkIndex),
+				handleErr, false, isFinalAsynqAttempt(ctx))
+		}
 		if gSpan == nil {
 			return
 		}
@@ -287,6 +311,9 @@ func (s *ChunkExtractService) Handle(ctx context.Context, t *asynq.Task) error {
 		if k, kerr := s.knowledgeRepo.GetKnowledgeByIDOnly(ctx, p.KnowledgeID); kerr == nil && k != nil {
 			switch k.ParseStatus {
 			case types.ParseStatusCancelled, types.ParseStatusDeleting:
+				if p.GraphBackfill != nil {
+					return fmt.Errorf("%w: %w", ErrGraphBackfillChanged, asynq.SkipRetry)
+				}
 				logger.Infof(ctx, "graph extract: knowledge %s aborted (%s), skipping chunk %s",
 					p.KnowledgeID, k.ParseStatus, p.ChunkID)
 				graphOut["skipped"] = "knowledge_" + k.ParseStatus
@@ -325,8 +352,18 @@ func (s *ChunkExtractService) Handle(ctx context.Context, t *asynq.Task) error {
 			processOverrides, _ = k.ProcessOverrides()
 		}
 	}
-	extractCfg := ResolveProcessConfig(kb, processOverrides).ExtractConfig
+	effective := ResolveProcessConfig(kb, processOverrides)
+	extractCfg := effective.ExtractConfig
+	if p.GraphBackfill != nil {
+		binding := p.GraphBackfill
+		if !effective.GraphEnabled || chunk.TenantID != p.TenantID || chunk.KnowledgeBaseID != binding.KnowledgeBaseID || chunk.KnowledgeID != p.KnowledgeID || kb.SummaryModelID != p.ModelID || graphBackfillHash(chunk.Content) != binding.ContentHash || graphBackfillExtractHash(p.ModelID, extractCfg) != binding.ConfigHash {
+			return fmt.Errorf("%w: %w", ErrGraphBackfillChanged, asynq.SkipRetry)
+		}
+	}
 	if !extractCfg.Enabled {
+		if p.GraphBackfill != nil {
+			return fmt.Errorf("%w: %w", ErrGraphBackfillChanged, asynq.SkipRetry)
+		}
 		logger.Warnf(ctx, "extract config not enabled")
 		graphOut["skipped"] = "extract_disabled"
 		return nil
@@ -360,6 +397,9 @@ func (s *ChunkExtractService) Handle(ctx context.Context, t *asynq.Task) error {
 
 	chunk, err = s.chunkRepo.GetChunkByID(ctx, p.TenantID, p.ChunkID)
 	if err != nil {
+		if p.GraphBackfill != nil {
+			return fmt.Errorf("%w: %w", ErrGraphBackfillChanged, asynq.SkipRetry)
+		}
 		logger.Warnf(ctx, "graph ignore chunk %s: %v", p.ChunkID, err)
 		graphOut["skipped"] = "chunk_disappeared"
 		return nil
@@ -368,10 +408,25 @@ func (s *ChunkExtractService) Handle(ctx context.Context, t *asynq.Task) error {
 	for _, node := range graph.Node {
 		node.Chunks = []string{chunk.ID}
 	}
-	if err = s.graphEngine.AddGraph(ctx,
-		types.NameSpace{KnowledgeBase: chunk.KnowledgeBaseID, Knowledge: chunk.KnowledgeID},
-		[]*types.GraphData{graph},
-	); err != nil {
+	writeGraph := func(writeCtx context.Context) error {
+		namespace := types.NameSpace{KnowledgeBase: chunk.KnowledgeBaseID, Knowledge: chunk.KnowledgeID}
+		if p.GraphBackfill != nil {
+			namespace = types.NameSpace{KnowledgeBase: p.GraphBackfill.KnowledgeBaseID, Knowledge: p.KnowledgeID}
+		}
+		return s.graphEngine.AddGraph(writeCtx,
+			namespace,
+			[]*types.GraphData{graph},
+		)
+	}
+	if p.GraphBackfill != nil {
+		err = s.graphBackfill.WriteCurrentTask(ctx, p, writeGraph)
+		if errors.Is(err, ErrGraphBackfillChanged) || errors.Is(err, ErrGraphBackfillDenied) || errors.Is(err, ErrGraphBackfillInvalid) {
+			err = fmt.Errorf("%w: %w", err, asynq.SkipRetry)
+		}
+	} else {
+		err = writeGraph(ctx)
+	}
+	if err != nil {
 		logger.Errorf(ctx, "failed to add graph: %v", err)
 		handleErr = err
 		return err

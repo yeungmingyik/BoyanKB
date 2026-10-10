@@ -2,8 +2,10 @@ package chatpipeline
 
 import (
 	"context"
+	"slices"
 	"sync"
 
+	"github.com/Tencent/WeKnora/internal/application/access"
 	"github.com/Tencent/WeKnora/internal/logger"
 	"github.com/Tencent/WeKnora/internal/searchutil"
 	"github.com/Tencent/WeKnora/internal/types"
@@ -12,9 +14,11 @@ import (
 
 // PluginSearch implements search functionality for chat pipeline
 type PluginSearchEntity struct {
-	graphRepo     interfaces.RetrieveGraphRepository
-	chunkRepo     interfaces.ChunkRepository
-	knowledgeRepo interfaces.KnowledgeRepository
+	graphRepo            interfaces.RetrieveGraphRepository
+	chunkRepo            interfaces.ChunkRepository
+	knowledgeRepo        interfaces.KnowledgeRepository
+	knowledgeBaseService interfaces.KnowledgeBaseService
+	shares               interfaces.KBShareService
 }
 
 // NewPluginSearchEntity creates a new plugin search entity
@@ -23,11 +27,15 @@ func NewPluginSearchEntity(
 	graphRepository interfaces.RetrieveGraphRepository,
 	chunkRepository interfaces.ChunkRepository,
 	knowledgeRepository interfaces.KnowledgeRepository,
+	knowledgeBaseService interfaces.KnowledgeBaseService,
+	shares interfaces.KBShareService,
 ) *PluginSearchEntity {
 	res := &PluginSearchEntity{
-		graphRepo:     graphRepository,
-		chunkRepo:     chunkRepository,
-		knowledgeRepo: knowledgeRepository,
+		graphRepo:            graphRepository,
+		chunkRepo:            chunkRepository,
+		knowledgeRepo:        knowledgeRepository,
+		knowledgeBaseService: knowledgeBaseService,
+		shares:               shares,
 	}
 	eventManager.Register(res)
 	return res
@@ -42,146 +50,155 @@ func (p *PluginSearchEntity) ActivationEvents() []types.EventType {
 func (p *PluginSearchEntity) OnEvent(ctx context.Context,
 	eventType types.EventType, chatManage *types.ChatManage, next func() *PluginError,
 ) *PluginError {
-	entity := chatManage.Entity
-	if len(entity) == 0 {
-		logger.Infof(ctx, "No entity found")
+	if len(chatManage.Entity) == 0 || len(chatManage.SearchTargets) == 0 || p.knowledgeBaseService == nil {
 		return next()
 	}
-
-	// Use EntityKBIDs (knowledge bases with ExtractConfig enabled)
-	knowledgeBaseIDs := chatManage.EntityKBIDs
-	// Use EntityKnowledge (KnowledgeID -> KnowledgeBaseID mapping for graph-enabled files)
-	entityKnowledge := chatManage.EntityKnowledge
-
-	if len(knowledgeBaseIDs) == 0 && len(entityKnowledge) == 0 {
-		logger.Warnf(ctx, "No knowledge base IDs or knowledge IDs with ExtractConfig enabled for entity search")
-		return next()
+	sources := make(map[string]*types.KnowledgeBase)
+	loadSource := func(kbID string) {
+		if sources[kbID] != nil || !chatManage.SearchTargets.ContainsKB(kbID) {
+			return
+		}
+		kb, err := p.knowledgeBaseService.GetKnowledgeBaseByIDOnly(ctx, kbID)
+		if err != nil || kb == nil || kb.ID != kbID || !kb.IsGraphEnabled() || !p.canReadGraphSource(ctx, kb) {
+			return
+		}
+		if chatManage.SearchTargets.GetTenantIDForKB(kbID) != kb.TenantID {
+			return
+		}
+		sources[kbID] = kb
+	}
+	for _, kbID := range chatManage.EntityKBIDs {
+		loadSource(kbID)
+	}
+	for _, kbID := range chatManage.EntityKnowledge {
+		loadSource(kbID)
 	}
 
-	// Parallel search across multiple knowledge bases and individual files
-	var wg sync.WaitGroup
-	var mu sync.Mutex
-	var allNodes []*types.GraphNode
-	var allRelations []*types.GraphRelation
-
-	// If specific KnowledgeIDs are provided, search by individual files
-	if len(entityKnowledge) > 0 {
-		logger.Infof(ctx, "Searching entities across %d knowledge file(s)", len(entityKnowledge))
-		for knowledgeID, kbID := range entityKnowledge {
-			wg.Add(1)
-			go func(knowledgeBaseID, knowledgeID string) {
-				defer wg.Done()
-
-				graph, err := p.graphRepo.SearchNode(ctx, types.NameSpace{
-					KnowledgeBase: knowledgeBaseID,
-					Knowledge:     knowledgeID,
-				}, entity)
-				if err != nil {
-					logger.Errorf(ctx, "Failed to search entity in Knowledge %s: %v", knowledgeID, err)
-					return
-				}
-
-				logger.Infof(
-					ctx,
-					"Knowledge %s entity search result count: %d nodes, %d relations",
-					knowledgeID,
-					len(graph.Node),
-					len(graph.Relation),
-				)
-
-				mu.Lock()
-				allNodes = append(allNodes, graph.Node...)
-				allRelations = append(allRelations, graph.Relation...)
-				mu.Unlock()
-			}(kbID, knowledgeID)
+	var namespaces []types.NameSpace
+	if len(chatManage.EntityKnowledge) > 0 {
+		for knowledgeID, kbID := range chatManage.EntityKnowledge {
+			if sources[kbID] != nil && graphTargetAllowsKnowledge(chatManage.SearchTargets, sources[kbID], knowledgeID) {
+				namespaces = append(namespaces, types.NameSpace{KnowledgeBase: kbID, Knowledge: knowledgeID})
+			}
 		}
 	} else {
-		// Otherwise, search by knowledge base
-		logger.Infof(ctx, "Searching entities across %d knowledge base(s): %v", len(knowledgeBaseIDs), knowledgeBaseIDs)
-		for _, kbID := range knowledgeBaseIDs {
-			wg.Add(1)
-			go func(knowledgeBaseID string) {
-				defer wg.Done()
-
-				graph, err := p.graphRepo.SearchNode(ctx, types.NameSpace{KnowledgeBase: knowledgeBaseID}, entity)
-				if err != nil {
-					logger.Errorf(ctx, "Failed to search entity in KB %s: %v", knowledgeBaseID, err)
-					return
-				}
-
-				logger.Infof(
-					ctx,
-					"KB %s entity search result count: %d nodes, %d relations",
-					knowledgeBaseID,
-					len(graph.Node),
-					len(graph.Relation),
-				)
-
-				mu.Lock()
-				allNodes = append(allNodes, graph.Node...)
-				allRelations = append(allRelations, graph.Relation...)
-				mu.Unlock()
-			}(kbID)
+		for kbID := range sources {
+			namespaces = append(namespaces, types.NameSpace{KnowledgeBase: kbID})
 		}
 	}
-
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	graphs := make(map[string]*types.GraphData)
+	for _, namespace := range namespaces {
+		wg.Add(1)
+		go func(namespace types.NameSpace) {
+			defer wg.Done()
+			graph, err := p.graphRepo.SearchNode(ctx, namespace, chatManage.Entity)
+			if err != nil || graph == nil {
+				return
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			if graphs[namespace.KnowledgeBase] == nil {
+				graphs[namespace.KnowledgeBase] = &types.GraphData{}
+			}
+			group := graphs[namespace.KnowledgeBase]
+			group.Node = append(group.Node, graph.Node...)
+			group.Relation = append(group.Relation, graph.Relation...)
+		}(namespace)
+	}
 	wg.Wait()
-
-	// Merge graph data
-	chatManage.GraphResult = &types.GraphData{
-		Node:     allNodes,
-		Relation: allRelations,
+	chatManage.GraphResult = &types.GraphData{}
+	for kbID, graph := range graphs {
+		kb := sources[kbID]
+		if !p.canReadGraphSource(ctx, kb) {
+			continue
+		}
+		chunkIDs := filterSeenChunk(ctx, graph, chatManage.SearchResult)
+		if len(chunkIDs) == 0 {
+			continue
+		}
+		requested := make(map[string]bool, len(chunkIDs))
+		for _, id := range chunkIDs {
+			requested[id] = true
+		}
+		sourceCtx := types.WithExecutionTenant(ctx, kb.TenantID)
+		chunks, err := p.chunkRepo.ListChunksByID(sourceCtx, kb.TenantID, chunkIDs)
+		if err != nil {
+			continue
+		}
+		var validChunks []*types.Chunk
+		var knowledgeIDs []string
+		for _, chunk := range chunks {
+			if chunk == nil || !requested[chunk.ID] || !chunk.IsEnabled || chunk.TenantID != kb.TenantID || chunk.KnowledgeBaseID != kbID || !graphTargetAllowsKnowledge(chatManage.SearchTargets, kb, chunk.KnowledgeID) {
+				continue
+			}
+			validChunks = append(validChunks, chunk)
+			knowledgeIDs = append(knowledgeIDs, chunk.KnowledgeID)
+		}
+		if len(validChunks) == 0 {
+			continue
+		}
+		knowledges, err := p.knowledgeRepo.GetKnowledgeBatch(sourceCtx, kb.TenantID, knowledgeIDs)
+		if err != nil {
+			continue
+		}
+		knowledgeMap := make(map[string]*types.Knowledge)
+		for _, knowledge := range knowledges {
+			if knowledge != nil && knowledge.TenantID == kb.TenantID && knowledge.KnowledgeBaseID == kbID && graphTargetAllowsKnowledge(chatManage.SearchTargets, kb, knowledge.ID) {
+				knowledgeMap[knowledge.ID] = knowledge
+			}
+		}
+		var results []*types.SearchResult
+		for _, chunk := range validChunks {
+			if knowledge := knowledgeMap[chunk.KnowledgeID]; knowledge != nil {
+				results = append(results, chunk2SearchResult(chunk, knowledge))
+			}
+		}
+		searchutil.EnrichSearchResultsImageInfo(sourceCtx, p.chunkRepo, kb.TenantID, results)
+		if !p.canReadGraphSource(ctx, kb) {
+			continue
+		}
+		chatManage.GraphResult.Node = append(chatManage.GraphResult.Node, graph.Node...)
+		chatManage.GraphResult.Relation = append(chatManage.GraphResult.Relation, graph.Relation...)
+		chatManage.SearchResult = append(chatManage.SearchResult, results...)
 	}
-	logger.Infof(ctx, "Total entity search result: %d nodes, %d relations", len(allNodes), len(allRelations))
-
-	chunkIDs := filterSeenChunk(ctx, chatManage.GraphResult, chatManage.SearchResult)
-	if len(chunkIDs) == 0 {
-		logger.Infof(ctx, "No new chunk found")
-		return next()
-	}
-	chunks, err := p.chunkRepo.ListChunksByID(ctx, types.MustTenantIDFromContext(ctx), chunkIDs)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to list chunks, session_id: %s, error: %v", chatManage.SessionID, err)
-		return next()
-	}
-	knowledgeIDs := []string{}
-	for _, chunk := range chunks {
-		knowledgeIDs = append(knowledgeIDs, chunk.KnowledgeID)
-	}
-	knowledges, err := p.knowledgeRepo.GetKnowledgeBatch(
-		ctx,
-		types.MustTenantIDFromContext(ctx),
-		knowledgeIDs,
-	)
-	if err != nil {
-		logger.Errorf(ctx, "Failed to list knowledge, session_id: %s, error: %v", chatManage.SessionID, err)
-		return next()
-	}
-
-	knowledgeMap := map[string]*types.Knowledge{}
-	for _, knowledge := range knowledges {
-		knowledgeMap[knowledge.ID] = knowledge
-	}
-	var entityResults []*types.SearchResult
-	for _, chunk := range chunks {
-		searchResult := chunk2SearchResult(chunk, knowledgeMap[chunk.KnowledgeID])
-		entityResults = append(entityResults, searchResult)
-	}
-	searchutil.EnrichSearchResultsImageInfo(ctx, p.chunkRepo, types.MustTenantIDFromContext(ctx), entityResults)
-	chatManage.SearchResult = append(chatManage.SearchResult, entityResults...)
-	// remove duplicate results
 	chatManage.SearchResult = removeDuplicateResults(chatManage.SearchResult)
-	if len(chatManage.SearchResult) == 0 {
-		logger.Infof(ctx, "No new search result, session_id: %s", chatManage.SessionID)
-		return ErrSearchNothing
-	}
-	logger.Infof(
-		ctx,
-		"search entity result count: %d, session_id: %s",
-		len(chatManage.SearchResult),
-		chatManage.SessionID,
-	)
 	return next()
+}
+
+func (p *PluginSearchEntity) canReadGraphSource(ctx context.Context, kb *types.KnowledgeBase) bool {
+	if kb == nil {
+		return false
+	}
+	var shares access.KBShareLookup
+	if types.CallerFromContext(ctx).UserID != "" {
+		shares = p.shares
+	}
+	allowed, err := access.NewKBPermissions(ctx, shares).Check(kb.ID, kb.TenantID, types.OrgRoleViewer)
+	return err == nil && allowed
+}
+
+func graphTargetAllowsKnowledge(targets types.SearchTargets, kb *types.KnowledgeBase, knowledgeID string) bool {
+	if kb == nil || knowledgeID == "" {
+		return false
+	}
+	for _, target := range targets {
+		if target == nil || target.KnowledgeBaseID != kb.ID || target.TenantID != kb.TenantID {
+			continue
+		}
+		switch target.Type {
+		case types.SearchTargetTypeKnowledgeBase:
+			if len(target.TagIDs) == 0 && len(target.ScopeTagIDs) == 0 {
+				return true
+			}
+		case types.SearchTargetTypeKnowledge:
+			if slices.Contains(target.KnowledgeIDs, knowledgeID) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // filterSeenChunk filters seen chunks from the graph
