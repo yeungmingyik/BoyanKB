@@ -14,6 +14,20 @@ python3 deployment/tencent/validate-config.py
 
 校验仅使用示例值，检查九服务、镜像锁、回环端口、网络隔离、只读配置挂载、沙箱和自动迁移开关以及资源上限，不启动业务服务，不读取真实环境文件。镜像清单在 `images.lock.json`；传输镜像后应额外验证目标机实际镜像 ID 和摘要引用。
 
+## 镜像导出与 OCI 索引
+
+`scripts/tencent-images.py` 先核对九个源镜像的锁定 ID、Linux 和 amd64，再使用不带 `--platform` 的 `docker image save` 导出完整可用索引。不要手动添加 `--platform linux/amd64`：Docker 的 containerd 镜像存储会将导出目标从原 OCI index 改为该平台的 manifest，云端默认 `inspect.Id` 因而与原锁不同，即使实际运行内容一致。来源：[Docker 导出实现](https://github.com/moby/moby/blob/master/daemon/containerd/image_exporter.go)。
+
+例如本次 app 原索引为 `sha256:ac806ca72aa54f18c73b5a4140cb18c75aa0f3a41fe1a1cd2cb5b5f7da04d756`，amd64 manifest 为 `sha256:a5b745db948239deaa9a6cb5c0b61f98268a5d02f827e24e24805b0b1968e183`。不应为通过检查直接替换锁文件，先验证原索引到平台 manifest、config 的摘要链。
+
+```bash
+python3 -B scripts/test_tencent_images.py
+docker image inspect boyankb/app:v0.8.2-trial-graph-v3 --format '{{json .Descriptor}} {{.Id}}'
+docker image inspect --platform linux/amd64 boyankb/app:v0.8.2-trial-graph-v3 --format '{{json .Descriptor}} {{.Id}}'
+```
+
+常规迁移应重新生成完整镜像归档。如果目标已经校验并加载了平台层，可另行校验和补入源端原始 OCI index、manifest、config 等元数据，并复用目标 content store 内的层；这种补包不是独立镜像备份。必须逐个验证原 blob SHA256、九个锁定引用、平台映射及云端既有镜像，导入后再次验证 tag 和 `tag@原索引摘要`，成功后才允许数据恢复。[containerd 导入实现](https://github.com/containerd/containerd/blob/main/client/import.go)。
+
 ## 完成数据恢复后启动
 
 ```bash

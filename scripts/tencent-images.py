@@ -35,7 +35,7 @@ def main():
         if actual["Id"] != expected["id"] or actual["Os"] != "linux" or actual["Architecture"] != "amd64":
             raise RuntimeError("SOURCE_IMAGE_LOCK_OR_PLATFORM_MISMATCH")
     print(json.dumps({"export_started": True, "images": len(images), "uncompressed_image_size_sum": sum(item["Size"] for item in images)}), flush=True)
-    process = subprocess.Popen(["docker", "image", "save", "--platform", "linux/amd64", *references], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(["docker", "image", "save", *references], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     written = 0
     next_progress = 512 * 1024 * 1024
     with output.open("xb") as raw:
