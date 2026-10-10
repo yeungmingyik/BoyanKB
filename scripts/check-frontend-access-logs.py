@@ -41,7 +41,7 @@ def check_upstream_failure(image):
             if not result.stdout.startswith(b"HTTP/1.1 502 "):
                 raise ValueError()
         logs = subprocess.run(["docker", "logs", container], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15, check=True)
-        verify_logs((logs.stdout + logs.stderr).decode(errors="replace"), marker, tuple((method, pattern, 502) for method, _, pattern in checks))
+        verify_logs((logs.stdout + logs.stderr).decode(errors="replace"), marker, tuple((method, "(?:" + pattern + r"|/50x\.html)", 502) for method, _, pattern in checks))
     finally:
         subprocess.run(["docker", "stop", "--time", "5", container], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20, check=True)
 

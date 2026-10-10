@@ -53,7 +53,7 @@ python scripts/test_trial_backup.py --age-binary temp/production-tools/age-v1.3.
 python scripts/test_frontend_access_logs.py
 ```
 
-代码测试结果：15 项试用备份测试、7 项 Nginx 配置和探针测试通过。包括真实 age 往返、密文篡改拒绝、危险 tar 路径拒绝、来源/时效门禁、停写后导出失败仍恢复服务的模拟测试。真实恢复结果以对应 receipt/report 和部署后验收记录为准。
+代码测试结果：15 项试用备份测试、8 项 Nginx 配置和探针测试通过。包括真实 age 往返、密文篡改拒绝、危险 tar 路径拒绝、来源/时效门禁、停写后导出失败仍恢复服务的模拟测试。真实恢复结果以对应 receipt/report 和部署后验收记录为准。
 
 新前端镜像上线后运行以下只读探针。它向注册页、公开认证配置、品牌 SVG 以及无效能力短链发送随机非敏感标记，并只在进程内读取相关容器日志；成功要求前三个路由为 200、无效短链为 404，日志短链路径为固定脱敏值，且 query、Referer、User-Agent 和路径里的标记均未出现在日志中。输出仅状态与布尔结果，不打印原日志。
 
@@ -61,6 +61,6 @@ python scripts/test_frontend_access_logs.py
 python scripts/check-frontend-access-logs.py --base-url http://127.0.0.1:8088 --container WeKnora-frontend
 ```
 
-追加 `--check-upstream-failure` 会使用正在运行的同一前端 image ID 启动一个临时测试容器，设置 `network=none`、无宿主端口及挂载、上游指向自身关闭的 9 端口。脚本检查两次真实 502 的 query、短链、Referer、User-Agent 标记均不出现在日志，最后停止自己创建的测试容器，不停止原 app。该选项会创建临时容器，区别于默认的只读路由探针。
+追加 `--check-upstream-failure` 会使用正在运行的同一前端 image ID 启动一个临时测试容器，设置 `network=none`、无宿主端口及挂载、上游指向自身关闭的 9 端口。脚本检查两次真实 502 的 query、短链、Referer、User-Agent 标记均不出现在日志，最后停止自己创建的测试容器，不停止原 app。Nginx 内部错误页跳转可能将日志路径替换为固定 `/50x.html`，探针接受该安全路径，同时仍要求真实 502 和所有标记均未泄漏。该选项会创建临时容器，区别于默认的只读路由探针。2026-10-10 本机部署后，四路由探针和两次上游故障模拟均通过。
 
 脚本和文档复用的生产原语位于 `scripts/backup-prod.py`、`scripts/restore-prod.py`；新增流程在 `scripts/trial_backup.py`、`scripts/backup-trial.py`、`scripts/restore-trial.py`、`scripts/verify-trial.py`，生产文件未修改。

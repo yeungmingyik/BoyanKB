@@ -76,6 +76,31 @@ class AccessLogTests(unittest.TestCase):
         self.assertNotIn("--mount", calls[0])
         self.assertEqual(calls[-1], ["docker", "stop", "--time", "5", container])
 
+    def test_upstream_probe_accepts_safe_internal_error_page_and_rejects_leak(self):
+        container = "a" * 64
+        for leak in (False, True):
+            requests = []
+
+            def run(argv, **kwargs):
+                if argv[1] == "run":
+                    return SimpleNamespace(stdout=container.encode(), returncode=0)
+                if "nc" in argv:
+                    requests.append(kwargs["input"].decode())
+                    return SimpleNamespace(stdout=b"HTTP/1.1 502 Bad Gateway\r\n", returncode=0)
+                if argv[1] == "logs":
+                    logs = '127.0.0.1 - - [fixture] "HEAD /50x.html HTTP/1.1" 502 0\n127.0.0.1 - - [fixture] "GET /50x.html HTTP/1.1" 502 497\n'
+                    if leak:
+                        logs += requests[0].split("token=", 1)[1].split(" ", 1)[0]
+                    return SimpleNamespace(stdout=logs.encode(), stderr=b"", returncode=0)
+                return SimpleNamespace(stdout=b"", returncode=0)
+
+            with self.subTest(leak=leak), patch.object(probe.subprocess, "run", side_effect=run):
+                if leak:
+                    with self.assertRaises(ValueError):
+                        probe.check_upstream_failure("sha256:" + "b" * 64)
+                else:
+                    probe.check_upstream_failure("sha256:" + "b" * 64)
+
 
 if __name__ == "__main__":
     unittest.main()
