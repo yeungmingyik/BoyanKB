@@ -384,3 +384,9 @@
 日期：2026-10-12。分支：`feat/checkpoint-20261012`。合并云端技能同步与 RustDesk 配套分支，保留两个父分支历史，未改变运行中的服务。纳入原有 `AGENTS.md`、仓库分析与业务规格；新增 `README.BoyanKB.md`、`docs/17-checkpoint-20261012.md`、`docs/18-upstream-contributions.md`，在原 README 添加定制版入口。`.gitignore` 补充私有备份与常见私钥文件名保护。
 
 私有备份远程为 `origin`，原公开 Fork 改名 `fork`，官方 `upstream` 保留。代码节点、运行数据备份及上游贡献各自说明范围；镜像和数据库没有因 Git 节点整理而重新构建、迁移或发布。上游贡献应从最新官方分支提取最小补丁，不能公开本企业定制历史。
+
+## 上游知识图谱状态修复准备
+
+日期：2026-10-12。私有记录分支：`feat/upstream-graph-pr-notes`。新增 `docs/19-upstream-graph-pr.md`，登记独立官方贡献分支 `feat/graph-availability-state` 的修复、测试、截图与 PR 预填材料。通用修复只包含图谱状态组件、组件回归测试和六语言提示，未改企业定制运行代码。
+
+贡献提交 `0400fe0c230dc8fadb2dacd5a1fb9fe547f35690` 直接基于官方 `e5f9f9deab36898676fe85a9fda6b3e6f00288fa`，不携带 BoyanKB 历史、品牌或企业配置。验证命令及已执行检查见上述文档；PR 创建和提交保留给用户确认后执行。后续升级优先采用官方合入版本，再删除或调整定制版对应状态逻辑，避免重复实现。
