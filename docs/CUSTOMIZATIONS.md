@@ -359,3 +359,22 @@
 `scripts/tencent-retire-legacy-partner.py` 针对用户指定的星辰教育旧案例，默认只读，显式应用时备份 PostgreSQL 并校验目录和摘要，先回滚演练再在持锁事务内软删除固定的工作空间、共享空间与单一知识库共享。无成员、有效邀请、API Key、发布渠道及运行任务才可执行；总部资料和全部会话、资源等保护指纹必须一致。没有修改原生 RBAC、技能执行路径、页面或同步策略。十三项安全门禁测试及云端两身份列表检查通过。
 
 文件包括 `scripts/test_tencent_retire_legacy_partner.py`、`docs/15-skills-sharing-sync-review.md` 及部署记录更新。升级后需重新核对相关表结构、组织软删除及成员模型，不能直接扩展固定 ID 脚本清理其他合作伙伴。保留的测试文档、总部测试会话、历史记录和复核步骤见 [核查记录](15-skills-sharing-sync-review.md)。
+
+## 原生技能入口统一与云端自动同步
+
+日期：2026-10-12。分支：`feat/unify-skills-cloud-sync`。前述保留测试内容和暂停同步的决定已按用户新要求更新，当前结果见 [实施与验证记录](16-skills-and-cloud-sync.md)。
+
+| 文件 | 原因与改动 | 验证 |
+| --- | --- | --- |
+| `frontend/src/views/settings/SkillSettings.vue`、`frontend/src/i18n/{skillCatalog.ts,businessSkills.ts,locales/zh-CN.ts}` | 九项业务技能并入原生目录，增加中文用途、开通状态、使用说明及已授权智能体入口，操作按钮统一为“开始使用”；成员可使用，管理操作检查角色 | 角色、目录与受管预设测试，云端两身份 API 与真实浏览器检查 |
+| `frontend/src/config/{toolbox.ts,settingsAccess.ts}`、`frontend/src/views/toolbox/Toolbox.vue`、`frontend/src/router/index.ts` | 删除重复业务导航；旧地址兼容跳转；空间与角色变化重新加载，隔离迟到响应 | 导航、角色和空间切换测试 |
+| `frontend/src/views/toolbox/BusinessSkills.vue` | 删除独立页面，避免维护两套目录 | 旧入口自动跳转，九项技能各显示一次 |
+| 上述对应测试及 `SkillSettings.business-skills.test.ts` | 防止成员误调用管理 API、跨空间展示旧说明或业务技能入口失效 | 36 项针对性检查与类型检查通过；构建附带回归通过 |
+| `scripts/tencent-feishu-schedule.py`、`scripts/test_tencent_feishu_schedule.py` | 固定核对现有总部数据源、知识库和飞书空间；通过原生 API 启用或暂停六字段定时任务，不重写凭据或扩大同步范围 | 12 项测试、云端配置摘要保持不变、增量同步完成；自动触发证据见实施记录 |
+| `scripts/tencent-update-frontend.py`、`scripts/test_tencent_update_frontend.py` | 仅替换指定前端镜像；部署标记、镜像摘要、原配置备份、同项目互斥、失败回滚与端口/健康校验 | 20 项测试；九服务健康，另外八项容器未替换 |
+| `docker-compose.tencent.yml`、`deployment/tencent/images.lock.json` | 锁定 `v0.8.2-skills-unified-v2` 前端的 OCI 索引摘要 | 两份部署静态校验通过；云端 tag 与摘要一致 |
+| `docs/{02-feishu,13-tencent-deployment,15-skills-sharing-sync-review,16-skills-and-cloud-sync}.md`、`deployment/tencent/README.md` | 更新技能权限、18 篇正式资料、中文知识库描述、云端半小时同步及本机暂停的实际状态 | 提供运行报告、复核和回滚命令，历史导入结果单独标记 |
+
+后端 RBAC 和通用沙箱开关未修改；九项受管业务技能仍通过版本化预设流程维护。管理员使用原生 ZIP 上传或来源导入其他技能，不代表任意包具备执行环境。LICENSE 和上游版权声明保留。
+
+升级时先合入上游原生技能目录与权限变化，再重新应用目录展示、旧入口跳转及受管业务技能说明；运行角色与空间切换测试，以成员身份确认目录可读、管理 API 拒绝。构建前端后通过发布脚本更新固定摘要，保留上一个镜像。数据源配置仍在数据库，升级应用后需核对 `active`、六字段 cron、唯一目标空间及实际计划同步日志；不要重启本机同步作为云端验证手段。

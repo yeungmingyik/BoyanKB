@@ -10,10 +10,10 @@
       ]
     },
     {
-      "tag": "boyankb/frontend:v0.8.2-trial-skills-v3",
-      "id": "sha256:4951e0703bd3c948554293a2e6fa3448db7206228b8e9fc4f481bf78f300537b",
+      "tag": "boyankb/frontend:v0.8.2-skills-unified-v2",
+      "id": "sha256:2cc82fd44eca6e421ad5a20a0803f1c89133d386a025f913d91cd61177764bf6",
       "digests": [
-        "boyankb/frontend@sha256:4951e0703bd3c948554293a2e6fa3448db7206228b8e9fc4f481bf78f300537b"
+        "boyankb/frontend@sha256:2cc82fd44eca6e421ad5a20a0803f1c89133d386a025f913d91cd61177764bf6"
       ]
     },
     {

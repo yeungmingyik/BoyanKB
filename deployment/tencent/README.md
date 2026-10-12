@@ -157,4 +157,66 @@ python3 -B scripts/tencent-transfer.py upload --source temp/tencent-cloud/config
 
 ## 当前上线状态
 
-2026-10-10后续已完成真实传输、云端数据恢复、九服务健康检查、两正式账号交接和可信IP HTTPS登录。上文静态测试及准备阶段记录不代表最终状态；以 [部署执行记录](../../docs/13-tencent-deployment.md) 为准。用户要求暂缓业务验收，问答及Office生成尚未在云端执行，附加图谱解析检查仍需排查，证书续期待跨周期验证。
+2026-10-10后续已完成真实传输、云端数据恢复、九服务健康检查、两正式账号交接和可信IP HTTPS登录。2026-10-12 已发布统一技能管理前端，普通成员可使用已授权技能，Admin、Owner 才能管理；九项受管技能仍按版本维护，通用沙箱未开启。只重建 frontend，其余八个容器ID不变，九服务健康。云端企业知识库已清理测试副本，剩余18篇解析完成；测试会话已软删除，知识库描述已改为中文用途。
+
+云端已保存每30分钟增量同步计划，原生手动同步成功且变更数为0；临时每分钟计划演练也已自动触发成功，并已恢复半小时正式计划。本机暂停、空计划、相关队列为0，未发现匹配的Windows同步计划。触发来源由审计记录与同步日志关联确认，证据见 [技能入口与云端同步实施记录](../../docs/16-skills-and-cloud-sync.md)。初次部署与后续状态分别见 [部署执行记录](../../docs/13-tencent-deployment.md)。用户要求暂缓的完整业务验收仍未完成，附加图谱解析检查仍需排查，证书续期待跨周期验证。
+
+## 仅更新前端与回滚
+
+本节在云服务器 `/opt/boyankb` 执行，只更新已在本机构建并传入服务器的前端镜像。`scripts/tencent-update-frontend.py` 不构建、不上传、不拉取镜像，不修改 `.env.tencent`；目标固定为本腾讯云部署。
+
+2026-10-12 已发布镜像如下。以后发布须替换为经过验证的新标签及完整摘要，不复用已有标签：
+
+```bash
+cd /opt/boyankb
+python3 scripts/tencent-update-frontend.py --image 'boyankb/frontend:v0.8.2-skills-unified-v2@sha256:2cc82fd44eca6e421ad5a20a0803f1c89133d386a025f913d91cd61177764bf6'
+python3 scripts/tencent-update-frontend.py --image 'boyankb/frontend:v0.8.2-skills-unified-v2@sha256:2cc82fd44eca6e421ad5a20a0803f1c89133d386a025f913d91cd61177764bf6' --apply
+```
+
+不带 `--apply` 时只预检。脚本要求镜像标签和摘要引用均存在且解析为同一Linux/amd64镜像；核对完整九服务镜像锁、当前健康状态和HTTPS边界。应用前保存 `docker-compose.tencent.yml` 与 `deployment/tencent/images.lock.json` 的root/0600备份，前后有效Compose只允许 `services.frontend.image` 改变，再仅重建 frontend。完成后检查九服务健康、其他八容器ID和端口不变、环境文件不变、HTTPS登录200、匿名知识库和技能目录401、注册403及内部接口404。
+
+备份与报告位于 `/opt/boyankb/backups/frontend-<UTC>-<批次>/`。`report.json` 记录 `previous_image`、新镜像、备份摘要及结果，不包含环境文件内容。更新失败会恢复两份文件并重建旧frontend；如果回退未成功，报告明确显示 `ROLLBACK_REQUIRED` 和恢复位置，不能把它当作发布成功。
+
+成功发布后需要回滚时，取对应报告的 `previous_image`，确认旧镜像仍存在，先预检再应用。v2 的直接上一版是 `skills-unified-v1`；以下示例回到整个技能合并前的版本，会同时撤回统一入口与新按钮：
+
+```bash
+python3 scripts/tencent-update-frontend.py --image 'boyankb/frontend:v0.8.2-trial-skills-v3@sha256:4951e0703bd3c948554293a2e6fa3448db7206228b8e9fc4f481bf78f300537b'
+python3 scripts/tencent-update-frontend.py --image 'boyankb/frontend:v0.8.2-trial-skills-v3@sha256:4951e0703bd3c948554293a2e6fa3448db7206228b8e9fc4f481bf78f300537b' --apply
+```
+
+主动回滚命令的预检要求九服务健康。如果前端在发布完成后变为不健康，脚本会以 `SERVICES_NOT_HEALTHY` 拒绝；这不同于发布过程中的自动回滚。此时应核对该次 `report.json` 的 `backup_sha256`，备份当前两份配置文件，恢复同批次备份的 `docker-compose.tencent.yml` 与 `images.lock.json` 到原路径，并确认上一版镜像仍存在，再仅重建前端：
+
+```bash
+docker compose --env-file .env.tencent -f docker-compose.tencent.yml -f docker-compose.tencent-ip-https.yml up -d --no-deps --no-build --pull never --force-recreate --wait --wait-timeout 120 frontend
+```
+
+恢复后复查九服务、端口和HTTPS边界，不能在未核对备份摘要时直接覆盖文件。这类前端回滚不恢复测试内容、不改数据源计划、不回滚数据库。不要因页面回滚覆盖整个旧数据库或删除数据卷。脚本门禁及回滚模拟可在开发环境验证：
+
+```bash
+python3 -B -m unittest discover -s scripts -p test_tencent_update_frontend.py
+```
+
+## 飞书自动同步与暂停
+
+当前云端是唯一自动同步实例，固定飞书空间 `7610776951925509072`、总部知识库 `d9285ed1-0760-474b-ba82-a13347598176` 和数据源 `c32b43f4-41b3-4060-9820-9371bdafed8b`。配置为每30分钟轮询新增和修改：`active`、`0 */30 * * * *`、`incremental`、`overwrite`。`sync_deletions=false` 保持关闭，源文档删除后本地仍可能检索到旧副本；本次测试文档是另行授权清理。
+
+```bash
+cd /opt/boyankb
+python3 scripts/tencent-feishu-schedule.py enable
+python3 scripts/tencent-feishu-schedule.py enable --apply
+```
+
+`enable` 不带 `--apply` 时只预览配置，不更新数据源；脚本会在进程内读取已有管理员凭据并登录，不能把密码加入命令行。应用时先检查没有正在运行的同步并备份原设置，通过原生API更新同一个数据源；重复执行相同配置不创建新数据源。范围、凭据及删除策略不变，结果保存到 `/opt/boyankb/feishu-schedule-report.json`；原配置备份为 `/opt/boyankb/backups/feishu-schedule-<UTC>-<批次>.json`。
+
+需要撤回自动触发时先预览再暂停：
+
+```bash
+python3 scripts/tencent-feishu-schedule.py pause
+python3 scripts/tencent-feishu-schedule.py pause --apply
+```
+
+暂停保留既有定时表达式，只停止后续登记；已经入队、执行中或重试的任务不会自动取消。暂停后检查同步日志和队列，等待既有任务结束，再确认没有继续入队。更新失败时脚本会尝试暂停并明确报告是否成功；不要盲目重放旧配置覆盖新的运行状态。恢复自动同步继续使用 `enable` 预览并应用，无须重建数据源或重新导入全部文档。
+
+本机保持暂停、空定时表达式，不再执行本机 `feishu-space-sync.py sync` 或点击本机“立即同步”。云端每轮任务仍需飞书应用具备目标资料的阅读及导出权限，新增和修改内容可能调用既有摘要、图谱模型。
+
+验收时分别确认：计划持久化、到达半小时调度点后出现自动同步日志并成功、本机无新增任务，以及资料维护者实际修改授权文档后云端正文和检索更新。真实修改需要人工验证；计划保存和本轮无变化手动同步不替代这一步。详细结果及未验证范围见 [本次实施记录](../../docs/16-skills-and-cloud-sync.md) 和 [飞书同步说明](../../docs/02-feishu.md#11-2026-10-12-云端状态补充)。
