@@ -1,6 +1,6 @@
-# 知识图谱状态误报修复与 PR 准备
+# 知识图谱状态误报修复与上游 PR
 
-日期：2026-10-12。官方 PR 尚未创建或提交。
+日期：2026-10-12。已按用户授权提交官方 [PR #4172](https://github.com/Tencent/WeKnora/pull/4172)，状态为 Open，尚未合并。
 
 ## 补丁范围
 
@@ -41,7 +41,7 @@ npm run build
 
 PR 标题：`fix(frontend): distinguish graph availability errors from disabled state`。
 
-PR 正文按官方模板准备，包含复现、修复行为、测试范围与截图。没有捏造 Issue 编号，也没有创建 Draft PR；Draft PR 本身仍属于已提交 PR。
+PR 正文按官方模板准备，包含复现、修复行为、测试范围与截图。没有捏造 Issue 编号。此前仅准备表单，用户确认后创建正式 PR，没有创建 Draft PR。
 
 正式比较必须选择 base `Tencent/WeKnora:main`、head `yeungmingyik/WeKnora:feat/graph-availability-state`。截图单独保存在 Fork 的 `feat/graph-availability-evidence` 分支，避免二进制证据进入代码 PR 的差异。截图提交 `6177f5ca1248fbf86dc9c50cebf3218b7b901c9f` 只在代码修复之上新增四张无业务数据的图片。
 
@@ -61,6 +61,22 @@ PR 正文按官方模板准备，包含复现、修复行为、测试范围与�
 - 该文件在官方的最新改动为 `9253b2c1`（2026-09-24，#3674），只修改文档链接。
 
 结论：截至查询，未发现相同的公开修复；无法排除他人尚未公开的分支或后续新提交。证据为 `temp/upstream-graph-pr/duplicate-audit.json`。提交前可再次运行 `gh pr list --repo Tencent/WeKnora --state all --search 'graph' --limit 1000`，并检查最新 `main` 和相关 PR 的实际差异，不能仅凭标题判断重复。
+
+## 官方提交与复核
+
+用户确认后，再次核对官方 `.github/pull_request_template.md` 和 README 的 Contributing 要求，保留全部六个模板段落，标题与代码提交均符合 Conventional Commits。两项独立只读审查分别检查实现、真实资源缓存契约、回归测试、模板和测试证据，均未发现必须修改项。38 项组件测试再次运行全部通过；本次没有代码变更，既有 Linux 全套前端测试、类型检查及构建记录仍对应提交 `0400fe0c`。
+
+提交前重新获取官方 `main`，基线未变化。公开 Fork 与本地 HEAD 一致，差异为一个提交、八个文件。提交后再次读取 GitHub 正文、base/head、代码 SHA、文件清单，确认与审阅材料一致；GitHub 报告 `MERGEABLE`，只表示没有合并冲突，不代表 CI 已通过或维护者已批准。
+
+2026-10-12 12:56（北京时间）查看官方 [Frontend 工作流](https://github.com/Tencent/WeKnora/actions/runs/38205714191)，状态为 `action_required`，页面明确提示等待维护者批准运行，任务列表为空；不是测试断言失败。腾讯 `GITHUB_OPENSOURCE_SCAN_PIPELINE@PULL_REQUEST` 已启动，尚在运行。没有代替维护者批准、绕过检查或执行合并。
+
+提交快照为 `temp/upstream-graph-pr/submitted-pr.json`，汇总为 `temp/upstream-graph-pr/result.json`。复核后续状态：
+
+```bash
+gh pr view 4172 --repo Tencent/WeKnora --json url,state,isDraft,mergeable,mergeStateStatus,statusCheckRollup
+gh pr checks 4172 --repo Tencent/WeKnora
+gh run view 38205714191 --repo Tencent/WeKnora
+```
 
 ## 后续合入
 

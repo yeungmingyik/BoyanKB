@@ -389,4 +389,4 @@
 
 日期：2026-10-12。私有记录分支：`feat/upstream-graph-pr-notes`。新增 `docs/19-upstream-graph-pr.md`，登记独立官方贡献分支 `feat/graph-availability-state` 的修复、测试、截图与 PR 预填材料。通用修复只包含图谱状态组件、组件回归测试和六语言提示，未改企业定制运行代码。
 
-贡献提交 `0400fe0c230dc8fadb2dacd5a1fb9fe547f35690` 直接基于官方 `e5f9f9deab36898676fe85a9fda6b3e6f00288fa`，不携带 BoyanKB 历史、品牌或企业配置。验证命令及已执行检查见上述文档；PR 创建和提交保留给用户确认后执行。后续升级优先采用官方合入版本，再删除或调整定制版对应状态逻辑，避免重复实现。
+贡献提交 `0400fe0c230dc8fadb2dacd5a1fb9fe547f35690` 直接基于官方 `e5f9f9deab36898676fe85a9fda6b3e6f00288fa`，不携带 BoyanKB 历史、品牌或企业配置。验证命令及已执行检查见上述文档；用户确认后已提交 [官方 PR #4172](https://github.com/Tencent/WeKnora/pull/4172)，前端 CI 等待维护者批准运行。后续升级优先采用官方合入版本，再删除或调整定制版对应状态逻辑，避免重复实现。
