@@ -47,9 +47,20 @@ PR 正文按官方模板准备，包含复现、修复行为、测试范围与�
 
 本机交付目录：`D:/BoyanKB/WeKnora/temp/upstream-graph-pr/`。包含 `pr-title.txt`、`pr-body.md`、`browser-results.json`、`screenshots/`、浏览器复现脚本与检查日志。基线反证目录：`D:/BoyanKB/WeKnora/temp/upstream-graph-pr-baseline/`。
 
-内置浏览器连接不可用，采用预填 URL 携带标题和正文。只有点击 GitHub 的 Create pull request 才会提交；本步骤不执行该动作。
+2026-10-12 12:49（北京时间），已使用系统 Chrome 打开官方 PR 创建表单。通过 Windows UI Automation 读取实际标题和正文，确认与本机草稿完全一致；正文为 3,694 字符。已核对 base 为 `Tencent/WeKnora:main`，head 为 `yeungmingyik/WeKnora:feat/graph-availability-state`。没有点击 Create pull request，随后再次查询该分支的官方 PR 数量仍为 0。
 
-自动审批拦截了生成并打开 PR 快捷方式的组合命令，仅返回 `blocked by policy`，没有提供具体原因。改为保存 Markdown 草稿和预填链接，不启动快捷方式；没有在已登录的 GitHub 页面确认表单显示。需要用户打开下面的预填入口审阅后，再决定是否提交。
+表单核对记录：`temp/upstream-graph-pr/browser-form-verification.json`；实际页面截图：`temp/upstream-graph-pr/pr-form-review.png`。两者仅保存在本机，不进入公开贡献分支。内置浏览器连接仍不可用；本次系统浏览器打开成功，先前快捷方式组合命令的审批拦截已不再阻碍审阅。
+
+## 重复修复检查
+
+2026-10-12 12:48（北京时间）重新查询官方当前代码及公开 PR。官方 `main` 仍为上述基线，组件仍把系统信息未加载或加载失败判断为图数据库未启用。
+
+- 检查全部 257 个开放 PR 的文件清单，包括超过 100 个文件的五个 PR 的后续分页。
+- 仅 [#2944](https://github.com/Tencent/WeKnora/pull/2944) 和 [#2978](https://github.com/Tencent/WeKnora/pull/2978) 修改同一组件；逐行检查确认分别处理字段校验、关系标签拆分，不包含本次状态修复。
+- 检索所有状态的相关 Issue/PR，包括 143 条英文 graph PR、41 条中文知识图谱 PR，以及组件、函数、响应字段和接口名关键词；检查相近的 #2666、#3562、#3800，均不解决本问题。
+- 该文件在官方的最新改动为 `9253b2c1`（2026-09-24，#3674），只修改文档链接。
+
+结论：截至查询，未发现相同的公开修复；无法排除他人尚未公开的分支或后续新提交。证据为 `temp/upstream-graph-pr/duplicate-audit.json`。提交前可再次运行 `gh pr list --repo Tencent/WeKnora --state all --search 'graph' --limit 1000`，并检查最新 `main` 和相关 PR 的实际差异，不能仅凭标题判断重复。
 
 ## 后续合入
 
