@@ -351,3 +351,11 @@
 2026-10-10 网页来源调整，分支 `feat/tencent-public-web-access`：按用户要求，仅将云端 `/opt/boyankb/.env.tencent` 的 `WEB_ALLOWED_CIDRS` 覆盖为 `"0.0.0.0/0 ::/0"` 并重建 gateway。新增 `scripts/tencent-web-access.py`，默认预览，显式应用时私有备份、拒绝重复键、比较有效Compose仅有目标变量变化，并核对其他八个容器ID、端口和健康状态。登录页向所有来源开放，公开注册关闭、登录与RBAC、SSH来源限制、数据库无宿主端口等规则保持原配置。仓库的网关规则和Compose默认值未改；重新部署必须带实际环境文件。设置、白名单回退及200/401/403/404和端口检查命令见 `deployment/tencent/README.md`，变更后实际检查结果以部署记录为准，旧白名单拒绝报告仅为历史记录。
 
 升级时先在隔离测试环境构建新定制镜像，更新本配置的镜像锁与兼容性检查，再演练新快照格式恢复和账号权限。不能直接将七服务生产模板覆盖到本九服务部署，不得把数据恢复通过写成全部业务验收通过。公网入口、账号和数据以 [腾讯云部署记录](13-tencent-deployment.md) 为准。
+
+## 旧合作伙伴空间退役
+
+日期：2026-10-12。分支：`feat/retire-legacy-partner`。
+
+`scripts/tencent-retire-legacy-partner.py` 针对用户指定的星辰教育旧案例，默认只读，显式应用时备份 PostgreSQL 并校验目录和摘要，先回滚演练再在持锁事务内软删除固定的工作空间、共享空间与单一知识库共享。无成员、有效邀请、API Key、发布渠道及运行任务才可执行；总部资料和全部会话、资源等保护指纹必须一致。没有修改原生 RBAC、技能执行路径、页面或同步策略。十三项安全门禁测试及云端两身份列表检查通过。
+
+文件包括 `scripts/test_tencent_retire_legacy_partner.py`、`docs/15-skills-sharing-sync-review.md` 及部署记录更新。升级后需重新核对相关表结构、组织软删除及成员模型，不能直接扩展固定 ID 脚本清理其他合作伙伴。保留的测试文档、总部测试会话、历史记录和复核步骤见 [核查记录](15-skills-sharing-sync-review.md)。
