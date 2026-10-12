@@ -335,6 +335,12 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
+  if (to.path === '/platform/toolbox/business-skills'
+    || (to.path === '/platform/settings' && to.query.section === 'business-skills')) {
+    next({ ...toolboxLocation('skills'), replace: true })
+    return
+  }
+
   // Preserve bookmarks for tools that have moved out of Settings.
   if (to.path === '/platform/settings' && isToolboxSection(to.query.section)) {
     next({ ...toolboxLocation(to.query.section,

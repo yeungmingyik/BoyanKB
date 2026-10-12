@@ -16,7 +16,7 @@ const access = (role: string | null, unsupported: string[] = [], superuser = fal
 })
 
 test('toolbox contains only the agreed tools; infrastructure and secrets stay in settings', () => {
-  assert.deepEqual(TOOLBOX_ITEMS.map((item) => item.key), ['business-skills', 'skills', 'mcp', 'browserconnection'])
+  assert.deepEqual(TOOLBOX_ITEMS.map((item) => item.key), ['skills', 'mcp', 'browserconnection'])
   const lookup = (key: string) => key.split('.').reduce<any>((node, part) => node?.[part], zhCN)
   for (const item of TOOLBOX_ITEMS) {
     for (const key of [item.title, item.description, 'help' in item ? item.help : undefined,
@@ -24,21 +24,19 @@ test('toolbox contains only the agreed tools; infrastructure and secrets stay in
       if (key) assert.equal(typeof lookup(key), 'string', key)
     }
   }
-  for (const key of ['sandbox', 'websearch', 'envvars', 'integration-api', undefined, 'unknown']) {
+  for (const key of ['business-skills', 'sandbox', 'websearch', 'envvars', 'integration-api', undefined, 'unknown']) {
     assert.equal(isToolboxSection(key), false)
   }
 })
 
 test('toolbox preserves role and deployment gates, including workspace switches', () => {
   for (const role of ['viewer', 'contributor']) {
-    assert.equal(canAccessToolboxSection('business-skills', access(role, ['settings.sandbox'])), true)
-    assert.equal(canAccessToolboxSection('skills', access(role)), false)
+    assert.equal(canAccessToolboxSection('skills', access(role, ['settings.sandbox'])), true)
     assert.equal(canAccessToolboxSection('mcp', access(role)), false)
     assert.equal(canAccessToolboxSection('browserconnection', access(role)), true)
   }
   assert.equal(canAccessToolboxSection('skills', access('admin')), true)
-  assert.equal(canAccessToolboxSection('business-skills', access(null)), false)
-  assert.equal(canAccessToolboxSection('business-skills', access(null, [], true)), false)
+  assert.equal(canAccessToolboxSection('skills', access(null)), false)
   assert.equal(canAccessToolboxSection('skills', access('owner', ['settings.sandbox'])), true)
   assert.equal(canAccessToolboxSection('mcp', access('owner', ['settings.mcp'])), false)
   assert.equal(canAccessToolboxSection('mcp', access(null)), false)
@@ -48,6 +46,8 @@ test('toolbox preserves role and deployment gates, including workspace switches'
   const allowed = computed(() => canAccessToolboxSection('skills', access(role.value)))
   assert.equal(allowed.value, true)
   role.value = 'viewer'
+  assert.equal(allowed.value, true)
+  role.value = ''
   assert.equal(allowed.value, false)
 })
 
@@ -59,9 +59,6 @@ test('skill shortcut retains its target sandbox without leaking it to other tool
     path: '/platform/toolbox/browserconnection', query: {},
   })
   assert.deepEqual(toolboxLocation(), { path: '/platform/toolbox', query: {} })
-  assert.deepEqual(toolboxLocation('business-skills', 'sandbox-123'), {
-    path: '/platform/toolbox/business-skills', query: {},
-  })
 })
 
 const settings = readFileSync(new URL('../views/settings/Settings.vue', import.meta.url), 'utf8')
@@ -102,5 +99,8 @@ test('settings no longer render moved panels, and old bookmarks reach toolbox', 
   assert.match(router, /toolboxLocation\(to\.query\.section/)
   const page = readFileSync(new URL('../views/toolbox/Toolbox.vue', import.meta.url), 'utf8')
   assert.match(page, /if \(!selectedItem\.value && fallback\) void router\.replace\(toolboxLocation\(fallback\.key\)\)/)
-  assert.match(page, /:key="sandboxId"\s+:initial-sandbox-id="sandboxId"/)
+  assert.match(page, /:key="skillPanelKey"\s+:initial-sandbox-id="sandboxId"/)
+  assert.match(router, /to\.path === '\/platform\/toolbox\/business-skills'/)
+  assert.match(router, /to\.query\.section === 'business-skills'/)
+  assert.match(router, /next\(\{ \.\.\.toolboxLocation\('skills'\), replace: true \}\)/)
 })

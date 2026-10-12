@@ -3,7 +3,7 @@ import test from 'node:test'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import ts from 'typescript'
-import { allowsNativeSkillInstall, BUSINESS_SKILL_LABELS } from '../../config/businessSkills'
+import { allowsNativeSkillInstall, businessSkillLabel, BUSINESS_SKILL_LABELS } from '../../config/businessSkills'
 
 const source = readFileSync(new URL('./SkillSettings.vue', import.meta.url), 'utf8')
 const script = source.match(/<script setup lang="ts">([\s\S]*?)<\/script>/)![1]!
@@ -17,13 +17,44 @@ function functions(names: string[], context: Record<string, unknown>) {
   }).join('\n')
   return runInNewContext(ts.transpileModule(`${body}\n({ ${names.join(', ')} })`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
-  }).outputText, { allowsNativeSkillInstall, ...context })
+  }).outputText, { allowsNativeSkillInstall, nativeExecution: true, canManage: { value: true }, ...context })
 }
 
 const sandbox = { id: 'sandbox-a', name: 'Sandbox A', sandbox_type: 'docker' }
 const entry = (name: string, installed = false) => ({
   id: 'catalog-a', name,
   installations: installed ? [{ sandbox_config_id: sandbox.id, status: 'ready', enabled: true }] : [],
+})
+
+test('members cannot open management drawers or submit mutations through stale handlers', async () => {
+  const management = { value: false }
+  const methods = functions([
+    'liveInstalls', 'canDelete', 'targetsFor', 'defaultAddTargets', 'openCatalogFiles',
+    'openAdd', 'openInstall', 'openInstallTo', 'openUpgrade', 'openManage',
+    'registerThenAdvance', 'handleAddPrimary', 'confirmInstall', 'removeCatalog',
+  ], {
+    canManage: management,
+    businessSkillLabel,
+    MessagePlugin: { warning: () => {} },
+    t: (key: string) => key,
+  })
+  const item = entry('third-party')
+  assert.equal(methods.canDelete(item), false)
+  assert.equal(methods.targetsFor(item).length, 0)
+  assert.equal(methods.defaultAddTargets().length, 0)
+  methods.openCatalogFiles(item)
+  await methods.openAdd()
+  methods.openInstall(item)
+  methods.openInstallTo(item, sandbox)
+  methods.openUpgrade(item)
+  methods.openManage(item, {})
+  await methods.registerThenAdvance()
+  await methods.handleAddPrimary()
+  await methods.confirmInstall()
+  await methods.removeCatalog(item)
+  management.value = true
+  assert.equal(methods.canDelete(item), true)
+  assert.equal(methods.canDelete(entry('boyan-pptx')), false)
 })
 
 test('all nine business guide IDs stay out of native install and upgrade choices even with a sandbox', () => {

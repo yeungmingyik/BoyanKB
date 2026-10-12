@@ -18,9 +18,7 @@ export const SETTINGS_SECTION_MIN_ROLE: Record<string, SettingsRoleKey> = {
   parser: 'admin',
   storage: 'admin',
   sandbox: 'admin',
-  // Install writes a root shell into the sandbox image every session of
-  // that config boots. Same Admin+ bar as the sandbox editor itself.
-  skills: 'admin',
+  skills: 'viewer',
   mcp: 'admin',
   system: 'viewer',
   userprofile: 'viewer',

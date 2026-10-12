@@ -11,13 +11,15 @@ const functions = ['loadCatalog', 'load']
 const code = ast.statements.filter((node) => ts.isFunctionDeclaration(node) && functions.includes(node.name!.text))
   .map((node) => ts.transpileModule(node.getText(ast), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText).join('\n')
 
-function setup(nativeExecution: boolean, failCatalog = false, failSandbox = false) {
+function setup(nativeExecution: boolean, failCatalog = false, failSandbox = false, canManage = true) {
   const calls: string[] = []
   const context = {
-    nativeExecution, loading: { value: false }, catalogError: { value: false }, sandboxError: { value: false },
+    nativeExecution, canManage: { value: canManage }, disposed: false,
+    loading: { value: false }, catalogError: { value: false }, sandboxError: { value: false },
     catalog: { value: [] }, records: { value: [] },
     listSkillCatalog: async () => { calls.push('catalog'); if (failCatalog) throw new Error('catalog_failed'); return { data: [{ id: 'catalog-one' }] } },
     listSandboxConfigs: async () => { calls.push('sandbox'); if (failSandbox) throw new Error('sandbox_failed'); return { data: [{ id: 'sandbox-one' }] } },
+    loadBusiness: async () => { calls.push('business') },
     emit: () => {}, ensurePoll: () => {}, t: (key: string) => key,
     MessagePlugin: { error: () => {} },
   }
@@ -28,10 +30,27 @@ function setup(nativeExecution: boolean, failCatalog = false, failSandbox = fals
 test('catalog-only deployment does not call blocked sandbox APIs', async () => {
   const { load, context, calls } = setup(false)
   await load()
-  assert.deepEqual(calls, ['catalog'])
+  assert.deepEqual(calls, ['catalog', 'business'])
   assert.equal(context.catalog.value.length, 1)
   assert.equal(context.catalogError.value, false)
   assert.equal(context.loading.value, false)
+})
+
+test('members load the shared skill list without reading sandbox management APIs', async () => {
+  const { load, context, calls } = setup(true, false, false, false)
+  await load()
+  assert.deepEqual(calls, ['catalog', 'business'])
+  assert.equal(context.catalog.value.length, 1)
+  assert.equal(context.records.value.length, 0)
+  assert.equal(context.sandboxError.value, false)
+})
+
+test('a late catalog response cannot repopulate an unmounted workspace', async () => {
+  const { load, context } = setup(true)
+  context.disposed = true
+  await load()
+  assert.equal(context.catalog.value.length, 0)
+  assert.equal(context.records.value.length, 0)
 })
 
 test('failed sandbox inspection keeps catalog available', async () => {

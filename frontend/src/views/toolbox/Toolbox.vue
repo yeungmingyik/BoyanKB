@@ -6,7 +6,7 @@
           <ResourceIcon type="toolbox" :size="24" />
           {{ t('toolbox.title') }}
         </h2>
-        <t-button v-if="selectedItem && 'action' in selectedItem" variant="text" theme="default" size="small"
+        <t-button v-if="selectedItem && 'action' in selectedItem && authStore.hasRole('admin')" variant="text" theme="default" size="small"
           class="toolbox-action" style="--wails-draggable: no-drag" @click="panel?.openAdd?.()">
           <template #icon><t-icon :name="selectedItem.icon" size="16px" /></template>
           {{ t(selectedItem.action) }}
@@ -39,8 +39,7 @@
 
       <section v-if="selectedItem" class="toolbox-main" role="tabpanel">
         <div class="toolbox-panel">
-          <BusinessSkills v-if="selectedItem.key === 'business-skills'" @count="counts['business-skills'] = $event" />
-          <SkillSettings v-else-if="selectedItem.key === 'skills'" ref="panel" :key="sandboxId"
+          <SkillSettings v-if="selectedItem.key === 'skills'" ref="panel" :key="skillPanelKey"
             :initial-sandbox-id="sandboxId" @count="counts.skills = $event" />
           <McpSettings v-else-if="selectedItem.key === 'mcp'" ref="panel" @count="counts.mcp = $event" />
           <BrowserConnectionSettings v-else-if="selectedItem.key === 'browserconnection'" />
@@ -71,7 +70,6 @@ import ResourceIcon from '@/components/icons/ResourceIcon.vue'
 import BrowserIcon from '@/components/icons/BrowserIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SkillSettings from '@/views/settings/SkillSettings.vue'
-import BusinessSkills from '@/views/toolbox/BusinessSkills.vue'
 import McpSettings from '@/views/settings/McpSettings.vue'
 import BrowserConnectionSettings from '@/views/settings/BrowserConnectionSettings.vue'
 
@@ -85,6 +83,7 @@ const panel = ref<{ openAdd?: () => void } | null>(null)
 const counts = reactive<Partial<Record<ToolboxSection, number>>>({})
 const requestedSection = computed(() => typeof route.params.section === 'string' ? route.params.section : '')
 const sandboxId = computed(() => typeof route.query.sandboxId === 'string' ? route.query.sandboxId : '')
+const skillPanelKey = computed(() => `${authStore.user?.id}:${authStore.effectiveTenantId}:${authStore.currentTenantRole}:${sandboxId.value}`)
 const visibleItems = computed(() => TOOLBOX_ITEMS.filter((item) => canAccessToolboxSection(item.key, {
   currentTenantRole: authStore.currentTenantRole,
   canAccessAllTenants: authStore.canAccessAllTenants,
@@ -113,7 +112,6 @@ watch([selectedItem, visibleItems], () => {
 
 // Tab badges for tools that are not open; the open panel keeps its own badge current.
 const summaries: Record<ToolboxSection, () => Promise<void>> = {
-  'business-skills': async () => {},
   skills: async () => { counts.skills = (await listSkillCatalog())?.data?.length ?? 0 },
   mcp: async () => { counts.mcp = (await listMCPServices()).length },
   browserconnection: async () => { if (!browserConnection.loaded) await browserConnection.refresh() },
