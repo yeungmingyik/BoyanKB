@@ -1,3 +1,5 @@
+此仓库保存 BoyanKB 企业定制版。当前功能、部署与备份说明见 [BoyanKB 项目入口](README.BoyanKB.md)。下方保留上游项目介绍与版权信息。
+
 <p align="center">
   <picture>
     <img src="./docs/images/logo.png" alt="WeKnora Logo" height="120"/>

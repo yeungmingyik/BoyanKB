@@ -63,3 +63,12 @@ miniprogram/project.private.config.json
 
 # Locally built BrowserSkill runtime and extension bundles
 /artifacts/browserskill/
+
+/backups/
+*.dump
+*.age
+*.p12
+*.pfx
+id_ed25519
+id_rsa
+credentials.json
