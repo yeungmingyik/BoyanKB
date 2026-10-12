@@ -1,0 +1,18 @@
+[Unit]
+Description=RustDesk resource limits
+
+[Slice]
+CPUAccounting=yes
+CPUQuota=50%
+CPUWeight=10
+MemoryAccounting=yes
+MemoryHigh=192M
+MemoryMax=256M
+MemorySwapMax=0
+TasksAccounting=yes
+TasksMax=128
+IOAccounting=yes
+IOWeight=10
+
+[Install]
+WantedBy=multi-user.target
