@@ -3,17 +3,17 @@
   "platform": "linux/amd64",
   "images": [
     {
-      "tag": "boyankb/app:v0.8.2-trial-graph-v3",
-      "id": "sha256:ac806ca72aa54f18c73b5a4140cb18c75aa0f3a41fe1a1cd2cb5b5f7da04d756",
+      "tag": "boyankb/app:v0.8.2-qa-failure-v1",
+      "id": "sha256:07eaa5f40986159341486cc780ab0de02c3cf471e5d01bcb45ecf9eda3567f21",
       "digests": [
-        "boyankb/app@sha256:ac806ca72aa54f18c73b5a4140cb18c75aa0f3a41fe1a1cd2cb5b5f7da04d756"
+        "boyankb/app@sha256:07eaa5f40986159341486cc780ab0de02c3cf471e5d01bcb45ecf9eda3567f21"
       ]
     },
     {
-      "tag": "boyankb/frontend:v0.8.2-skills-unified-v2",
-      "id": "sha256:2cc82fd44eca6e421ad5a20a0803f1c89133d386a025f913d91cd61177764bf6",
+      "tag": "boyankb/frontend:v0.8.2-qa-failure-v1",
+      "id": "sha256:20aab77f8b769ee7e99f18fd81166be3026d6002a055af3944b7637c7cc31607",
       "digests": [
-        "boyankb/frontend@sha256:2cc82fd44eca6e421ad5a20a0803f1c89133d386a025f913d91cd61177764bf6"
+        "boyankb/frontend@sha256:20aab77f8b769ee7e99f18fd81166be3026d6002a055af3944b7637c7cc31607"
       ]
     },
     {

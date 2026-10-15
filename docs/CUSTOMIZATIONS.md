@@ -404,5 +404,7 @@
 | `frontend/src/composables/useChatStreamHandler.ts`、`frontend/src/views/chat/{index.vue,components/RagPipelineProgress.vue,components/AgentStreamDisplay.vue}` 及测试 | 错误横幅、停止等待、部分内容保留、刷新恢复、失败不请求追问建议 |
 | `frontend/src/i18n/{locales,embed.ts}` 及测试 | 现有五语言和嵌入组件固定故障文案 |
 | `scripts/tencent-update-frontend.py` 及测试 | 兼容原前端发布，新增可选 app 镜像联合备份、校验及回滚 |
+| `docker-compose.tencent.yml`、`deployment/tencent/images.lock.json` | 锁定已验证的配套后端、前端镜像摘要 |
+| `deployment/tencent/README.md`、`docs/{13-tencent-deployment,21-qa-failure-completion}.md` | 记录联合更新、回滚、故障回归及真实云端验证 |
 
 升级时优先对照上游相同修复，重新执行普通流、模型兜底、503、超时、异常 EOF、正常完成和主动停止的回归，再构建发布。LICENSE、版权、RBAC、模型凭据和数据源范围不变。
