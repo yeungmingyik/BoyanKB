@@ -3,11 +3,13 @@ package chatpipeline
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/Tencent/WeKnora/internal/config"
+	"github.com/Tencent/WeKnora/internal/models/api"
 	"github.com/Tencent/WeKnora/internal/models/chat"
 	"github.com/Tencent/WeKnora/internal/types"
 	"github.com/Tencent/WeKnora/internal/types/interfaces"
@@ -131,6 +133,11 @@ func (p *PluginQueryUnderstand) OnEvent(ctx context.Context,
 			"session_id": chatManage.SessionID,
 			"error":      err.Error(),
 		})
+		var httpErr *api.HTTPError
+		if !useImages && rewriteModel.GetModelID() == chatManage.ChatModelID &&
+			errors.As(err, &httpErr) && (httpErr.StatusCode >= 500 || httpErr.StatusCode == 429) {
+			return ErrModelCall.WithError(err)
+		}
 		return next()
 	}
 

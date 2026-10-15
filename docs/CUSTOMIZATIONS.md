@@ -390,3 +390,19 @@
 日期：2026-10-12。私有记录分支：`feat/upstream-graph-pr-notes`。新增 `docs/19-upstream-graph-pr.md`，登记独立官方贡献分支 `feat/graph-availability-state` 的修复、测试、截图与 PR 预填材料。通用修复只包含图谱状态组件、组件回归测试和六语言提示，未改企业定制运行代码。
 
 贡献提交 `0400fe0c230dc8fadb2dacd5a1fb9fe547f35690` 直接基于官方 `e5f9f9deab36898676fe85a9fda6b3e6f00288fa`，不携带 BoyanKB 历史、品牌或企业配置。验证命令及已执行检查见上述文档；用户确认后已提交 [官方 PR #4172](https://github.com/Tencent/WeKnora/pull/4172)，前端 CI 等待维护者批准运行。后续升级优先采用官方合入版本，再删除或调整定制版对应状态逻辑，避免重复实现。
+
+## 快速问答故障提示与结束
+
+日期：2026-10-15。分支：`feat/qa-failure-completion`。原因、验证和发布记录见 [异常结束处理](21-qa-failure-completion.md)。本问题涉及服务生命周期，无法仅靠配置或品牌覆盖文件修复，因此采用必要核心补丁。
+
+| 文件 | 改动 |
+| --- | --- |
+| `internal/application/service/chat_pipeline/{chat_completion_stream,query_understand}.go` 及测试 | 流同步返回故障、正常结束释放连接；同主模型改写 429／5xx 立即结束 |
+| `internal/application/service/session_knowledge_qa.go` 及 fallback 测试 | 模型兜底同样遵守同步终止、取消、异常 EOF 契约 |
+| `internal/handler/session/{qa,quick_answer_failure,agent_stream_handler,stream,helpers}.go` 及测试 | 快速问答 120 秒总期限；统一持久化失败、脱敏提示、SSE 结束；避免失败／停止触发问答索引与推荐 |
+| `internal/types/agent.go` | 既有 AgentStep JSON 增加可选 error_code／error_message，不新增 SQL 迁移 |
+| `frontend/src/composables/useChatStreamHandler.ts`、`frontend/src/views/chat/{index.vue,components/RagPipelineProgress.vue,components/AgentStreamDisplay.vue}` 及测试 | 错误横幅、停止等待、部分内容保留、刷新恢复、失败不请求追问建议 |
+| `frontend/src/i18n/{locales,embed.ts}` 及测试 | 现有五语言和嵌入组件固定故障文案 |
+| `scripts/tencent-update-frontend.py` 及测试 | 兼容原前端发布，新增可选 app 镜像联合备份、校验及回滚 |
+
+升级时优先对照上游相同修复，重新执行普通流、模型兜底、503、超时、异常 EOF、正常完成和主动停止的回归，再构建发布。LICENSE、版权、RBAC、模型凭据和数据源范围不变。

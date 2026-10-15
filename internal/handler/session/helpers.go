@@ -355,12 +355,7 @@ const stopWatcherMaxDuration = 2 * time.Hour
 // StopSession) into a context cancellation — so generation keeps running to
 // completion even though /stop returned success.
 //
-// The watcher is intentionally self-terminating rather than tied to the QA
-// service call returning: KnowledgeQA (quick answer) returns immediately while
-// the actual token stream runs in a background goroutine, whereas AgentQA
-// (smart reasoning) blocks until done. Keying teardown off the call return
-// would therefore tear the watcher down before quick-answer streaming even
-// starts. Instead it exits when it observes a terminal stream event
+// The watcher is independent of the SSE connection. It exits on a terminal event
 // (complete, or a stream-level error), on stop, or after a safety timeout.
 func (h *Handler) startStopWatcher(
 	ctx context.Context,

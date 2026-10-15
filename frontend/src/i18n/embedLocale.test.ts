@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { LOCALE_BUNDLES } from './localeKeyAudit.ts'
 
 import {
   EMBED_MESSAGES,
@@ -28,6 +29,12 @@ const EXPECTED_REFERENCES_DRAWER_KEYS = [
 
 test('supported embed locales include zh-CN, en-US, ko-KR, ja-JP, ru-RU', () => {
   assert.deepEqual([...SUPPORTED_LOCALES].sort(), ['en-US', 'ja-JP', 'ko-KR', 'ru-RU', 'zh-CN'].sort())
+})
+
+test('embed and main chat use the same localized quick-answer failure messages', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    assert.deepEqual(EMBED_MESSAGES[locale].chat.quickAnswerError, LOCALE_BUNDLES[locale].chat.quickAnswerError)
+  }
 })
 
 test('every supported locale defines conversationTime and referencesDrawer in chat', () => {

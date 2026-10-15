@@ -3732,6 +3732,13 @@ export default {
       thisYear: '{month}/{day} {time}',
       otherYear: '{month}/{day}/{year} {time}',
     },
+    quickAnswerError: {
+      title: 'Answer not completed',
+      modelTimeout: 'The model response timed out and this answer has stopped. Please try again later.',
+      modelUnavailable: 'The model service is temporarily unavailable and this answer has stopped. Please try again later; contact your administrator if the problem persists.',
+      modelStreamInterrupted: 'The model connection was interrupted before the answer finished. Received content has been kept. Please try again later.',
+      modelRequestFailed: 'This answer could not be generated. Please try again; contact your administrator if the problem persists.',
+    },
     preparingAnswer: 'Preparing an answer…',
     connectingModelAndGeneratingAnswer: 'Connecting to the model and generating an answer…',
     modelStillResponding: 'The model is taking longer than usual, still waiting…',

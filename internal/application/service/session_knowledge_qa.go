@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -715,12 +717,8 @@ func (s *sessionService) KnowledgeQAByEvent(ctx context.Context,
 		// assembly — was previously invisible). Generations created inside
 		// the stage automatically nest under this span.
 		//
-		// CHAT_COMPLETION_STREAM is intentionally skipped: its OnEvent kicks
-		// off a streaming goroutine and returns immediately, so a span would
-		// finish well before the chat.completion.stream generation does. The
-		// generation already captures the full stream duration; adding a
-		// stage span here would just produce a child observation that
-		// visually exceeds its parent.
+		// The model generation already captures the full stream duration, so
+		// CHAT_COMPLETION_STREAM does not need a duplicate stage span.
 		stageCtx := ctx
 		var stageSpan *langfuse.Span
 		if eventType != types.CHAT_COMPLETION_STREAM {
@@ -799,8 +797,7 @@ func (s *sessionService) KnowledgeQAByEvent(ctx context.Context,
 				"reason":      "search_nothing",
 				"strategy":    string(chatManage.FallbackStrategy),
 			})
-			s.handleFallbackResponse(ctx, chatManage)
-			return nil
+			return s.handleFallbackResponse(ctx, chatManage)
 		}
 
 		if err != nil {
@@ -949,12 +946,12 @@ func (s *sessionService) SearchKnowledge(ctx context.Context,
 }
 
 // handleFallbackResponse handles fallback response based on strategy
-func (s *sessionService) handleFallbackResponse(ctx context.Context, chatManage *types.ChatManage) {
+func (s *sessionService) handleFallbackResponse(ctx context.Context, chatManage *types.ChatManage) error {
 	if chatManage.FallbackStrategy == types.FallbackStrategyModel {
-		s.handleModelFallback(ctx, chatManage)
-	} else {
-		s.handleFixedFallback(ctx, chatManage)
+		return s.handleModelFallback(ctx, chatManage)
 	}
+	s.handleFixedFallback(ctx, chatManage)
+	return nil
 }
 
 // handleFixedFallback handles fixed fallback response
@@ -965,12 +962,12 @@ func (s *sessionService) handleFixedFallback(ctx context.Context, chatManage *ty
 }
 
 // handleModelFallback handles model-based fallback response using streaming
-func (s *sessionService) handleModelFallback(ctx context.Context, chatManage *types.ChatManage) {
+func (s *sessionService) handleModelFallback(ctx context.Context, chatManage *types.ChatManage) error {
 	// Check if FallbackPrompt is available
 	if chatManage.FallbackPrompt == "" {
 		logger.Warnf(ctx, "Fallback strategy is 'model' but FallbackPrompt is empty, falling back to fixed response")
 		s.handleFixedFallback(ctx, chatManage)
-		return
+		return nil
 	}
 
 	// Render template with Query variable
@@ -978,22 +975,20 @@ func (s *sessionService) handleModelFallback(ctx context.Context, chatManage *ty
 	if err != nil {
 		logger.Errorf(ctx, "Failed to render fallback prompt: %v, falling back to fixed response", err)
 		s.handleFixedFallback(ctx, chatManage)
-		return
+		return nil
 	}
 
 	// Check if EventBus is available for streaming
 	if chatManage.EventBus == nil {
 		logger.Warnf(ctx, "EventBus not available for streaming fallback, falling back to fixed response")
 		s.handleFixedFallback(ctx, chatManage)
-		return
+		return nil
 	}
 
 	// Get chat model
 	chatModel, err := s.modelService.GetChatModel(ctx, chatManage.ChatModelID)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to get chat model for fallback: %v, falling back to fixed response", err)
-		s.handleFixedFallback(ctx, chatManage)
-		return
+		return err
 	}
 
 	// Prepare chat options
@@ -1010,21 +1005,18 @@ func (s *sessionService) handleModelFallback(ctx context.Context, chatManage *ty
 		logger.Warnf(ctx, "[Fallback][ModelContext] %d message field(s) carry raw identifiers after encoding: %s",
 			len(leaks), modelcontext.SummarizeLeaks(leaks))
 	}
-	responseChan, err := chatModel.ChatStream(ctx, fallbackMessages, opt)
+	modelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	responseChan, err := chatModel.ChatStream(modelCtx, fallbackMessages, opt)
 	if err != nil {
-		logger.Errorf(ctx, "Failed to start streaming fallback response: %v, falling back to fixed response", err)
-		s.handleFixedFallback(ctx, chatManage)
-		return
+		return err
 	}
 
 	if responseChan == nil {
-		logger.Errorf(ctx, "Chat stream returned nil channel, falling back to fixed response")
-		s.handleFixedFallback(ctx, chatManage)
-		return
+		return errors.New("fallback chat stream returned nil channel")
 	}
 
-	// Start goroutine to consume stream and emit events
-	go s.consumeFallbackStream(ctx, chatManage, responseChan, modelContext)
+	return s.consumeFallbackStream(ctx, chatManage, responseChan, modelContext)
 }
 
 func prepareFallbackMessages(
@@ -1177,14 +1169,37 @@ func (s *sessionService) consumeFallbackStream(
 	chatManage *types.ChatManage,
 	responseChan <-chan types.StreamResponse,
 	modelContext *modelcontext.Registry,
-) {
+) error {
 	fallbackID := generateEventID("fallback")
 	eventBus := chatManage.EventBus
 	var finalContent string
-	streamCompleted := false
 	decoder := modelContext.StreamDecoder()
+	defer func() {
+		if tail := decoder.Flush(); tail != "" {
+			_ = eventBus.Emit(ctx, types.Event{
+				ID: fallbackID, Type: types.EventType(event.EventAgentFinalAnswer), SessionID: chatManage.SessionID,
+				Data: event.AgentFinalAnswerData{Content: tail, IsFallback: true},
+			})
+		}
+	}()
 
-	for response := range responseChan {
+	for {
+		var response types.StreamResponse
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case chunk, ok := <-responseChan:
+			if !ok {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				return io.ErrUnexpectedEOF
+			}
+			response = chunk
+		}
+		if response.ResponseType == types.ResponseTypeError {
+			return errors.New(response.Content)
+		}
 		// Emit event for each answer chunk
 		if response.ResponseType == types.ResponseTypeAnswer {
 			response.Content = decoder.Feed(response.Content)
@@ -1213,17 +1228,10 @@ func (s *sessionService) consumeFallbackStream(
 			// Update ChatResponse with final content when done
 			if response.Done {
 				chatManage.ChatResponse = &types.ChatResponse{Content: finalContent}
-				streamCompleted = true
 				logger.Infof(ctx, "Fallback streaming response completed")
-				break
+				return nil
 			}
 		}
-	}
-
-	// If channel closed without Done=true, emit final event with fixed response
-	if !streamCompleted {
-		logger.Warnf(ctx, "Fallback stream closed without completion, emitting final event with fixed response")
-		s.emitFallbackAnswer(ctx, chatManage, chatManage.FallbackResponse)
 	}
 }
 

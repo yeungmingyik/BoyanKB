@@ -457,7 +457,9 @@ type AgentStep struct {
 	// still show that the answer stops mid-sentence by design, rather than
 	// looking finished. Live streaming carries the same fact on the answer
 	// event; this is what survives the round trip.
-	Truncated bool `json:"truncated,omitempty"`
+	Truncated    bool   `json:"truncated,omitempty"`
+	ErrorCode    string `json:"error_code,omitempty"`
+	ErrorMessage string `json:"error_message,omitempty"`
 }
 
 // GetObservations returns observations from all tool calls in this step

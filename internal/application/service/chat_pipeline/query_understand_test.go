@@ -1,10 +1,84 @@
 package chatpipeline
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/Tencent/WeKnora/internal/config"
+	"github.com/Tencent/WeKnora/internal/models/api"
+	"github.com/Tencent/WeKnora/internal/models/chat"
 	"github.com/Tencent/WeKnora/internal/types"
+	"github.com/stretchr/testify/require"
 )
+
+type failingRewriteModel struct {
+	id  string
+	err error
+}
+
+func (m *failingRewriteModel) GetModelID() string   { return m.id }
+func (m *failingRewriteModel) GetModelName() string { return m.id }
+
+func (m *failingRewriteModel) ChatStream(context.Context, []chat.Message, *chat.ChatOptions) (<-chan types.StreamResponse, error) {
+	return nil, m.err
+}
+
+func (m *failingRewriteModel) Chat(context.Context, []chat.Message, *chat.ChatOptions) (*types.ChatResponse, error) {
+	return nil, m.err
+}
+
+func TestQueryUnderstandStopsWhenMainModelUnavailable(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		err       error
+		dedicated bool
+		vision    bool
+		wantError bool
+	}{
+		{"main unavailable", &api.HTTPError{StatusCode: 503}, false, false, true},
+		{"main overloaded", &api.HTTPError{StatusCode: 429}, false, false, true},
+		{"main gateway timeout", &api.HTTPError{StatusCode: 504}, false, false, true},
+		{"wrapped error", fmt.Errorf("rewrite: %w", &api.HTTPError{StatusCode: 503}), false, false, true},
+		{"unsupported rewrite option", &api.HTTPError{StatusCode: 400}, false, false, false},
+		{"optional rewrite failure", errors.New("invalid response"), false, false, false},
+		{"dedicated rewrite unavailable", &api.HTTPError{StatusCode: 503}, true, false, false},
+		{"vision unavailable", &api.HTTPError{StatusCode: 503}, false, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cm := &types.ChatManage{PipelineRequest: types.PipelineRequest{
+				Query: "original question", ChatModelID: "main", EnableRewrite: true,
+			}}
+			model := &failingRewriteModel{id: "main", err: tc.err}
+			if tc.dedicated {
+				cm.QueryUnderstandModelID, model.id = "rewrite", "rewrite"
+			}
+			if tc.vision {
+				cm.Images = []string{"https://example.com/image.png"}
+				cm.ChatModelSupportsVision = true
+			}
+			plugin := &PluginQueryUnderstand{
+				modelService: &stubModelService{model: model},
+				config:       &config.Config{Conversation: &config.ConversationConfig{}},
+			}
+			nextCalled := false
+			err := plugin.OnEvent(context.Background(), types.QUERY_UNDERSTAND, cm, func() *PluginError {
+				nextCalled = true
+				return nil
+			})
+			require.Equal(t, !tc.wantError, nextCalled)
+			require.Equal(t, cm.Query, cm.RewriteQuery)
+			if tc.wantError {
+				require.NotNil(t, err)
+				require.ErrorIs(t, err.Err, tc.err)
+				require.Equal(t, ErrModelCall.ErrorType, err.ErrorType)
+			} else {
+				require.Nil(t, err)
+			}
+		})
+	}
+}
 
 func TestApplyIntentPromptOverride_AgentOverrideWins(t *testing.T) {
 	cm := &types.ChatManage{

@@ -15,7 +15,7 @@ import uuid
 ROOT = Path('/opt/boyankb')
 PROJECT = 'boyankb-tencent'
 SERVICES = {'gateway', 'frontend', 'app', 'docreader', 'postgres', 'redis', 'ollama', 'document-renderer', 'neo4j'}
-IMAGE_PATTERN = r'boyankb/frontend:[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}@sha256:[a-f0-9]{64}'
+IMAGE_PATTERN = r'boyankb/{service}:[A-Za-z0-9_][A-Za-z0-9_.-]{{0,127}}@sha256:[a-f0-9]{{64}}'
 
 
 def require(value, code):
@@ -24,7 +24,7 @@ def require(value, code):
 
 
 def command(arguments, environment=None, payload=None):
-    result = subprocess.run(arguments, cwd=ROOT, env=environment, input=payload, capture_output=True, timeout=240)
+    result = subprocess.run(arguments, cwd=ROOT, env=environment, input=payload, capture_output=True, timeout=420)
     require(result.returncode == 0, 'COMMAND_FAILED')
     return result.stdout
 
@@ -33,13 +33,14 @@ def docker(arguments, environment=None, payload=None):
     return command(['docker', '--host', 'unix:///var/run/docker.sock', *arguments], environment, payload)
 
 
-def split_image(reference):
-    require(isinstance(reference, str) and re.fullmatch(IMAGE_PATTERN, reference), 'FIXED_FRONTEND_IMAGE_REQUIRED')
+def split_image(reference, service='frontend'):
+    require(service in ('frontend', 'app'), 'UNSUPPORTED_RELEASE_SERVICE')
+    require(isinstance(reference, str) and re.fullmatch(IMAGE_PATTERN.format(service=service), reference), 'FIXED_' + service.upper() + '_IMAGE_REQUIRED')
     return reference.split('@', 1)
 
 
-def verify_image(reference):
-    tag, digest = split_image(reference)
+def verify_image(reference, service='frontend'):
+    tag, digest = split_image(reference, service)
     images = json.loads(docker(['image', 'inspect', tag, reference]))
     require(len(images) == 2, 'EXACT_IMAGE_REFERENCES_REQUIRED')
     require(all(item.get('Id') == digest and item.get('Os') == 'linux' and item.get('Architecture') == 'amd64' for item in images), 'IMAGE_ID_OR_PLATFORM_MISMATCH')
@@ -54,27 +55,30 @@ def validate_lock(configuration, lock):
     require(len(set(references)) == 9 and set(references) == {item['image'] for item in configuration['services'].values()}, 'IMAGE_LOCK_MISMATCH')
 
 
-def updated_files(original, lock, previous, requested):
-    split_image(previous)
-    tag, digest = split_image(requested)
+def updated_files(original, lock, previous, requested, service='frontend'):
+    split_image(previous, service)
+    tag, digest = split_image(requested, service)
     text = original.decode('utf-8')
-    sections = list(re.finditer(r'(?ms)^  frontend:\r?\n(?P<body>.*?)(?=^  [a-zA-Z0-9_-]+:|^\S|\Z)', text))
-    require(len(sections) == 1, 'EXACT_FRONTEND_SECTION_REQUIRED')
+    sections = list(re.finditer(r'(?ms)^  ' + service + r':\r?\n(?P<body>.*?)(?=^  [a-zA-Z0-9_-]+:|^\S|\Z)', text))
+    require(len(sections) == 1, 'EXACT_' + service.upper() + '_SECTION_REQUIRED')
     section = sections[0]
     body, count = re.subn(r'(?m)^    image: ' + re.escape(previous) + r'(?=\r?$)', '    image: ' + requested, section.group('body'))
-    require(count == 1, 'FRONTEND_IMAGE_LINE_MISMATCH')
+    require(count == 1, service.upper() + '_IMAGE_LINE_MISMATCH')
     updated = text[:section.start('body')] + body + text[section.end('body'):]
     candidate = copy.deepcopy(lock)
     entries = [entry for entry in candidate['images'] if entry['tag'] + '@' + entry['id'] == previous]
-    require(len(entries) == 1, 'EXACT_FRONTEND_LOCK_REQUIRED')
-    entries[0].update(tag=tag, id=digest, digests=['boyankb/frontend@' + digest])
+    require(len(entries) == 1, 'EXACT_' + service.upper() + '_LOCK_REQUIRED')
+    entries[0].update(tag=tag, id=digest, digests=['boyankb/' + service + '@' + digest])
     return updated.encode('utf-8'), (json.dumps(candidate, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
 
 
-def validate_change(before, after, requested):
+def validate_change(before, after, requested, app_reference=None):
     split_image(requested)
     expected = copy.deepcopy(before)
     expected['services']['frontend']['image'] = requested
+    if app_reference is not None:
+        split_image(app_reference, 'app')
+        expected['services']['app']['image'] = app_reference
     require(expected == after, 'UNEXPECTED_CONFIGURATION_CHANGE')
 
 
@@ -98,10 +102,13 @@ def containers():
     return result
 
 
-def validate_containers(before, after, reference):
+def validate_containers(before, after, reference, app_reference=None):
     require(set(before) == set(after) == SERVICES, 'SERVICE_SET_CHANGED')
-    require(all(before[name]['Id'] == item['Id'] for name, item in after.items() if name != 'frontend'), 'OTHER_SERVICE_REPLACED')
+    replaced = {'frontend', 'app'} if app_reference is not None else {'frontend'}
+    require(all(before[name]['Id'] == item['Id'] for name, item in after.items() if name not in replaced), 'OTHER_SERVICE_REPLACED')
     require(after['frontend']['Config']['Image'] == reference, 'FRONTEND_CONTAINER_IMAGE_MISMATCH')
+    if app_reference is not None:
+        require(after['app']['Config']['Image'] == app_reference, 'APP_CONTAINER_IMAGE_MISMATCH')
     require(all(before[name]['HostConfig'].get('PortBindings') == item['HostConfig'].get('PortBindings') for name, item in after.items()), 'PUBLISHED_PORTS_CHANGED')
 
 
@@ -140,28 +147,31 @@ def replace_file(path, expected, payload):
     os.replace(temporary, path)
 
 
-def recreate_frontend(environment):
-    docker(compose(environment) + ['up', '-d', '--no-deps', '--no-build', '--pull', 'never', '--force-recreate', '--wait', '--wait-timeout', '180', 'frontend'], environment)
+def recreate_frontend(environment, include_app=False):
+    services = ['app', 'frontend'] if include_app else ['frontend']
+    docker(compose(environment) + ['up', '-d', '--no-deps', '--no-build', '--pull', 'never', '--force-recreate', '--wait', '--wait-timeout', '180', *services], environment)
 
 
 def error_code(error):
     return str(error) if isinstance(error, RuntimeError) and re.fullmatch(r'[A-Z0-9_]+', str(error)) else type(error).__name__
 
 
-def deploy(accounts, reference, previous, original, proposed, environment, before, original_configuration, env_digest, report_path, report):
+def deploy(accounts, reference, previous, original, proposed, environment, before, original_configuration, env_digest, report_path, report, app_reference=None, app_previous=None):
     changed = []
     try:
         for path, payload in proposed.items():
             replace_file(path, original[path], payload)
             changed.append(path)
-        validate_change(original_configuration, configuration(environment), reference)
-        recreate_frontend(environment)
+        validate_change(original_configuration, configuration(environment), reference, app_reference)
+        recreate_frontend(environment, app_reference is not None)
         after = containers()
-        validate_containers(before, after, reference)
+        validate_containers(before, after, reference, app_reference)
         require(before['frontend']['Id'] != after['frontend']['Id'], 'FRONTEND_NOT_RECREATED')
+        if app_reference is not None:
+            require(before['app']['Id'] != after['app']['Id'], 'APP_NOT_RECREATED')
         checks = http_checks()
         require(hashlib.sha256(checked_file(ROOT / '.env.tencent')).hexdigest() == env_digest, 'ENVIRONMENT_FILE_CHANGED')
-        report.update(status='VERIFIED', healthy_services=9, only_frontend_recreated=True, environment_unchanged=True, https_checks=checks)
+        report.update(status='VERIFIED', healthy_services=9, only_frontend_recreated=app_reference is None, recreated_services=['app', 'frontend'] if app_reference is not None else ['frontend'], environment_unchanged=True, https_checks=checks)
     except Exception as error:
         report.update(status='FAILED', error=error_code(error))
         try:
@@ -169,8 +179,8 @@ def deploy(accounts, reference, previous, original, proposed, environment, befor
                 replace_file(path, proposed[path], original[path])
             require(configuration(environment) == original_configuration, 'ROLLBACK_CONFIGURATION_MISMATCH')
             if changed:
-                recreate_frontend(environment)
-            validate_containers(before, containers(), previous)
+                recreate_frontend(environment, app_reference is not None)
+            validate_containers(before, containers(), previous, app_previous)
             report.update(status='ROLLED_BACK', rollback_https_checks=http_checks())
         except Exception as rollback_error:
             report.update(status='ROLLBACK_REQUIRED', rollback_error=error_code(rollback_error))
@@ -181,7 +191,7 @@ def deploy(accounts, reference, previous, original, proposed, environment, befor
     print(json.dumps({**report, 'report': str(report_path)}), flush=True)
 
 
-def apply(accounts, reference, previous, original, proposed, environment, before, original_configuration, env_digest):
+def apply(accounts, reference, previous, original, proposed, environment, before, original_configuration, env_digest, app_reference=None, app_previous=None):
     import fcntl
 
     descriptor = os.open(ROOT / '.frontend-update.lock', os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
@@ -200,8 +210,10 @@ def apply(accounts, reference, previous, original, proposed, environment, before
             exclusive_write(backup / path.name, payload)
         report_path = backup / 'report.json'
         report = {'status': 'PREPARED', 'previous_image': previous, 'requested_image': reference, 'backup_directory': str(backup), 'backup_sha256': {path.name: hashlib.sha256(payload).hexdigest() for path, payload in original.items()}}
+        if app_reference is not None:
+            report.update(previous_app_image=app_previous, requested_app_image=app_reference)
         accounts.save_private(report_path, report)
-        deploy(accounts, reference, previous, original, proposed, environment, before, original_configuration, env_digest, report_path, report)
+        deploy(accounts, reference, previous, original, proposed, environment, before, original_configuration, env_digest, report_path, report, app_reference, app_previous)
     finally:
         os.close(descriptor)
 
@@ -209,9 +221,12 @@ def apply(accounts, reference, previous, original, proposed, environment, before
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', required=True)
+    parser.add_argument('--app-image')
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args()
     split_image(args.image)
+    if args.app_image is not None:
+        split_image(args.app_image, 'app')
     spec = importlib.util.spec_from_file_location('frontend_update_accounts', ROOT / 'scripts/tencent-accounts.py')
     accounts = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(accounts)
@@ -231,13 +246,24 @@ def main():
     before = containers()
     require(before['frontend']['Config']['Image'] == previous, 'RUNNING_FRONTEND_LOCK_MISMATCH')
     candidate_compose, candidate_lock = updated_files(original[compose_path], lock, previous, args.image)
+    app_previous = None
+    if args.app_image is not None:
+        app_previous = current['services']['app']['image']
+        verify_image(app_previous, 'app')
+        verify_image(args.app_image, 'app')
+        require(before['app']['Config']['Image'] == app_previous, 'RUNNING_APP_LOCK_MISMATCH')
+        candidate_compose, candidate_lock = updated_files(candidate_compose, json.loads(candidate_lock), app_previous, args.app_image, 'app')
     candidate = configuration(environment, candidate_compose)
-    validate_change(current, candidate, args.image)
+    validate_change(current, candidate, args.image, args.app_image)
     validate_lock(candidate, json.loads(candidate_lock))
     checks = http_checks()
-    print(json.dumps({'mode': 'APPLY' if args.apply else 'PLAN', 'previous_image': previous, 'requested_image': args.image, 'configuration_change': 'services.frontend.image', 'healthy_services': 9, 'https_checks': checks, 'no_change': args.image == previous}), flush=True)
-    if args.apply and args.image != previous:
-        apply(accounts, args.image, previous, original, {compose_path: candidate_compose, lock_path: candidate_lock}, environment, before, current, hashlib.sha256(env).hexdigest())
+    no_change = args.image == previous and args.app_image == app_previous
+    plan = {'mode': 'APPLY' if args.apply else 'PLAN', 'previous_image': previous, 'requested_image': args.image, 'configuration_change': 'services.frontend.image', 'healthy_services': 9, 'https_checks': checks, 'no_change': no_change}
+    if args.app_image is not None:
+        plan.update(previous_app_image=app_previous, requested_app_image=args.app_image, configuration_change=['services.app.image', 'services.frontend.image'])
+    print(json.dumps(plan), flush=True)
+    if args.apply and not no_change:
+        apply(accounts, args.image, previous, original, {compose_path: candidate_compose, lock_path: candidate_lock}, environment, before, current, hashlib.sha256(env).hexdigest(), args.app_image, app_previous)
 
 
 if __name__ == '__main__':

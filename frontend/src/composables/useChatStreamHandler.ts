@@ -256,6 +256,7 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
   }
 
   const shouldRenderAssistantMessage = (session: ChatMessage) => {
+    if (session.knowledge_qa_error) return true
     if (!session?.isAgentMode) return true
     if (!session.is_completed) return true
     const stream = session.agentEventStream
@@ -294,6 +295,10 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
     ) {
       item.isAgentMode = true
       item.hideContent = true
+      const failure = [...item.agent_steps].reverse().find((step) =>
+        typeof (step as ChatMessage)?.error_code === 'string' && (step as ChatMessage).error_code,
+      ) as ChatMessage | undefined
+      if (failure) item.knowledge_qa_error = failure.error_code
     }
     ensureRagPipelineHistoryStream(item as Parameters<typeof ensureRagPipelineHistoryStream>[0])
     if (item.isRagMode && item.agentEventStream) {
@@ -417,7 +422,7 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
       // half-written answer looks finished.
       if (agentStepsAreTruncated(agentSteps)) answerEvent.truncated = true
       events.push(answerEvent)
-    } else if (isCompleted) {
+    } else if (isCompleted && !agentSteps.some((step) => (step as ChatMessage)?.error_code)) {
       events.push({
         type: 'stop',
         timestamp: Date.now(),
@@ -1021,6 +1026,7 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
         break
       }
       case 'complete': {
+        if (message.knowledge_qa_error) break
         if (dataId) replaySegments.delete(dataId)
         log('[Agent] Complete event received')
         applyFinalArtifactContent(message, (dataPayload as any)?.final_content)
@@ -1088,6 +1094,45 @@ export function useChatStreamHandler(options: UseChatStreamHandlerOptions) {
       session_id: data.session_id,
       assistant_message_id: data.assistant_message_id,
     })
+
+    if (data.response_type === 'error' && (data.data as ChatMessage | undefined)?.stage === 'knowledge_qa_execution') {
+      let message = resolveActiveAssistantMessage(data)
+      if (!message) {
+        message = {
+          id: data.assistant_message_id || currentAssistantMessageId.value || data.id,
+          request_id: data.id,
+          role: 'assistant',
+          content: '',
+        }
+        messagesList.push(message)
+        emitMessageCreated(message)
+      }
+      const code = (data.data as ChatMessage).error_code
+      message.knowledge_qa_error = typeof code === 'string' && code ? code : 'model_request_failed'
+      message.isRagMode = true
+      message.is_completed = true
+      message.thinking = false
+      message.artifactsCollecting = false
+      for (const event of (message.agentEventStream as ChatMessage[] | undefined) || []) {
+        if (event.pending) {
+          event.pending = false
+          event.success = false
+        }
+        if (event.type === 'thinking' || event.type === 'answer') {
+          event.done = true
+          event.thinking = false
+        }
+      }
+      ;(message._pendingToolCalls as Map<string, ChatMessage> | undefined)?.clear()
+      emitMessageUpdated(message, { ...data, is_completed: true })
+      loading.value = false
+      isReplying.value = false
+      fullContent.value = ''
+      currentAssistantMessageId.value = ''
+      if (data.id) replaySegments.delete(String(data.id))
+      scrollToBottom()
+      return
+    }
 
     // Persistence can fail after the entire answer has streamed. Surface the
     // failure separately; the generic error path replaces the answer content.

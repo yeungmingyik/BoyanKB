@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/Tencent/WeKnora/internal/event"
@@ -98,7 +99,9 @@ func (p *PluginChatCompletionStream) OnEvent(ctx context.Context,
 	pipelineInfo(ctx, "Stream", "model_call", map[string]interface{}{
 		"chat_model": chatManage.ChatModelID,
 	})
-	responseChan, err := chatModel.ChatStream(ctx, chatMessages, opt)
+	modelCtx, cancelModel := context.WithCancel(ctx)
+	defer cancelModel()
+	responseChan, err := chatModel.ChatStream(modelCtx, chatMessages, opt)
 	if err != nil {
 		pipelineError(ctx, "Stream", "model_call", map[string]interface{}{
 			"chat_model": chatManage.ChatModelID,
@@ -118,158 +121,142 @@ func (p *PluginChatCompletionStream) OnEvent(ctx context.Context,
 		"session_id": chatManage.SessionID,
 	})
 
-	// Start goroutine to consume channel and emit events directly.
+	// Consume the stream before returning so the caller owns its terminal state.
 	// reasoning_content is routed to EventAgentThought (SSE response_type=thinking)
 	// and plain answer text to EventAgentFinalAnswer, matching the Agent pipeline.
-	// The goroutine monitors ctx.Done() to avoid leaking when the context is cancelled
-	// and the upstream channel is not closed promptly.
-	go func() {
-		answerDecoder := modelContext.StreamDecoder()
-		thinkingDecoder := modelContext.StreamDecoder()
-		thinkingID := fmt.Sprintf("%s-thinking", uuid.New().String()[:8])
-		answerID := fmt.Sprintf("%s-answer", uuid.New().String()[:8])
-		thinkingOpen := false
-		answerCompleted := false
-		answerProduced := false
+	answerDecoder := modelContext.StreamDecoder()
+	thinkingDecoder := modelContext.StreamDecoder()
+	thinkingID := fmt.Sprintf("%s-thinking", uuid.New().String()[:8])
+	answerID := fmt.Sprintf("%s-answer", uuid.New().String()[:8])
+	thinkingOpen := false
+	answerProduced := false
 
-		closeThinking := func() {
-			if !thinkingOpen {
-				return
-			}
-			eventBus.Emit(ctx, types.Event{
+	closeThinking := func() {
+		if !thinkingOpen {
+			return
+		}
+		eventBus.Emit(ctx, types.Event{
+			ID:        thinkingID,
+			Type:      types.EventType(event.EventAgentThought),
+			SessionID: chatManage.SessionID,
+			Data: event.AgentThoughtData{
+				Done: true,
+			},
+		})
+		thinkingOpen = false
+	}
+
+	// flushDecoders drains any handle suffix the stream decoders held back to
+	// bridge references split across provider chunks. Both the normal close
+	// and the cancellation path must call this, otherwise a resource
+	// reference in flight at teardown is silently dropped (and never
+	// persisted, since the assistant message is saved from these events).
+	flushDecoders := func() {
+		thinkingTail := thinkingDecoder.Flush()
+		if thinkingTail != "" {
+			thinkingOpen = true
+			_ = eventBus.Emit(ctx, types.Event{
 				ID:        thinkingID,
 				Type:      types.EventType(event.EventAgentThought),
 				SessionID: chatManage.SessionID,
-				Data: event.AgentThoughtData{
-					Done: true,
-				},
+				Data:      event.AgentThoughtData{Content: thinkingTail},
 			})
-			thinkingOpen = false
 		}
+		answerTail := answerDecoder.Flush()
+		if answerTail != "" {
+			_ = eventBus.Emit(ctx, types.Event{
+				ID:        answerID,
+				Type:      types.EventType(event.EventAgentFinalAnswer),
+				SessionID: chatManage.SessionID,
+				Data:      event.AgentFinalAnswerData{Content: answerTail},
+			})
+		}
+	}
+	defer func() {
+		flushDecoders()
+		closeThinking()
+	}()
 
-		// flushDecoders drains any handle suffix the stream decoders held back to
-		// bridge references split across provider chunks. Both the normal close
-		// and the cancellation path must call this, otherwise a resource
-		// reference in flight at teardown is silently dropped (and never
-		// persisted, since the assistant message is saved from these events).
-		flushDecoders := func() {
-			thinkingTail := thinkingDecoder.Flush()
-			if thinkingTail != "" {
-				_ = eventBus.Emit(ctx, types.Event{
-					ID:        thinkingID,
-					Type:      types.EventType(event.EventAgentThought),
-					SessionID: chatManage.SessionID,
-					Data:      event.AgentThoughtData{Content: thinkingTail},
+	for {
+		select {
+		case <-ctx.Done():
+			pipelineInfo(ctx, "Stream", "context_cancelled", map[string]interface{}{
+				"session_id": chatManage.SessionID,
+			})
+			return ErrModelCall.WithError(ctx.Err())
+
+		case response, ok := <-responseChan:
+			if !ok {
+				pipelineInfo(ctx, "Stream", "channel_close", map[string]interface{}{
+					"session_id": chatManage.SessionID,
 				})
+				if err := ctx.Err(); err != nil {
+					return ErrModelCall.WithError(err)
+				}
+				return ErrModelCall.WithError(io.ErrUnexpectedEOF)
 			}
-			answerTail := answerDecoder.Flush()
-			if answerTail != "" {
-				_ = eventBus.Emit(ctx, types.Event{
+
+			if response.ResponseType == types.ResponseTypeError {
+				pipelineError(ctx, "Stream", "stream_error", map[string]interface{}{
+					"session_id": chatManage.SessionID,
+					"error":      response.Content,
+				})
+				return ErrModelCall.WithError(errors.New(response.Content))
+			}
+
+			if response.ResponseType == types.ResponseTypeThinking {
+				response.Content = thinkingDecoder.Feed(response.Content)
+				if response.Done {
+					response.Content += thinkingDecoder.Flush()
+				}
+				if response.Content != "" {
+					thinkingOpen = true
+					eventBus.Emit(ctx, types.Event{
+						ID:        thinkingID,
+						Type:      types.EventType(event.EventAgentThought),
+						SessionID: chatManage.SessionID,
+						Data: event.AgentThoughtData{
+							Content: response.Content,
+							Done:    false,
+						},
+					})
+				}
+				if response.Done {
+					closeThinking()
+				}
+				continue
+			}
+
+			if response.ResponseType == types.ResponseTypeAnswer {
+				response.Content = answerDecoder.Feed(response.Content)
+				if response.Done {
+					response.Content += answerDecoder.Flush()
+					flushDecoders()
+				}
+				if strings.TrimSpace(response.Content) != "" {
+					answerProduced = true
+				}
+				truncated := response.Done && IsLengthFinishReason(response.FinishReason)
+				if truncated && !answerProduced {
+					response.Content = EmptyTruncatedAnswerFallback
+					answerProduced = true
+				}
+				closeThinking()
+				eventBus.Emit(ctx, types.Event{
 					ID:        answerID,
 					Type:      types.EventType(event.EventAgentFinalAnswer),
 					SessionID: chatManage.SessionID,
-					Data:      event.AgentFinalAnswerData{Content: answerTail},
+					Data: event.AgentFinalAnswerData{
+						Content:   response.Content,
+						Done:      response.Done,
+						Truncated: truncated,
+					},
 				})
-			}
-		}
-
-		for {
-			select {
-			case <-ctx.Done():
-				flushDecoders()
-				closeThinking()
-				pipelineInfo(ctx, "Stream", "context_cancelled", map[string]interface{}{
-					"session_id": chatManage.SessionID,
-				})
-				return
-
-			case response, ok := <-responseChan:
-				if !ok {
-					flushDecoders()
-					closeThinking()
-					pipelineInfo(ctx, "Stream", "channel_close", map[string]interface{}{
-						"session_id": chatManage.SessionID,
-					})
-					return
-				}
-
-				if response.ResponseType == types.ResponseTypeError {
-					pipelineError(ctx, "Stream", "stream_error", map[string]interface{}{
-						"session_id": chatManage.SessionID,
-						"error":      response.Content,
-					})
-					eventBus.Emit(ctx, types.Event{
-						ID:        fmt.Sprintf("%s-error", uuid.New().String()[:8]),
-						Type:      types.EventType(event.EventError),
-						SessionID: chatManage.SessionID,
-						Data: event.ErrorData{
-							Error:     response.Content,
-							Stage:     "chat_completion_stream",
-							SessionID: chatManage.SessionID,
-						},
-					})
-					continue
-				}
-
-				if response.ResponseType == types.ResponseTypeThinking {
-					response.Content = thinkingDecoder.Feed(response.Content)
-					if response.Done {
-						response.Content += thinkingDecoder.Flush()
-					}
-					if response.Content != "" {
-						thinkingOpen = true
-						eventBus.Emit(ctx, types.Event{
-							ID:        thinkingID,
-							Type:      types.EventType(event.EventAgentThought),
-							SessionID: chatManage.SessionID,
-							Data: event.AgentThoughtData{
-								Content: response.Content,
-								Done:    false,
-							},
-						})
-					}
-					if response.Done {
-						closeThinking()
-					}
-					continue
-				}
-
-				if response.ResponseType == types.ResponseTypeAnswer {
-					// Providers can emit a completion once for finish_reason and again
-					// for their EOF sentinel. A final answer is a terminal event for a
-					// single stream, so forwarding a later duplicate would put an answer
-					// after the session's complete event.
-					if answerCompleted {
-						continue
-					}
-					response.Content = answerDecoder.Feed(response.Content)
-					if response.Done {
-						response.Content += answerDecoder.Flush()
-						answerCompleted = true
-					}
-					if strings.TrimSpace(response.Content) != "" {
-						answerProduced = true
-					}
-					truncated := response.Done && IsLengthFinishReason(response.FinishReason)
-					if truncated && !answerProduced {
-						response.Content = EmptyTruncatedAnswerFallback
-						answerProduced = true
-					}
-					closeThinking()
-					eventBus.Emit(ctx, types.Event{
-						ID:        answerID,
-						Type:      types.EventType(event.EventAgentFinalAnswer),
-						SessionID: chatManage.SessionID,
-						Data: event.AgentFinalAnswerData{
-							Content:   response.Content,
-							Done:      response.Done,
-							Truncated: truncated,
-						},
-					})
+				if response.Done {
+					cancelModel()
+					return next()
 				}
 			}
 		}
-	}()
-
-	return next()
+	}
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 
@@ -49,7 +50,7 @@ func TestConsumeFallbackStreamTruncation(t *testing.T) {
 			ch <- types.StreamResponse{ResponseType: types.ResponseTypeAnswer, Done: true, FinishReason: tt.reason}
 			ch <- types.StreamResponse{ResponseType: types.ResponseTypeAnswer, Done: true}
 			close(ch)
-			(&sessionService{}).consumeFallbackStream(context.Background(), cm, ch, modelcontext.NewRegistry(false))
+			require.NoError(t, (&sessionService{}).consumeFallbackStream(context.Background(), cm, ch, modelcontext.NewRegistry(false)))
 			require.Len(t, answers, len(tt.chunks)+1, "ignore reasoning and duplicate EOF")
 			var delivered strings.Builder
 			for i, answer := range answers {
@@ -101,7 +102,7 @@ func TestConsumeFallbackStreamDecodedTerminalContent(t *testing.T) {
 				}
 			}
 			close(ch)
-			(&sessionService{}).consumeFallbackStream(context.Background(), cm, ch, registry)
+			require.NoError(t, (&sessionService{}).consumeFallbackStream(context.Background(), cm, ch, registry))
 			require.NotEmpty(t, answers)
 			last := answers[len(answers)-1]
 			require.True(t, last.Truncated)
@@ -131,11 +132,10 @@ func TestConsumeFallbackStreamPrematureClose(t *testing.T) {
 		ResponseType: types.ResponseTypeAnswer, Content: "partial ", FinishReason: "length",
 	}
 	close(ch)
-	(&sessionService{}).consumeFallbackStream(context.Background(), cm, ch, modelcontext.NewRegistry(false))
-	require.Len(t, answers, 2)
+	err := (&sessionService{}).consumeFallbackStream(context.Background(), cm, ch, modelcontext.NewRegistry(false))
+	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
+	require.Len(t, answers, 1)
 	require.Equal(t, "partial ", answers[0].Content)
 	require.False(t, answers[0].Done)
-	require.Equal(t, event.AgentFinalAnswerData{
-		Content: cm.FallbackResponse, Done: true, IsFallback: true,
-	}, answers[1], "a missing Done marker must keep the existing fixed-fallback behavior")
+	require.Nil(t, cm.ChatResponse)
 }

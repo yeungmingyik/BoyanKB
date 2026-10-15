@@ -1796,6 +1796,8 @@ const finalContent = computed(() => {
     return null;
   }
 
+  if (props.session?.knowledge_qa_error) return null;
+
   // Fallback: if no answer content (e.g. the model ended with only reasoning),
   // use last thinking as final content
   const thinkingEvents = stream.filter((e: any) => e.type === 'thinking' && e.content && e.content.trim());
