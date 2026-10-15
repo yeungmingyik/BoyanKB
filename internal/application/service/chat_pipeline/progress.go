@@ -153,7 +153,7 @@ func EndQueryUnderstandProgress(
 
 	var errMsg string
 	if !success && stageErr != nil && stageErr.Err != nil {
-		errMsg = stageErr.Err.Error()
+		errMsg = "问题理解未能完成"
 	}
 
 	_ = chatManage.EventBus.Emit(ctx, types.Event{
@@ -224,7 +224,7 @@ func EndRetrievalProgress(
 
 	var errMsg string
 	if !success && stageErr != nil && stageErr.Err != nil {
-		errMsg = stageErr.Err.Error()
+		errMsg = "知识检索未能完成"
 	}
 
 	_ = chatManage.EventBus.Emit(ctx, types.Event{

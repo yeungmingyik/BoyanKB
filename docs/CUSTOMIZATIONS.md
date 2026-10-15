@@ -397,7 +397,7 @@
 
 | 文件 | 改动 |
 | --- | --- |
-| `internal/application/service/chat_pipeline/{chat_completion_stream,query_understand}.go` 及测试 | 流同步返回故障、正常结束释放连接；同主模型改写 429／5xx 立即结束 |
+| `internal/application/service/chat_pipeline/{chat_completion_stream,query_understand,progress}.go` 及测试 | 流同步返回故障、正常结束释放连接；同主模型改写 429／5xx 立即结束；步骤错误不回传供应商原文 |
 | `internal/application/service/session_knowledge_qa.go` 及 fallback 测试 | 模型兜底同样遵守同步终止、取消、异常 EOF 契约 |
 | `internal/handler/session/{qa,quick_answer_failure,agent_stream_handler,stream,helpers}.go` 及测试 | 快速问答 120 秒总期限；统一持久化失败、脱敏提示、SSE 结束；避免失败／停止触发问答索引与推荐 |
 | `internal/types/agent.go` | 既有 AgentStep JSON 增加可选 error_code／error_message，不新增 SQL 迁移 |
