@@ -35,7 +35,7 @@ npm run type-check
 npm run build
 ```
 
-局部 UI 修复没有运行完整服务端部署、Neo4j 集成、模型抽取或 Docker 镜像集成测试；浏览器证据不能称为完整端到端验收。官方 CI 需在提交 PR 后运行。
+首次提交时没有运行完整服务端部署、Neo4j 集成、模型抽取或 Docker 镜像集成测试；后续 Docker 验证见本文 2026-10-16 完整 CI 记录。浏览器证据不能称为完整端到端验收。官方 CI 需在提交 PR 后运行。
 
 ## 提交前交付物
 
@@ -106,6 +106,62 @@ GitHub 报告 `CONFLICTING`，唯一冲突文件为 `frontend/src/views/knowledg
 提交后复核：[新一轮 Frontend 工作流](https://github.com/Tencent/WeKnora/actions/runs/38858816921) 为 `action_required`、任务列表为空，页面明确显示等待维护者批准运行；不是已执行的测试失败。腾讯扫描仍在运行。本机验证已完成，不代替维护者审批或绕过官方检查。
 
 随后按用户明确授权发布了 [PR 说明留言](https://github.com/Tencent/WeKnora/pull/4172#issuecomment-6209268990)，并回读核对作者、正文和链接。留言前再次确认远端仍为 `0987db68d`、无合并冲突、腾讯扫描已成功；Frontend 仍待维护者批准。按用户要求，留言已缩短为普通叙述：冲突已解决并保留新版卡片，加载或失败不再误报未启用，失败可重试，本地组件测试、类型检查与构建通过。详细验证范围继续保留在 PR 正文和本文。
+
+## 2026-10-16 完整 Frontend CI 本地复现
+
+按用户要求，针对贡献提交 `0987db68d8a8d6d7bb3a496e7e2d53c8cb9c9494` 复现 `.github/workflows/frontend.yml` 的两个 job。使用 `git -c core.autocrlf=false archive` 导出提交中的文件到隔离 Linux 目录，排除 Windows 换行、未跟踪文件、真实环境文件及旧构建产物。
+
+`verify` 使用 Linux Node 24，按顺序运行：
+
+```bash
+cd frontend
+npm ci --no-audit --no-fund
+npm test
+npm run type-check
+npm run build
+```
+
+`docker-image` 使用该提交原样的 `frontend/Dockerfile` 和固定摘要的基础镜像，在仓库快照根目录运行：
+
+```bash
+docker build -f frontend/Dockerfile \
+  --build-arg VITE_FRONTEND_COMMIT=0987db6 \
+  -t weknora-ui:pr4172-0987db6-ci frontend/
+python3 scripts/test_embed_nginx.py weknora-ui:pr4172-0987db6-ci
+```
+
+代理路由检查包括嵌入页 GET/HEAD、CSP 和 no-store、拒绝访问与后端异常、API 公网端口保留、MCP 请求方法／会话头／认证失败以及 SSE。测试容器只发布回环端口；脚本结束时仅清理自己创建的临时容器。环境、完整日志和提交对应关系保存在本机忽略目录 `temp/upstream-graph-full-ci/`。本地执行不替代 GitHub 对外部贡献工作流的维护者审批。
+
+本机环境为 WSL2 Ubuntu 26.04 / Linux x86_64、Node 24.20.0、npm 11.19.0、Docker 29.1.3、BuildKit 0.26.2。使用临时 Node 与 Buildx 路径，没有修改全局 Git／npm／Docker 配置。两个 job 的命令保持官方流程，受本机内存限制，独立前端构建与 Docker 内的 Vite 构建错开执行。这个环境不是 GitHub 托管 runner，不能把本地结果写成官方 Actions 已通过。
+
+复现时发现两项本机环境问题，均保留原始日志：
+
+- 第一轮 Docker 快照含 CRLF（910 个文件仅换行不同、28 个文件完全一致）。该轮虽然构建和代理检查通过，不作为最终验收记录；重新用 `core.autocrlf=false` 导出后，按 Git blob 核验再重跑。独立前端测试快照的 5,084 个文件从一开始就全部匹配 Git blob。
+- 独立 `npm run build` 首轮在默认约 2 GB 的 V8 堆上限处内存耗尽（exit 134）。重跑命令为 `NODE_OPTIONS=--max-old-space-size=4096 npm run build`，只影响这次构建进程；不修改源码、锁文件或官方 workflow。采样的默认 heap limit 为 2,240 MB，调整后为 4,288 MB，本机总内存约 7,798 MB。官方 Dockerfile 本身已有相同的 4 GB 构建堆配置。此处不能描述为默认本机环境一次通过。
+- 运行期间 `/tmp` 下的隔离目录消失，原因未确定；日志和源归档已保留在 D 盘。重新在 `/var/tmp` 恢复相同源码与固定运行时，重新安装依赖后核验源码仍匹配 Git blob，之后继续构建。已通过的测试和类型检查结果来自原快照，最终构建来自同提交的恢复快照。
+
+最终结果如下，全部对应贡献提交 `0987db68d`：
+
+| 检查 | 结果 | 成功执行耗时 |
+| --- | --- | ---: |
+| `npm ci --no-audit --no-fund` | exit 0 | 147.096 秒 |
+| `npm test` | 1,697 通过、1 跳过、0 失败、0 取消 | 293.710 秒 |
+| `npm run type-check` | exit 0 | 207.735 秒 |
+| `npm run build`（进程级 4 GB 堆） | exit 0，6,780 modules | 213.581 秒 |
+| 原 Dockerfile，最终 LF 快照构建 | exit 0 | 320 秒 |
+| 原 embed/MCP 代理检查 | exit 0 | 6 秒 |
+
+唯一跳过为上游 `BrowserTaskPreview.browser.test.mjs` 的 human-handoff 浏览器测试；它需要 `BROWSERSKILL_TEST_CHROMIUM` 和 `BROWSERSKILL_TEST_PLAYWRIGHT`，官方 workflow 未设置这两个可选变量。本任务没有增加 skip 或删除断言。成功命令耗时不包括首次失败、恢复依赖和错峰等待，不能据此声称在同一默认环境中一次完成了有时限的 GitHub job。
+
+最终 Docker 镜像为 `weknora-ui:pr4172-0987db6-ci`（linux/amd64），digest 为 `sha256:c0cbad20276c7bfb924f96d4255be63c212832d97a8b8f8b776cccaddb8c7a27`。未发布镜像；前端 5,084 个源文件以及 Docker 938 个源文件均完成 Git blob 比对，构建后无源文件变化。现有 chunk-size 警告没有导致构建失败。
+
+证据入口为 `temp/upstream-graph-full-ci/frontend/20261016-142754/summary.json` 和 `temp/upstream-graph-full-ci/docker/summary.json`；前者包含首轮 OOM、恢复安装及构建重试的分开记录，后者仅以最终 LF 轮作为成功依据，并保留早期环境问题日志。独立只读复核检查了命令、日志、归档和公开 diff，未发现阻塞项。
+
+额外执行的 `npm audit --json` 不在官方 CI 流程中，退出 1，报告 14 个依赖包的告警（1 critical、8 high、3 moderate、2 low），不是 14 个独立可利用漏洞。其中 critical 是开发依赖链 `npm-run-all2 → shell-quote@1.10.0`；high 包括直接依赖 axios 和 vue 等。审计级别来自 npm，未做可利用性验证，不能据此声称这些告警全部影响线上或全部无害。`frontend/package.json` 和锁文件与上游 `2fbfb447` 完全一致，本 PR 未引入或修改这些依赖；没有执行 `npm audit fix` 或将无关依赖升级混入 UI 修复。需要另行评估依赖升级，完整记录为 `frontend/20261016-142754/audit.json` 和 `audit-summary.json`。
+
+2026-10-16 15:01（北京时间），全部本地检查完成后更新了 [PR #4172](https://github.com/Tencent/WeKnora/pull/4172) 的 Testing／Checklist，并编辑原有 [留言](https://github.com/Tencent/WeKnora/pull/4172#issuecomment-6209268990)，没有新增重复留言。正文保留官方模板，说明构建内存调整、额外 audit 结果及验证边界。已回读核对正文、留言与本机草稿一致，记录为 `temp/upstream-graph-full-ci/pr-update-verification.json`。本轮无需修补 PR 源码，没有创建空提交或再次 push；公开差异仍为八个文件，不含本文、企业配置或品牌定制。
+
+复核时远端 head/base 未变，`mergeable=MERGEABLE`，腾讯扫描成功；Frontend 工作流 `38858816921` 仍为 `action_required`、jobs 为空，需维护者批准。已按前文 `gh pr view`／`gh run view` 命令核查，不能将本地通过写成官方 Actions 已通过。
 
 ## 审阅入口
 
