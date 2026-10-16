@@ -105,7 +105,7 @@ GitHub 报告 `CONFLICTING`，唯一冲突文件为 `frontend/src/views/knowledg
 
 提交后复核：[新一轮 Frontend 工作流](https://github.com/Tencent/WeKnora/actions/runs/38858816921) 为 `action_required`、任务列表为空，页面明确显示等待维护者批准运行；不是已执行的测试失败。腾讯扫描仍在运行。本机验证已完成，不代替维护者审批或绕过官方检查。
 
-随后按用户明确授权发布了 [PR 说明留言](https://github.com/Tencent/WeKnora/pull/4172#issuecomment-6209268990)，并回读核对作者、正文和链接。留言前再次确认远端仍为 `0987db68d`、无合并冲突、腾讯扫描已成功；Frontend 仍待维护者批准。留言列明 38 项组件、12 个隔离浏览器场景、类型检查、构建及差异检查通过，同时注明本轮没有重跑全套 Linux/Docker 检查，不承诺“100% 无缺陷”。
+随后按用户明确授权发布了 [PR 说明留言](https://github.com/Tencent/WeKnora/pull/4172#issuecomment-6209268990)，并回读核对作者、正文和链接。留言前再次确认远端仍为 `0987db68d`、无合并冲突、腾讯扫描已成功；Frontend 仍待维护者批准。按用户要求，留言已缩短为普通叙述：冲突已解决并保留新版卡片，加载或失败不再误报未启用，失败可重试，本地组件测试、类型检查与构建通过。详细验证范围继续保留在 PR 正文和本文。
 
 ## 审阅入口
 
