@@ -3,6 +3,7 @@
 package anydoc
 
 import (
+	"errors"
 	"fmt"
 	"mime"
 	"strings"
@@ -27,31 +28,46 @@ func backendConvert(data []byte, opts Options) (*Result, error) {
 	}
 
 	if !opts.WithAssets {
-		markdown, err := upstream.ToMarkdownBytes(data, format)
-		if err != nil {
-			return nil, fmt.Errorf("anydoc: markdown conversion failed: %w", err)
-		}
-		return &Result{Markdown: markdown}, nil
+		return markdownResult(data, format, nil)
 	}
 
 	// Official GFM serializer after rewriting Asset images to External URLs
 	// (`images/image-N.ext`). ToDocument still supplies the image bytes.
 	document, err := upstream.ToDocument(data, format)
 	if err != nil {
-		markdown, mdErr := upstream.ToMarkdownBytes(data, format)
-		if mdErr != nil {
-			return nil, fmt.Errorf("anydoc: markdown conversion failed: %w", mdErr)
-		}
-		return &Result{
-			Markdown:    markdown,
-			AssetsError: fmt.Errorf("anydoc: image extraction failed: %w", err),
-		}, nil
+		return markdownResult(data, format, err)
 	}
 	markdown, err := upstream.ToMarkdownWithAssetLinks(data, format)
 	if err != nil {
 		return nil, fmt.Errorf("anydoc: markdown conversion failed: %w", err)
 	}
 	return &Result{Markdown: markdown, Assets: collectAssets(document)}, nil
+}
+
+func markdownResult(data []byte, format *upstream.Format, assetsErr error) (*Result, error) {
+	// The Rust Markdown serializer also materializes embedded media. Only fall
+	// back when that specific budget blocked an otherwise readable PPTX.
+	if !pptxAssetLimit(format, assetsErr) {
+		markdown, err := upstream.ToMarkdownBytes(data, format)
+		if err == nil {
+			return &Result{Markdown: markdown, AssetsError: assetsErr}, nil
+		}
+		if !pptxAssetLimit(format, err) {
+			return nil, fmt.Errorf("anydoc: markdown conversion failed: %w", err)
+		}
+		assetsErr = err
+	}
+	text, err := pptxText(data)
+	if err != nil {
+		return nil, fmt.Errorf("anydoc: %w (PPTX text extraction: %v)", assetsErr, err)
+	}
+	return &Result{Markdown: text, AssetsError: assetsErr}, nil
+}
+
+func pptxAssetLimit(format *upstream.Format, err error) bool {
+	var cause *upstream.ConvertError
+	return format != nil && *format == upstream.FormatPptx && errors.As(err, &cause) &&
+		cause.Kind == "resource_limit" && strings.HasPrefix(cause.Detail, "resource limit exceeded (max_asset_total_bytes):")
 }
 
 // upstreamFormat maps our format name onto the binding's constant. An empty

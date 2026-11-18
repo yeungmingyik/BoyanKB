@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	upstream "github.com/firecrawl/anydoc/go"
 )
 
 // These tests exercise the linked Rust converter, so they only build with the
@@ -31,6 +33,31 @@ func TestSupportedFileTypesMatchTheConverter(t *testing.T) {
 		if _, err := upstreamFormat(format); err != nil {
 			t.Errorf("%q maps to format %q, which the converter rejects: %v", fileType, format, err)
 		}
+	}
+}
+
+func TestPPTXAssetLimitIsSpecific(t *testing.T) {
+	const detail = "resource limit exceeded (max_asset_total_bytes): embedded assets exceed the retained-bytes cap"
+	for _, tc := range []struct {
+		format       upstream.Format
+		kind, detail string
+		want         bool
+	}{
+		{upstream.FormatPptx, "resource_limit", detail, true},
+		{upstream.FormatDocx, "resource_limit", detail, false},
+		{upstream.FormatPptx, "malformed", detail, false},
+		{upstream.FormatPptx, "resource_limit", "resource limit exceeded (max_part_bytes): XML exceeds budget", false},
+	} {
+		cause := &upstream.ConvertError{Kind: tc.kind, Detail: tc.detail}
+		if pptxAssetLimit(&tc.format, fmt.Errorf("conversion: %w", cause)) != tc.want {
+			t.Fatalf("unexpected match for %s, %s, %s", tc.format, tc.kind, tc.detail)
+		}
+	}
+	format := upstream.FormatPptx
+	cause := &upstream.ConvertError{Kind: "resource_limit", Detail: detail}
+	result, err := markdownResult(pptxArchive(t, textOnlyFixture()), &format, cause)
+	if err != nil || result.AssetsError != cause || len(result.Assets) != 0 || !strings.Contains(result.Markdown, "spoken words") {
+		t.Fatalf("asset cap fallback failed: %+v, %v", result, err)
 	}
 }
 
