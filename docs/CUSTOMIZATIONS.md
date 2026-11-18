@@ -414,3 +414,11 @@
 ## 2026-11-18 企业资料与快速问答
 
 `scripts/tencent-feishu-spaces.py` 将指定的飞书 Wiki 空间逐一预检、绑定同一总部知识库并核对导入结果。`branding/prompt_templates/system_prompt.yaml` 和 `fallback.yaml` 为快速问答补充证据不全时的条件推理、公司事实边界和负责人确认提示。升级时检查单空间保护、三个来源的增量游标、模板占位符和线上智能体的独立配置，并复跑有依据、部分有依据与无依据三类问题。同步命令、读写范围、现网回读、备份以及资料缺口见[三空间知识与问答核验](22-feishu-knowledge-review.md)。
+
+### 飞书原生幻灯片和上传的 PowerPoint
+
+| 文件 | 改动原因和升级核验 |
+| --- | --- |
+| `internal/datasource/connector/feishu/core/{client,slides}.go`、`wiki/{connector,slides}.go` 及同目录测试 | v0.8.2 跳过原生演示文稿。对已选 Wiki 空间中的原始节点校验阅读与导出权限，调用飞书只读接口，按幻灯片页序同步可选文字。升级时核对 Wiki 来源、存量游标首次补入、新增修改、权限拒绝、无可选文字和源删保留。 |
+| `internal/infrastructure/docparser/anydoc/{backend_cgo,pptx_text}.go` 及同目录测试 | 含大量媒体的 PPTX 可能因嵌入资源总量超限而失去可检索的文字。在指定限额错误下从 OOXML 提取文字并保留页序。升级时复跑正常演示稿、超限、无可选文字和损坏文件的用例。 |
+| `scripts/tencent-feishu-spaces.py`、`scripts/test_tencent_feishu_spaces.py` | 对账逐项核对来源节点类型、权限和云端解析结果。遇到其他不支持的格式时列出节点，同一空间的受支持文档可以继续处理。 |

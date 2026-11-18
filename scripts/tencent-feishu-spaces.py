@@ -35,21 +35,26 @@ def inspect_space(wiki, client, space):
     info = client.request("/open-apis/wiki/v2/spaces/" + space)["data"]["space"]
     if info.get("space_id") != space or not info.get("name"):
         raise ValueError("unverified_space_metadata")
+    unsupported = {}
     for token, item in nodes.items():
         kind = item["object_type"]
-        if kind not in wiki.SUPPORTED_TYPES:
-            raise ValueError("unsupported_node_type:" + kind)
+        if kind != "slides" and kind not in wiki.SUPPORTED_TYPES:
+            # The native connector skips this object but still visits its children.
+            unsupported[token] = kind
+            continue
         row = client.request("/open-apis/wiki/v2/spaces/get_node?token=" + token)["data"]["node"]
         if (row.get("node_token"), row.get("space_id"), row.get("obj_type"), row.get("node_type")) != (token, space, kind, "origin") or row.get("origin_space_id") not in (None, "", space):
             raise ValueError("node_scope_or_type_changed")
         object_id = wiki.identifier(row.get("obj_token"))
-        for action in ("view", "download" if kind == "file" else "export"):
+        # The permission API accepts "export" for files too. The actual
+        # Drive download is authorized again by Feishu during synchronization.
+        for action in ("view", "export"):
             query = urllib.parse.urlencode({"type": kind, "action": action})
             data = client.request("/open-apis/drive/v1/permissions/" + object_id + "/members/auth?" + query)["data"]
             if data.get("auth_result") is not True:
                 raise ValueError(action + "_denied:" + token)
             time.sleep(0.7)  # Keep per-document permission requests below the API quota.
-    return {"name": info["name"], "nodes": sorted(nodes)}
+    return {"name": info["name"], "nodes": sorted(nodes.keys() - unsupported.keys()), "unsupported": unsupported}
 
 
 def remote(plan):
@@ -66,6 +71,12 @@ def remote(plan):
     base = "/api/v1/datasource"
     fail = False
     for space, inventory in plan["spaces"].items():
+        unsupported = inventory["unsupported"]
+        if unsupported:
+            print(json.dumps({"space": space, "unsupported_nodes": unsupported}), flush=True)
+            fail = True
+        if not inventory["nodes"]:
+            continue
         sources = client.request("GET", base + "?kb_id=" + ops.KB)
         sources = [s for s in sources if s["type"] == "feishu" and (
             space in [r.split(":", 1)[0] for r in s["config"]["resource_ids"]]
@@ -77,6 +88,7 @@ def remote(plan):
             raise ValueError("original_source_missing_or_replaced")
         if source is None and not plan["apply"]:
             print(json.dumps({"space": space, "status": "would_create", "nodes": len(inventory["nodes"])}), flush=True)
+            fail = True
             continue
         if source is None:
             payload = {"name": inventory["name"], "type": "feishu", "knowledge_base_id": ops.KB,
@@ -113,22 +125,27 @@ def remote(plan):
             missing = sorted(expected - primary)
             retained = sorted({ext.split("#", 1)[0] for ext in ids} - expected)
             pending = sum(r["status"] != "completed" for r in rows)
+            parse_errors = sorted(r["ext"] for r in rows if r["status"] in ("failed", "cancelled"))
             verified = not missing and not pending and not retained and latest.get("status") == "success"
             if verified:
                 source = client.request("GET", endpoint)
                 verified = source["status"] == "active"
-            if verified or not plan["apply"] or space == FIRST or time.monotonic() >= deadline:
+            needs_reparse = not missing and parse_errors and latest.get("status") == "success"
+            if verified or needs_reparse or not plan["apply"] or space == FIRST or time.monotonic() >= deadline:
                 break
-            if not triggered and (missing or not logs) and latest.get("status") != "running":
+            retryable_log = latest.get("status") in ("failed", "partial", "canceled")
+            needs_sync = missing or not logs or source["status"] == "error" or retryable_log
+            if not triggered and needs_sync and latest.get("status") != "running":
                 latest = client.request("POST", endpoint + "/sync")
                 triggered = True
-            elif latest.get("status") in ("failed", "partial", "cancelled"):
+            elif retryable_log:
                 break
             time.sleep(5)
             latest = (client.request("GET", endpoint + "/logs?limit=1") or [{}])[0]
         print(json.dumps({"space": space, "id": source["id"], "source_status": source["status"],
                           "sync": latest.get("status"), "expected": len(expected), "documents": len(primary),
-                          "missing": missing, "retained": retained, "incomplete_rows": pending, "verified": verified}), flush=True)
+                          "missing": missing, "retained": retained, "incomplete_rows": pending, "parse_errors": parse_errors,
+                          "supported_verified": verified, "verified": verified and not unsupported}), flush=True)
         fail |= not verified
     return int(fail)
 
