@@ -40,6 +40,8 @@ python -B scripts/tencent-feishu-spaces.py --credentials-root D:/BoyanKB/WeKnora
 | 03 线上引流素材 | 4 | 4 | 4 |
 | 合计 | 43 | 42 | 41 |
 
+北京时间 10:30 的三条云端定时任务均已成功结束。各来源为 `active`，逐项对账仅两份演示稿尚待处理。用户已同意在真实原稿可读、云端镜像预检通过后切换生产镜像。
+
 《博研.pptx》是上传的 241,363,491 字节原件。直接核对 OOXML，13 页均含可提取文字，共 1,545 字，11 页含图片，没有演讲备注。第 3 页记载公司自述成立于 2021 年并与广东乐博士教育装备有限公司开展战略合作，可以按该页来源回答成立年份。注册登记的完整日期仍需工商资料。《招商 PPT》是另一个原生 Slides 节点，应当分开验证。云端第一次解析上传件时触发 AnyDoc 的嵌入资源上限，资料源显示同步成功并不代表文件已可检索。[上传的 PowerPoint](https://leboshiedu.feishu.cn/wiki/OGsbwZx7cijS4ekFzdMc2HqUnBe) · [原生演示文稿](https://leboshiedu.feishu.cn/wiki/NML4w5Gj1i3lAWkPKXtcF0cLnQg)
 
 ### 两种演示稿的同步与验收
@@ -48,14 +50,28 @@ python -B scripts/tencent-feishu-spaces.py --credentials-root D:/BoyanKB/WeKnora
 
 旧版本给跳过的原生幻灯片也保存了更新时间。新版本能识别旧格式的游标，首次增量就会补抓这份原稿。后续更新按照飞书内容更新时间重新抓取，以原始 Wiki 节点识别同一份稿件。当前三个来源的删除策略均为源删本地保留。曾经已入库的资料如需撤回披露，请另行检查并处理本地副本。
 
-上传的《博研.pptx》仍按原文件同步。解析器遇到嵌入媒体累计超限时，按 PowerPoint 原稿关系读取各页文字与演讲备注。默认解析和链接实际 Rust 库的测试均已通过。用原文件的 XML 部件验证了全部 13 页，公司成立年份及合作方名称均能提取。飞书原生稿的用例另覆盖首次补抓、无变化跳过、编辑后再抓取、授权拒绝、来源链接和空正文。两套测试均未改写业务原稿。
+上传的《博研.pptx》仍按原文件同步。解析器遇到嵌入媒体累计超限时，按 PowerPoint 原稿关系读取各页文字与演讲备注。默认解析和链接实际 Rust 库的测试均已通过。用原文件的 XML 部件验证了全部 13 页，公司成立年份及合作方名称均能提取。飞书原生稿的用例另覆盖首次补抓、无变化跳过、编辑后再抓取、授权拒绝、来源链接和空正文。最终代码 `255cf4a9d` 在生产构建器通过 6 个 Go 包的测试。云端对账和调度辅助脚本共通过 13 个 Python 测试。两套原稿均未因这些测试被改写。
 
 生产验收分三步。先对账 18、21、4 个节点和每个文档的解析状态，再以普通成员检索《博研.pptx》第 3 页的公司成立年份和战略合作方，最后任选原生《招商 PPT》一页的独有短句，核对返回的原文、页码和飞书链接。修改后的真正增量验收需要资料负责人一次正常编辑，记录 Wiki 节点与修订前后的正文，等待云端下一轮同步，核查同一节点只有一个有效条目且新句可检索。请勿为验收直接改写正式招商文稿。
 
 授予新 API 权限前实测，节点阅读与导出均允许，读取原稿正文仍返回飞书 `99991672`。若来源显示 `error`，调度器会跳过它。排除权限故障后，从本分支执行下面的命令触发该来源的一次增量并核对节点，成功后检查它已回到 `active`。若文件已同步但异步解析失败，进入知识库对该文件执行「重新解析」，再验证分块与检索。
 
+要单独核验授权，可在飞书 API 调试台选该应用的 `tenant_access_token` 身份，先调用 `GET /open-apis/wiki/v2/spaces/get_node?token=NML4w5Gj1i3lAWkPKXtcF0cLnQg`，确认空间为 7610738738074766275、类型为 `slides`。将返回的 `obj_token` 用于 `GET /open-apis/slides_ai/v1/xml_presentations/{obj_token}`，检查 `code=0`、`data.xml_presentation.presentation_id` 与对象匹配、`content` 有实际页面文字。这一步只需查看结果，无需把 XML 或令牌复制到日志。
+
 ```powershell
 python -B scripts/tencent-feishu-spaces.py --credentials-root D:/BoyanKB/WeKnora --space 7610738738074766275 --apply
+```
+
+### 云端候选镜像
+
+已将 `255cf4a9d` 构建为 Linux/amd64 镜像并预载到腾讯云服务器。候选镜像继承当前生产镜像的 31 个层，只增加含 `/app/WeKnora` 的一层。增量传输为 84.15 MiB，文件摘要为 `72de2e3af85ce529995e712bdc1da4c6d5ee0675b919219023150813d97ced7c`。云端预检通过，9 个容器健康、HTTPS 检查通过。预载前后 9 个容器 ID 一致。预检时原稿接口仍报 `99991672`，因此候选镜像尚未用于生产服务。
+
+下面是本次在服务器上通过的只读发布预检。用户已授权在原稿可读后，以同一命令追加 `--apply` 执行切换。发布器会备份 Compose 和镜像锁、重启后端及使用现有镜像的前端，并执行服务健康和 HTTPS 检查。若需主动回滚，把 `--app-image` 的值改回 `boyankb/app:v0.8.2-qa-failure-v1@sha256:07eaa5f40986159341486cc780ab0de02c3cf471e5d01bcb45ecf9eda3567f21`，先预检，再执行切换。
+
+```bash
+python3 /opt/boyankb/scripts/tencent-update-frontend.py \
+  --image boyankb/frontend:v0.8.2-qa-failure-v1@sha256:20aab77f8b769ee7e99f18fd81166be3026d6002a055af3944b7637c7cc31607 \
+  --app-image boyankb/app:v0.8.2-feishu-slides-255cf4a9d@sha256:4b8c5e83bf8101ab85abeb8833e14e22d2307679186536744adf9443319b7249
 ```
 
 ## 首次授权前的覆盖度基线
@@ -88,6 +104,8 @@ python -B scripts/tencent-feishu-spaces.py --credentials-root D:/BoyanKB/WeKnora
 另以总部所有者和普通成员分别登录回读，两者均可访问同一知识库，拿到相同的新系统提示和模型兜底提示。三道 DeepSeek 样题与 7 个云端检索问题分开验证，未创建生产测试会话。
 
 ## 上游版本取舍
+
+针对这两份演示稿，已核对 v0.9.0 和 11 月 18 日的 main 快照。两者的 Wiki 连接器均跳过原生 Slides。两者在 PowerPoint 资源提取失败后仍调用同一 Rust 引擎尝试文本转换，第二次也超限时会返回错误。后续升级应在测试环境保留两项定制，以真实两份原稿验收，再决定能否移除。[v0.9.0 支持的飞书类型](https://github.com/Tencent/WeKnora/blob/v0.9.0/internal/datasource/connector/feishu/core/shared.go) · [main 的 Wiki 读取分支](https://github.com/Tencent/WeKnora/blob/7d064bc3a259f87634840199f565ec4dd644ba1e/internal/datasource/connector/feishu/wiki/connector.go) · [main 的 PowerPoint 文本回退](https://github.com/Tencent/WeKnora/blob/7d064bc3a259f87634840199f565ec4dd644ba1e/internal/infrastructure/docparser/anydoc/backend_cgo.go)
 
 11 月 18 日查询时官方最新正式版为 v0.9.0。企业基线是 v0.8.2，至 v0.9.0 相差 601 个提交，main 在正式版之后又有 309 个提交。建议单独开测试分支升级到固定版本 v0.9.0，再评估需要的后续修复。当前版本已有按空间白名单增量同步能力，三空间入库可以先做。[正式发布记录](https://github.com/Tencent/WeKnora/releases/tag/v0.9.0) · [正式版到本次 main 的差异](https://github.com/Tencent/WeKnora/compare/v0.9.0...7d064bc3a259f87634840199f565ec4dd644ba1e)
 
