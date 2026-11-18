@@ -72,7 +72,9 @@ func TestSlidesBackfillsLegacyCursorOnceThenTracksEdits(t *testing.T) {
 		}
 		if step.emits != 0 {
 			item := h.emitted[0]
-			if item.ExternalID != "wiki-node" || item.URL != core.RegionFeishu.WikiURL("wiki-node") ||
+			wantURL := core.RegionFeishu.WikiURL("wiki-node")
+			if item.ExternalID != "wiki-node" || item.URL != wantURL || item.Metadata["source_url"] != wantURL ||
+				!strings.HasSuffix(string(item.Content), "[飞书原稿]("+wantURL+")") ||
 				!strings.Contains(string(item.Content), "示例") || !item.UpdatedAt.Equal(core.ParseFeishuTimestamp(step.edited)) {
 				t.Fatalf("unexpected presentation identity, version or content: %+v", item)
 			}

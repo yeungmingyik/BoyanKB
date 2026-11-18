@@ -380,6 +380,9 @@ func fetchNodeContent(ctx context.Context, client *core.Client, node core.WikiNo
 
 	switch node.ObjType {
 	case "slides":
+		if node.NodeToken == "" || node.NodeToken == "." || node.NodeToken == ".." {
+			return nil, errors.New("missing or invalid presentation wiki node")
+		}
 		xmlContent, err := client.ReadExportableSlides(ctx, node.ObjToken)
 		if err != nil {
 			return nil, err
@@ -388,10 +391,13 @@ func fetchNodeContent(ctx context.Context, client *core.Client, node core.WikiNo
 		if err != nil {
 			return nil, err
 		}
+		sourceURL := region.WikiURL(url.PathEscape(node.NodeToken))
+		baseMeta["source_url"] = sourceURL
+		content += "\n\n[飞书原稿](" + sourceURL + ")"
 		return []*types.FetchedItem{{
 			ExternalID: node.NodeToken, Title: node.Title, Content: []byte(content),
 			ContentType: "text/markdown", FileName: core.SanitizeFileName(node.Title) + ".md",
-			URL: region.WikiURL(node.NodeToken), SourceResourceID: resourceID,
+			URL: sourceURL, SourceResourceID: resourceID,
 			UpdatedAt: editTime, CreatedAt: createTime, Metadata: baseMeta,
 		}}, nil
 	case "docx":
