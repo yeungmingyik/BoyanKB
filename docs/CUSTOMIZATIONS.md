@@ -410,3 +410,7 @@
 | `deployment/tencent/README.md`、`docs/{13-tencent-deployment,21-qa-failure-completion}.md` | 记录联合更新、回滚、故障回归及真实云端验证 |
 
 升级时优先对照上游相同修复，重新执行普通流、模型兜底、503、超时、异常 EOF、正常完成和主动停止的回归，再构建发布。LICENSE、版权、RBAC、模型凭据和数据源范围不变。
+
+## 2026-11-18 企业资料与快速问答
+
+`scripts/tencent-feishu-spaces.py` 将指定的飞书 Wiki 空间逐一预检、绑定同一总部知识库并核对导入结果。`branding/prompt_templates/system_prompt.yaml` 和 `fallback.yaml` 为快速问答补充证据不全时的条件推理、公司事实边界和负责人确认提示。升级时检查单空间保护、三个来源的增量游标、模板占位符和线上智能体的独立配置，并复跑有依据、部分有依据与无依据三类问题。同步命令、读写范围、现网回读、备份以及资料缺口见[三空间知识与问答核验](22-feishu-knowledge-review.md)。
