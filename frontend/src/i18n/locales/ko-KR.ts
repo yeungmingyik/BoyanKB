@@ -3741,6 +3741,13 @@ export default {
       thisYear: '{month}월 {day}일 {time}',
       otherYear: '{year}년 {month}월 {day}일 {time}',
     },
+    quickAnswerError: {
+      title: '답변이 완료되지 않았습니다',
+      modelTimeout: '모델 응답 시간이 초과되어 답변을 중단했습니다. 잠시 후 다시 시도해 주세요.',
+      modelUnavailable: '모델 서비스를 일시적으로 사용할 수 없어 답변을 중단했습니다. 잠시 후 다시 시도하고, 문제가 계속되면 관리자에게 문의해 주세요.',
+      modelStreamInterrupted: '모델 연결이 끊겨 답변이 완료되지 않았습니다. 수신한 내용은 보존됩니다. 잠시 후 다시 시도해 주세요.',
+      modelRequestFailed: '답변을 생성하지 못했습니다. 다시 시도하고, 문제가 계속되면 관리자에게 문의해 주세요.',
+    },
     preparingAnswer: '답변을 준비하고 있습니다…',
     connectingModelAndGeneratingAnswer: '모델에 연결하여 답변을 생성하고 있습니다…',
     modelStillResponding: '모델 응답이 평소보다 오래 걸리고 있습니다. 계속 기다리는 중…',

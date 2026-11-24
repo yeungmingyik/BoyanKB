@@ -196,6 +196,21 @@ docker compose --env-file .env.tencent -f docker-compose.tencent.yml -f docker-c
 python3 -B -m unittest discover -s scripts -p test_tencent_update_frontend.py
 ```
 
+## 同时更新后端与前端
+
+2026-10-15 已发布下列配套版本，九服务健康，实际 HTTPS 知识库问答正常完成；当前上线状态以本节及 [执行记录](../../docs/21-qa-failure-completion.md#云端执行记录) 为准。
+
+快速问答故障结束修复需要配套发布后端和前端。发布脚本新增可选 `--app-image`，仍然默认只预览；两个镜像必须已导入服务器且标签、摘要均通过校验。只允许改变这两个服务的镜像，其他七个容器、端口、环境文件和数据卷保持不变。失败时自动恢复同批次的两份旧镜像及配置。
+
+```bash
+cd /opt/boyankb
+python3 scripts/tencent-update-frontend.py \
+  --image boyankb/frontend:v0.8.2-qa-failure-v1@sha256:20aab77f8b769ee7e99f18fd81166be3026d6002a055af3944b7637c7cc31607 \
+  --app-image boyankb/app:v0.8.2-qa-failure-v1@sha256:07eaa5f40986159341486cc780ab0de02c3cf471e5d01bcb45ecf9eda3567f21
+```
+
+核对预览后，原命令加 `--apply` 执行。不要单独发布页面而遗漏后端的失败持久化与 120 秒期限。回滚也同时指定原后端、前端的固定摘要；具体旧引用、测试和云端结果见 [快速问答异常结束处理](../../docs/21-qa-failure-completion.md)。脚本不修改模型配置、凭据和飞书同步计划。
+
 ## 飞书自动同步与暂停
 
 当前云端是唯一自动同步实例，固定飞书空间 `7610776951925509072`、总部知识库 `d9285ed1-0760-474b-ba82-a13347598176` 和数据源 `c32b43f4-41b3-4060-9820-9371bdafed8b`。配置为每30分钟轮询新增和修改：`active`、`0 */30 * * * *`、`incremental`、`overwrite`。`sync_deletions=false` 保持关闭，源文档删除后本地仍可能检索到旧副本；本次测试文档是另行授权清理。

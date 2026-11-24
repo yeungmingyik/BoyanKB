@@ -938,7 +938,7 @@ const {
     onAfterMsgList: async () => {
         activitySessionId.value = String(session_id.value);
         for (const message of messagesList) {
-            if (message.role === 'assistant' && message.is_completed && message.suggestionSet === undefined) {
+            if (message.role === 'assistant' && message.is_completed && !message.knowledge_qa_error && message.suggestionSet === undefined) {
                 void loadFollowUpSuggestions(message, false);
             }
         }

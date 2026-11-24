@@ -687,9 +687,7 @@ type sseStreamContext struct {
 	// second turn.
 	liveRunFailed bool
 	liveRunErr    error
-	// releaseTurn ends the sandbox turn lease taken before persist. Knowledge
-	// mode releases on completion (the pipeline returns before the stream
-	// finishes); agent mode releases when AgentQA returns.
+	// releaseTurn ends the sandbox turn lease after the QA worker finishes.
 	releaseTurn func()
 }
 
@@ -728,7 +726,13 @@ func (h *Handler) setupSSEStream(reqCtx *qaRequestContext, generateTitle bool, m
 	}
 
 	eventBus := event.NewEventBus()
-	asyncCtx, cancel := context.WithCancel(logger.CloneContext(baseCtx))
+	var asyncCtx context.Context
+	var cancel context.CancelFunc
+	if mode == qaModeNormal {
+		asyncCtx, cancel = context.WithTimeout(logger.CloneContext(baseCtx), quickAnswerTimeout)
+	} else {
+		asyncCtx, cancel = context.WithCancel(logger.CloneContext(baseCtx))
+	}
 
 	streamCtx := &sseStreamContext{
 		eventBus:         eventBus,
@@ -788,8 +792,7 @@ func (h *Handler) setupSSEStream(reqCtx *qaRequestContext, generateTitle bool, m
 	// has already disconnected (e.g. API-Key callers that close the stream
 	// before POSTing /stop). The watcher self-terminates on a terminal stream
 	// event, so its lifetime is decoupled from when the QA service call
-	// returns (KnowledgeQA returns immediately while streaming continues in a
-	// background goroutine, whereas AgentQA blocks until done). Use a
+	// returns. Use a
 	// connection-independent context derived from baseCtx so it survives the
 	// client disconnect.
 	h.startStopWatcher(logger.CloneContext(baseCtx), reqCtx.sessionID, reqCtx.assistantMessage.ID, eventBus)
@@ -1268,10 +1271,9 @@ func (h *Handler) executeQA(reqCtx *qaRequestContext, mode qaMode, generateTitle
 		return
 	}
 
-	// Normal mode: register completion handler on EventAgentFinalAnswer
-	// (Agent mode handles completion in the defer block instead)
+	// Streaming is consumed within the worker; finalize once after it returns.
+	var quickAnswerDone bool
 	if mode == qaModeNormal {
-		var completionHandled bool
 
 		// Persist the pipeline's retrieval/attachment stages so a reloaded
 		// conversation redraws the timeline it showed while streaming, including
@@ -1304,14 +1306,7 @@ func (h *Handler) executeQA(reqCtx *qaRequestContext, mode qaMode, generateTitle
 				markQuickAnswerTruncated(streamCtx.assistantMessage)
 			}
 			if data.Done {
-				if completionHandled {
-					return nil
-				}
-				completionHandled = true
-
-				logger.Infof(streamCtx.asyncCtx, "Knowledge QA service completed for session: %s", sessionID)
-				updateCtx := context.WithValue(streamCtx.asyncCtx, types.TenantIDContextKey, reqCtx.session.TenantID)
-				h.completeQuickAnswerTurn(updateCtx, streamCtx, reqCtx.query, reqCtx.userMessageID)
+				quickAnswerDone = true
 			}
 			return nil
 		})
@@ -1321,8 +1316,10 @@ func (h *Handler) executeQA(reqCtx *qaRequestContext, mode qaMode, generateTitle
 	asyncDone := make(chan struct{})
 	go func() {
 		defer close(asyncDone)
+		var serviceErr error
 		defer func() {
 			if r := recover(); r != nil {
+				serviceErr = fmt.Errorf("QA execution panicked")
 				if streamCtx.releaseTurn != nil {
 					streamCtx.releaseTurn()
 				}
@@ -1386,11 +1383,20 @@ func (h *Handler) executeQA(reqCtx *qaRequestContext, mode qaMode, generateTitle
 				}
 				logger.Infof(streamCtx.asyncCtx, "Agent QA service completed for session: %s", sessionID)
 			}
-			// Knowledge mode normally releases on EventAgentFinalAnswer Done.
-			// If that event never fires, release here so rewind is not blocked
-			// until the Redis turn TTL expires.
-			if mode == qaModeNormal && streamCtx.releaseTurn != nil {
-				streamCtx.releaseTurn()
+			if mode == qaModeNormal {
+				defer streamCtx.cancel()
+				if streamCtx.releaseTurn != nil {
+					defer streamCtx.releaseTurn()
+				}
+				updateCtx := context.WithValue(streamCtx.asyncCtx, types.TenantIDContextKey, reqCtx.session.TenantID)
+				switch {
+				case quickAnswerDone && serviceErr == nil:
+					h.completeQuickAnswerTurn(updateCtx, streamCtx, reqCtx.query, reqCtx.userMessageID)
+				case stderrors.Is(streamCtx.asyncCtx.Err(), context.Canceled):
+					h.completeQuickAnswerTurn(updateCtx, streamCtx, "", "")
+				default:
+					h.failQuickAnswerTurn(updateCtx, streamCtx, serviceErr)
+				}
 			}
 		}()
 
@@ -1404,7 +1410,6 @@ func (h *Handler) executeQA(reqCtx *qaRequestContext, mode qaMode, generateTitle
 		// Build QA request and invoke the appropriate service
 		qaReq := reqCtx.buildQARequest()
 
-		var serviceErr error
 		var stageName string
 		if mode == qaModeNormal {
 			stageName = "knowledge_qa_execution"
@@ -1414,10 +1419,7 @@ func (h *Handler) executeQA(reqCtx *qaRequestContext, mode qaMode, generateTitle
 			serviceErr = h.sessionService.AgentQA(streamCtx.asyncCtx, qaReq, streamCtx.eventBus)
 		}
 
-		if serviceErr != nil {
-			if mode == qaModeNormal && streamCtx.releaseTurn != nil {
-				streamCtx.releaseTurn()
-			}
+		if serviceErr != nil && mode == qaModeAgent {
 			// A user-requested stop cancels asyncCtx, which surfaces here as a
 			// context cancellation. That is an expected outcome, not a failure:
 			// the stop event already notifies the client, so don't emit a
@@ -1891,7 +1893,7 @@ func (h *Handler) completeAssistantMessage(
 	// Asynchronously index the Q&A pair into the chat history knowledge base for vector search.
 	// Use WithoutCancel so the goroutine survives after the HTTP request context is done.
 	bgCtx := context.WithoutCancel(ctx)
-	if indexCtx, ok := h.sessionTenantInfoContext(bgCtx); ok {
+	if indexCtx, ok := h.sessionTenantInfoContext(bgCtx); ok && userQuery != "" {
 		go h.messageService.IndexMessageToKB(
 			indexCtx, userQuery, assistantMessage.Content, assistantMessage.ID, assistantMessage.SessionID)
 	}

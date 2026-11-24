@@ -34,6 +34,18 @@ func TestMain(m *testing.M) {
 // It returns the server and a core.Config pointing at it.
 func fakeFeishu(nodes []core.WikiNode) (*httptest.Server, *core.Config) {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/open-apis/drive/v1/permissions/{id}/members/auth", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"code": 0, "data": map[string]bool{"auth_result": true}})
+	})
+	mux.HandleFunc("/open-apis/slides_ai/v1/xml_presentations/{id}", func(w http.ResponseWriter, r *http.Request) {
+		sml := exampleSlides
+		if r.PathValue("id") == "initially-blank" && nodes[0].ObjEditTime == "100" {
+			sml = blankSlides
+		}
+		writeJSON(w, map[string]any{"code": 0, "data": map[string]any{"xml_presentation": map[string]any{
+			"presentation_id": r.PathValue("id"), "content": sml,
+		}}})
+	})
 
 	// --- auth ---
 	mux.HandleFunc("/open-apis/auth/v3/tenant_access_token/internal", func(w http.ResponseWriter, r *http.Request) {
@@ -725,7 +737,7 @@ func TestFetchAll_FileNode(t *testing.T) {
 	}
 }
 
-func TestFetchAll_SkipsMindnoteAndSlides(t *testing.T) {
+func TestFetchAll_SkipsMindnoteAndReadsSlides(t *testing.T) {
 	nodes := []core.WikiNode{
 		{NodeToken: "nt-mn", ObjToken: "obj-mn", ObjType: "mindnote", Title: "Brain Map"},
 		{NodeToken: "nt-sl", ObjToken: "obj-sl", ObjType: "slides", Title: "Presentation"},
@@ -739,9 +751,8 @@ func TestFetchAll_SkipsMindnoteAndSlides(t *testing.T) {
 		t.Fatalf("FetchAll() error: %v", err)
 	}
 
-	// Both should be core.Skipped (nil returned by fetchNodeContent)
-	if len(items) != 0 {
-		t.Errorf("expected 0 items (mindnote+slides core.Skipped), got %d", len(items))
+	if len(items) != 1 || items[0].ExternalID != "nt-sl" || !strings.Contains(string(items[0].Content), "示例") {
+		t.Errorf("expected indexed slides only, got %+v", items)
 	}
 }
 
@@ -763,9 +774,9 @@ func TestFetchAll_MixedTypes(t *testing.T) {
 		t.Fatalf("FetchAll() error: %v", err)
 	}
 
-	// docx + sheet + file + bitable = 4 items; mindnote + slides = core.Skipped
-	if len(items) != 4 {
-		t.Errorf("expected 4 items, got %d", len(items))
+	// docx + sheet + file + slides + bitable; mindnote is skipped.
+	if len(items) != 5 {
+		t.Errorf("expected 5 items, got %d", len(items))
 		for i, it := range items {
 			t.Logf("  item[%d]: %s (obj_type=%s)", i, it.Title, it.Metadata["obj_type"])
 		}
@@ -794,10 +805,9 @@ func TestFetchAll_LogsSummaryWithSkipBreakdown(t *testing.T) {
 	for _, want := range []string{
 		"stream summary",
 		"discovered=3",
-		"fetched=1",
-		"skipped_unsupported=2",
+		"fetched=2",
+		"skipped_unsupported=1",
 		"mindnote:1",
-		"slides:1",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("summary log missing %q; got:\n%s", want, out)

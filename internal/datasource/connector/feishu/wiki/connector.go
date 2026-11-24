@@ -281,15 +281,18 @@ func (o wikiOps) Token(n core.WikiNode) string   { return n.NodeToken }
 func (o wikiOps) Title(n core.WikiNode) string   { return n.Title }
 func (o wikiOps) ObjType(n core.WikiNode) string { return n.ObjType }
 
-// EditTime is the change-detection timestamp: ObjEditTime (document content)
-// with a NodeEditTime fallback for nodes that lack obj_edit_time. It drives the
-// cursor comparison and, parsed, FetchedItem.UpdatedAt (see contentEditTime),
-// so the persisted source_updated_at tracks content edits, not node moves.
+// EditTime builds the cursor comparison value from the document edit time.
+// contentEditTime independently retains the source timestamp for ingestion.
 func (o wikiOps) EditTime(n core.WikiNode) string {
-	if n.ObjEditTime != "" {
-		return n.ObjEditTime
+	edited := n.ObjEditTime
+	if edited == "" {
+		edited = n.NodeEditTime
 	}
-	return n.NodeEditTime
+	if n.ObjType == "slides" {
+		// Legacy cursors recorded skipped slides using the plain timestamp.
+		return "sml1:" + edited
+	}
+	return edited
 }
 
 func (o wikiOps) Fetch(ctx context.Context, client *core.Client, n core.WikiNode, resourceID string, multimodal bool) ([]*types.FetchedItem, error) {
@@ -357,9 +360,9 @@ func appendWikiNodeListFailureItems(items []types.FetchedItem, spaceID string, r
 //   - doc/sheet/bitable → export API → binary file
 //   - file       → drive download → original file (PDF/Word/image/etc.)
 //   - mindnote   → Skip (no API)
-//   - slides     → Skip (no API)
+//   - slides     → visible text in page order (Feishu SML)
 func fetchNodeContent(ctx context.Context, client *core.Client, node core.WikiNode, spaceID string, resourceID string, multimodalEnabled bool, region core.Region) ([]*types.FetchedItem, error) {
-	if !core.IsSupportedDocType(node.ObjType) {
+	if node.ObjType != "slides" && !core.IsSupportedDocType(node.ObjType) {
 		return nil, nil
 	}
 
@@ -376,6 +379,33 @@ func fetchNodeContent(ctx context.Context, client *core.Client, node core.WikiNo
 	}
 
 	switch node.ObjType {
+	case "slides":
+		if node.NodeToken == "" || node.NodeToken == "." || node.NodeToken == ".." {
+			return nil, errors.New("missing or invalid presentation wiki node")
+		}
+		xmlContent, err := client.ReadExportableSlides(ctx, node.ObjToken)
+		if err != nil {
+			return nil, err
+		}
+		content, err := slidesMarkdown(xmlContent)
+		if err != nil {
+			return nil, err
+		}
+		sourceURL := region.WikiURL(url.PathEscape(node.NodeToken))
+		baseMeta["source_url"] = sourceURL
+		if content == "" {
+			// Keep the source link and version so clearing a previously populated
+			// presentation also replaces any stale text in the index.
+			baseMeta["source_empty"] = "true"
+			content = "飞书原稿为空白幻灯片。"
+		}
+		content += "\n\n[飞书原稿](" + sourceURL + ")"
+		return []*types.FetchedItem{{
+			ExternalID: node.NodeToken, Title: node.Title, Content: []byte(content),
+			ContentType: "text/markdown", FileName: core.SanitizeFileName(node.Title) + ".md",
+			URL: sourceURL, SourceResourceID: resourceID,
+			UpdatedAt: editTime, CreatedAt: createTime, Metadata: baseMeta,
+		}}, nil
 	case "docx":
 		return core.FetchDocxWithBlocks(ctx, client, core.DocxFetchInput{
 			DocToken:          node.NodeToken,
@@ -556,7 +586,7 @@ func (s *strictWikiScope) validateNode(node core.WikiNode) error {
 	if node.NodeToken == "" {
 		return errors.New("wiki node has an empty node_token")
 	}
-	if core.IsSupportedDocType(node.ObjType) && node.ObjToken == "" {
+	if (node.ObjType == "slides" || core.IsSupportedDocType(node.ObjType)) && node.ObjToken == "" {
 		return fmt.Errorf("wiki node %s has an empty obj_token", node.NodeToken)
 	}
 	return nil

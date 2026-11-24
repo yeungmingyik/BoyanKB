@@ -2,6 +2,7 @@ package chatpipeline
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -10,6 +11,29 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestProgressFailureDoesNotExposeProviderResponse(t *testing.T) {
+	for _, retrieval := range []bool{false, true} {
+		bus := &recordingEventBus{}
+		cm := &types.ChatManage{
+			PipelineRequest: types.PipelineRequest{EnableRewrite: true},
+			PipelineContext: types.PipelineContext{EventBus: bus},
+		}
+		failure := ErrModelCall.WithError(errors.New("private provider response and endpoint"))
+		if retrieval {
+			progress := BeginRetrievalProgress(context.Background(), cm)
+			EndRetrievalProgress(context.Background(), cm, progress, time.Now(), failure)
+		} else {
+			progress := BeginQueryUnderstandProgress(context.Background(), cm)
+			EndQueryUnderstandProgress(context.Background(), cm, progress, time.Now(), failure)
+		}
+		require.Len(t, bus.events, 2)
+		result := bus.events[1].Data.(event.AgentToolResultData)
+		require.False(t, result.Success)
+		require.NotEmpty(t, result.Error)
+		require.NotContains(t, result.Error, "private")
+	}
+}
 
 type recordingEventBus struct {
 	events []types.Event

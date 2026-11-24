@@ -140,7 +140,7 @@ func (h *Handler) ContinueStream(c *gin.Context) {
 	// Check if stream is already completed
 	streamCompleted := false
 	for _, evt := range events {
-		if evt.Type == "complete" {
+		if evt.Type == "complete" || isTerminalQuickAnswerError(evt) {
 			streamCompleted = true
 			break
 		}
@@ -184,7 +184,7 @@ func (h *Handler) ContinueStream(c *gin.Context) {
 			streamCompletedNow := false
 			for _, evt := range newEvents {
 				// Check for completion event
-				if evt.Type == "complete" {
+				if evt.Type == "complete" || isTerminalQuickAnswerError(evt) {
 					streamCompletedNow = true
 				}
 
@@ -404,6 +404,10 @@ func (h *Handler) handleAgentEventsForSSE(
 				// Check for completion event
 				if evt.Type == "complete" {
 					streamCompleted = true
+				}
+				if isTerminalQuickAnswerError(evt) {
+					streamCompleted = true
+					waitForTitle = false
 				}
 
 				// Check for title event

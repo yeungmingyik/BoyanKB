@@ -4,6 +4,9 @@
          readers miss a live region that appears together with its own text. -->
     <div class="sr-only" role="status" aria-live="polite">{{ liveStatusText }}</div>
 
+    <t-alert v-if="errorText && !memoryOnly" theme="error" class="rag-answer-error"
+      :title="t('chat.quickAnswerError.title')" :message="errorText" />
+
     <!-- A turn that only recalled memory has no pipeline to draw. It borrows
          this component for the memory row alone, so anything derived from the
          agent event stream must stay out of the way — the agent timeline is
@@ -276,6 +279,7 @@ const props = defineProps<{
     knowledge_references?: Array<{ chunk_type?: string; knowledge_id?: string; knowledge_title?: string }>
     used_memories?: Array<{ id: string; kind: string; content: string }>
     is_completed?: boolean
+    knowledge_qa_error?: string
   }
   embeddedMode?: boolean
   // Set by hosts that already render their own timeline (the agent stream) and
@@ -284,6 +288,15 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const errorText = computed(() => {
+  switch (props.session?.knowledge_qa_error) {
+    case undefined: return ''
+    case 'model_timeout': return t('chat.quickAnswerError.modelTimeout')
+    case 'model_unavailable': return t('chat.quickAnswerError.modelUnavailable')
+    case 'model_stream_interrupted': return t('chat.quickAnswerError.modelStreamInterrupted')
+    default: return t('chat.quickAnswerError.modelRequestFailed')
+  }
+})
 const referencesDrawer = useChatReferencesDrawer()
 const userExpanded = ref(false)
 const thinkingExpanded = ref(true)
@@ -355,7 +368,7 @@ const steps = computed(() => {
     })
     .map((event) => {
       const toolName = String(event.tool_name)
-      const pending = event.pending === true
+      const pending = event.pending === true && !errorText.value
       const toolData =
         event.tool_data && typeof event.tool_data === 'object'
           ? (event.tool_data as Record<string, unknown>)
@@ -432,6 +445,7 @@ const showExpandedTimeline = computed(() => {
 })
 
 const showDoneRow = computed(() => {
+  if (errorText.value) return false
   const turnDone = hasAnswer.value || Boolean(props.session?.is_completed)
   if (!turnDone) return false
   // A timeline rendered only because memory was used has nothing to report as
@@ -476,7 +490,7 @@ const isThinkingStreaming = computed(
 const visible = computed(() => {
   if (props.memoryOnly) return hasMemory.value
   return (
-    steps.value.length > 0 || showPrePipelineWait.value || showThinkingStep.value || hasMemory.value
+    Boolean(errorText.value) || steps.value.length > 0 || showPrePipelineWait.value || showThinkingStep.value || hasMemory.value
   )
 })
 
@@ -590,6 +604,10 @@ onBeforeUnmount(() => {
   --agent-step-icon-color: var(--td-text-color-placeholder);
 
   margin: 0;
+}
+
+.rag-answer-error {
+  margin-bottom: 8px;
 }
 
 .sr-only {

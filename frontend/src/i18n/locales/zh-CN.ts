@@ -3743,6 +3743,13 @@ export default {
       thisYear: '{month}月{day}日 {time}',
       otherYear: '{year}年{month}月{day}日 {time}',
     },
+    quickAnswerError: {
+      title: '本次回答未完成',
+      modelTimeout: '模型响应超时，本次回答已停止。请稍后重试。',
+      modelUnavailable: '模型服务暂时不可用，本次回答已停止。请稍后重试；若持续出现，请联系管理员检查模型服务。',
+      modelStreamInterrupted: '模型连接中断，回答未完成。已保留收到的内容，请稍后重试。',
+      modelRequestFailed: '本次回答生成失败。请重试；若持续出现，请联系管理员。',
+    },
     preparingAnswer: '正在准备回答…',
     connectingModelAndGeneratingAnswer: '正在连接模型并生成回答…',
     modelStillResponding: '模型响应较慢，仍在等待…',

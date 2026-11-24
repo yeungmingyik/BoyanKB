@@ -143,6 +143,10 @@ var feishuRetryBackoff = []time.Duration{2 * time.Second, 4 * time.Second, 8 * t
 // fail whole swathes of documents silently. 429 responses honour Retry-After;
 // 5xx is retried once; other non-2xx statuses fail fast (no point retrying 4xx).
 func (c *Client) DoRequest(ctx context.Context, method, path string, body interface{}, result interface{}) error {
+	return c.doRequest(ctx, method, path, body, result, false)
+}
+
+func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}, result interface{}, private bool) error {
 	const (
 		maxRetries    = feishuMaxRetries
 		max5xxRetries = feishuMax5xxRetries
@@ -164,6 +168,10 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, body interf
 	}
 
 	url := c.baseURL + path
+	logPath := path
+	if private {
+		logPath = "[Slides]"
+	}
 	var lastErr error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
@@ -179,14 +187,17 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, body interf
 		req.Header.Set("Authorization", "Bearer "+token)
 
 		if attempt == 0 {
-			logger.Infof(ctx, "[Feishu] %s %s", method, path)
+			logger.Infof(ctx, "[Feishu] %s %s", method, logPath)
 		} else {
-			logger.Infof(ctx, "[Feishu] %s %s (retry %d/%d)", method, path, attempt, maxRetries)
+			logger.Infof(ctx, "[Feishu] %s %s (retry %d/%d)", method, logPath, attempt, maxRetries)
 		}
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			lastErr = fmt.Errorf("execute request: %w", err)
+			if private {
+				lastErr = fmt.Errorf("slides transport error")
+			}
 			if attempt < maxRetries {
 				if sErr := sleepCtx(ctx, backoff[attempt]); sErr != nil {
 					return sErr
@@ -196,8 +207,16 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, body interf
 			return lastErr
 		}
 
-		respBody, readErr := io.ReadAll(resp.Body)
+		var reader io.Reader = resp.Body
+		const maxSlidesJSON = 64 << 20
+		if private {
+			reader = io.LimitReader(reader, maxSlidesJSON+1)
+		}
+		respBody, readErr := io.ReadAll(reader)
 		resp.Body.Close()
+		if private && len(respBody) > maxSlidesJSON {
+			return fmt.Errorf("slides response exceeds %d bytes", maxSlidesJSON)
+		}
 		if readErr != nil {
 			lastErr = fmt.Errorf("read response body: %w", readErr)
 			if attempt < maxRetries {
@@ -209,12 +228,20 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, body interf
 			return lastErr
 		}
 
+		logBody := ""
+		if !private {
+			logBody = string(respBody)
+		} else if resp.StatusCode != http.StatusOK {
+			var envelope ApiResponse
+			_ = json.Unmarshal(respBody, &envelope)
+			logBody = fmt.Sprintf("code=%d", envelope.Code)
+		}
 		logger.Infof(ctx, "[Feishu] %s %s → status=%d bodyLen=%d body=%s",
-			method, path, resp.StatusCode, len(respBody), truncate(string(respBody), 1000))
+			method, logPath, resp.StatusCode, len(respBody), truncate(logBody, 1000))
 
 		if resp.StatusCode == http.StatusTooManyRequests {
 			wait := parseRetryAfter(resp.Header.Get("Retry-After"), backoff[min(attempt, len(backoff)-1)])
-			lastErr = fmt.Errorf("feishu rate limited: status=429 body=%s", truncate(string(respBody), 500))
+			lastErr = fmt.Errorf("feishu rate limited: status=429 body=%s", truncate(logBody, 500))
 			if attempt < maxRetries {
 				if sErr := sleepCtx(ctx, wait); sErr != nil {
 					return sErr
@@ -225,7 +252,7 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, body interf
 		}
 
 		if resp.StatusCode >= 500 && resp.StatusCode < 600 {
-			lastErr = fmt.Errorf("feishu server error: status=%d body=%s", resp.StatusCode, truncate(string(respBody), 500))
+			lastErr = fmt.Errorf("feishu server error: status=%d body=%s", resp.StatusCode, truncate(logBody, 500))
 			if attempt < max5xxRetries {
 				if sErr := sleepCtx(ctx, retry5xxDelay); sErr != nil {
 					return sErr
@@ -236,7 +263,7 @@ func (c *Client) DoRequest(ctx context.Context, method, path string, body interf
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("feishu api error: status=%d body=%s", resp.StatusCode, string(respBody))
+			return fmt.Errorf("feishu api error: status=%d body=%s", resp.StatusCode, logBody)
 		}
 
 		if result != nil {

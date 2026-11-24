@@ -3732,6 +3732,13 @@ export default {
       thisYear: '{month}/{day} {time}',
       otherYear: '{year}/{month}/{day} {time}',
     },
+    quickAnswerError: {
+      title: '回答が完了しませんでした',
+      modelTimeout: 'モデルの応答がタイムアウトしたため、回答を停止しました。しばらくしてから再試行してください。',
+      modelUnavailable: 'モデルサービスが一時的に利用できないため、回答を停止しました。しばらくしてから再試行し、問題が続く場合は管理者に連絡してください。',
+      modelStreamInterrupted: 'モデルとの接続が切断され、回答が完了しませんでした。受信済みの内容は保持しています。しばらくしてから再試行してください。',
+      modelRequestFailed: '回答を生成できませんでした。再試行し、問題が続く場合は管理者に連絡してください。',
+    },
     preparingAnswer: '回答を準備しています…',
     connectingModelAndGeneratingAnswer: 'モデルに接続して回答を生成しています…',
     modelStillResponding: 'モデルの応答に通常より時間がかかっています。お待ちください…',

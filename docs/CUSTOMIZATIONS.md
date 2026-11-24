@@ -384,3 +384,44 @@
 日期：2026-10-12。分支：`feat/checkpoint-20261012`。合并云端技能同步与 RustDesk 配套分支，保留两个父分支历史，未改变运行中的服务。纳入原有 `AGENTS.md`、仓库分析与业务规格；新增 `README.BoyanKB.md`、`docs/17-checkpoint-20261012.md`、`docs/18-upstream-contributions.md`，在原 README 添加定制版入口。`.gitignore` 补充私有备份与常见私钥文件名保护。
 
 私有备份远程为 `origin`，原公开 Fork 改名 `fork`，官方 `upstream` 保留。代码节点、运行数据备份及上游贡献各自说明范围；镜像和数据库没有因 Git 节点整理而重新构建、迁移或发布。上游贡献应从最新官方分支提取最小补丁，不能公开本企业定制历史。
+
+## 上游知识图谱状态修复准备
+
+日期：2026-10-12。私有记录分支：`feat/upstream-graph-pr-notes`。新增 `docs/19-upstream-graph-pr.md`，登记独立官方贡献分支 `feat/graph-availability-state` 的修复、测试、截图与 PR 预填材料。通用修复只包含图谱状态组件、组件回归测试和六语言提示，未改企业定制运行代码。
+
+贡献提交 `0400fe0c230dc8fadb2dacd5a1fb9fe547f35690` 直接基于官方 `e5f9f9deab36898676fe85a9fda6b3e6f00288fa`，不携带 BoyanKB 历史、品牌或企业配置。验证命令及已执行检查见上述文档；用户确认后已提交 [官方 PR #4172](https://github.com/Tencent/WeKnora/pull/4172)，前端 CI 等待维护者批准运行。后续升级优先采用官方合入版本，再删除或调整定制版对应状态逻辑，避免重复实现。
+
+2026-10-16 补充：原提交的官方检查随后已全部成功。因上游 #4193 重做图谱提示样式，原贡献分支合入最新主干并将四态逻辑接到新卡片，调整同一组件测试；改动仍限公开 PR 的八个原文件。冲突处理、验证与远端状态见 [上游 PR 记录](19-upstream-graph-pr.md#2026-10-16-主干冲突处理)。未变更企业运行服务。
+
+## 快速问答故障提示与结束
+
+日期：2026-10-15。分支：`feat/qa-failure-completion`。原因、验证和发布记录见 [异常结束处理](21-qa-failure-completion.md)。本问题涉及服务生命周期，无法仅靠配置或品牌覆盖文件修复，因此采用必要核心补丁。
+
+| 文件 | 改动 |
+| --- | --- |
+| `internal/application/service/chat_pipeline/{chat_completion_stream,query_understand,progress}.go` 及测试 | 流同步返回故障、正常结束释放连接；同主模型改写 429／5xx 立即结束；步骤错误不回传供应商原文 |
+| `internal/application/service/session_knowledge_qa.go` 及 fallback 测试 | 模型兜底同样遵守同步终止、取消、异常 EOF 契约 |
+| `internal/handler/session/{qa,quick_answer_failure,agent_stream_handler,stream,helpers}.go` 及测试 | 快速问答 120 秒总期限；统一持久化失败、脱敏提示、SSE 结束；避免失败／停止触发问答索引与推荐 |
+| `internal/types/agent.go` | 既有 AgentStep JSON 增加可选 error_code／error_message，不新增 SQL 迁移 |
+| `frontend/src/composables/useChatStreamHandler.ts`、`frontend/src/views/chat/{index.vue,components/RagPipelineProgress.vue,components/AgentStreamDisplay.vue}` 及测试 | 错误横幅、停止等待、部分内容保留、刷新恢复、失败不请求追问建议 |
+| `frontend/src/i18n/{locales,embed.ts}` 及测试 | 现有五语言和嵌入组件固定故障文案 |
+| `scripts/tencent-update-frontend.py` 及测试 | 兼容原前端发布，新增可选 app 镜像联合备份、校验及回滚 |
+| `docker-compose.tencent.yml`、`deployment/tencent/images.lock.json` | 锁定已验证的配套后端、前端镜像摘要 |
+| `deployment/tencent/README.md`、`docs/{13-tencent-deployment,21-qa-failure-completion}.md` | 记录联合更新、回滚、故障回归及真实云端验证 |
+
+升级时优先对照上游相同修复，重新执行普通流、模型兜底、503、超时、异常 EOF、正常完成和主动停止的回归，再构建发布。LICENSE、版权、RBAC、模型凭据和数据源范围不变。
+
+## 2026-11-18 企业资料与快速问答
+
+`scripts/tencent-feishu-spaces.py` 将指定的飞书 Wiki 空间逐一预检、绑定同一总部知识库并核对导入结果。`branding/prompt_templates/system_prompt.yaml` 和 `fallback.yaml` 为快速问答补充证据不全时的条件推理、公司事实边界和负责人确认提示。升级时检查单空间保护、三个来源的增量游标、模板占位符和线上智能体的独立配置，并复跑有依据、部分有依据与无依据三类问题。同步命令、读写范围、现网回读、备份以及资料缺口见[三空间知识与问答核验](22-feishu-knowledge-review.md)。
+
+### 飞书原生幻灯片和上传的 PowerPoint
+
+| 文件 | 改动原因和升级核验 |
+| --- | --- |
+| `internal/datasource/connector/feishu/core/{client,slides}.go`、`wiki/{connector,slides}.go` 及同目录测试 | v0.8.2 跳过原生演示文稿。对已选 Wiki 空间中的原始节点校验阅读与导出权限，调用飞书只读接口，按幻灯片页序同步可选文字。升级时核对 Wiki 来源、存量游标首次补入、新增修改、权限拒绝、无可选文字和源删保留。 |
+| `internal/infrastructure/docparser/anydoc/{backend_cgo,pptx_text}.go` 及同目录测试 | 含大量媒体的 PPTX 可能因嵌入资源总量超限而失去可检索的文字。在指定限额错误下从 OOXML 提取文字并保留页序。升级时复跑正常演示稿、超限、无可选文字和损坏文件的用例。 |
+| `scripts/tencent-feishu-spaces.py`、`scripts/test_tencent_feishu_spaces.py` | 对账逐项核对来源节点类型、权限和云端解析结果。遇到其他不支持的格式时列出节点，同一空间的受支持文档可以继续处理。 |
+| `internal/datasource/connector/feishu/wiki/{slides,connector}.go`、`slides_test.go`、`connector_test.go` | 原生稿整份只有空白页时，记录来源链接和 `source_empty=true`。升级后验证空白、无修改、同一节点新增文字这三个连续状态。图片稿与损坏文件仍须分别处理。 |
+| `internal/infrastructure/docparser/anydoc/{backend_cgo,docx_text}.go`、`docx_text_test.go`、`convert_linked_test.go` | 大体积 Word 教学案例的内嵌图片触发 `max_asset_total_bytes`。遇到该错误时在内存中保留必要的 OOXML 文本部件，交给已有的 Word 解析器。单部件限 8 MiB，总量限 32 MiB，原件仍可下载。升级时用链接 Rust 的 AnyDoc 测试和真实案例中的课程短句核验。 |
+| `docker-compose.tencent.yml`、`deployment/tencent/images.lock.json` | 2026-11-24 按生产发布报告锁定经验证的后端镜像 `v0.8.2-feishu-slides-371e9ce15`。镜像摘要、回滚备份和三空间逐项对账结果见[云端发布记录](22-feishu-knowledge-review.md)。 |

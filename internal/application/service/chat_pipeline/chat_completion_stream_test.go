@@ -2,6 +2,9 @@ package chatpipeline
 
 import (
 	"context"
+	"errors"
+	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -13,8 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// syncEventBus is a thread-safe recorder; the stream plugin emits from a
-// background goroutine so the test must guard concurrent appends.
+// syncEventBus records events while tests can cancel a stream concurrently.
 type syncEventBus struct {
 	mu     sync.Mutex
 	events []types.Event
@@ -65,6 +67,8 @@ func (b *syncEventBus) finalAnswerEvents() []event.AgentFinalAnswerData {
 type openStreamChat struct {
 	chunks      []types.StreamResponse
 	closeStream bool
+	streamErr   error
+	streamCtx   context.Context
 }
 
 func (m *openStreamChat) Chat(context.Context, []chat.Message, *chat.ChatOptions) (*types.ChatResponse, error) {
@@ -72,8 +76,12 @@ func (m *openStreamChat) Chat(context.Context, []chat.Message, *chat.ChatOptions
 }
 
 func (m *openStreamChat) ChatStream(
-	context.Context, []chat.Message, *chat.ChatOptions,
+	ctx context.Context, _ []chat.Message, _ *chat.ChatOptions,
 ) (<-chan types.StreamResponse, error) {
+	m.streamCtx = ctx
+	if m.streamErr != nil {
+		return nil, m.streamErr
+	}
 	ch := make(chan types.StreamResponse, len(m.chunks))
 	for _, c := range m.chunks {
 		ch <- c
@@ -114,8 +122,12 @@ func TestStreamDropsIncompleteHandleOnCancel(t *testing.T) {
 	chatManage.EventBus = bus
 
 	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
 	plugin := &PluginChatCompletionStream{modelService: &stubModelService{model: model}}
-	require.Nil(t, plugin.OnEvent(ctx, types.CHAT_COMPLETION_STREAM, chatManage, func() *PluginError { return nil }))
+	result := make(chan *PluginError, 1)
+	go func() {
+		result <- plugin.OnEvent(ctx, types.CHAT_COMPLETION_STREAM, chatManage, func() *PluginError { return nil })
+	}()
 
 	// Wait until the pre-hold content has been emitted, then cancel.
 	require.Eventually(t, func() bool {
@@ -129,11 +141,173 @@ func TestStreamDropsIncompleteHandleOnCancel(t *testing.T) {
 
 	cancel()
 
-	// Give the cancellation path time to flush, then assert that only the
-	// meaningful prefix was emitted; the incomplete private handle is dropped.
-	require.Eventually(t, func() bool { return len(bus.finalAnswerContents()) >= 1 }, 2*time.Second, 5*time.Millisecond)
-	time.Sleep(20 * time.Millisecond)
+	select {
+	case err := <-result:
+		require.NotNil(t, err)
+		require.ErrorIs(t, err.Err, context.Canceled)
+	case <-time.After(2 * time.Second):
+		t.Fatal("stream did not return after cancellation")
+	}
 	require.Equal(t, []string{"hello "}, bus.finalAnswerContents())
+}
+
+func TestStreamReturnsFailuresToCaller(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		model   openStreamChat
+		wantErr error
+		partial string
+	}{
+		{
+			name:    "initial service unavailable",
+			model:   openStreamChat{streamErr: errors.New("503 Service Unavailable")},
+			wantErr: errors.New("503 Service Unavailable"),
+		},
+		{
+			name: "provider error without closing channel",
+			model: openStreamChat{chunks: []types.StreamResponse{
+				{ResponseType: types.ResponseTypeError, Content: "503 Service Unavailable"},
+			}},
+			wantErr: errors.New("503 Service Unavailable"),
+		},
+		{
+			name:    "empty EOF",
+			model:   openStreamChat{closeStream: true},
+			wantErr: io.ErrUnexpectedEOF,
+		},
+		{
+			name: "partial EOF",
+			model: openStreamChat{closeStream: true, chunks: []types.StreamResponse{
+				{ResponseType: types.ResponseTypeAnswer, Content: "partial answer"},
+			}},
+			wantErr: io.ErrUnexpectedEOF,
+			partial: "partial answer",
+		},
+		{
+			name: "partial provider error",
+			model: openStreamChat{chunks: []types.StreamResponse{
+				{ResponseType: types.ResponseTypeAnswer, Content: "partial answer"},
+				{ResponseType: types.ResponseTypeError, Content: "503 Service Unavailable"},
+			}},
+			wantErr: errors.New("503 Service Unavailable"),
+			partial: "partial answer",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bus := &syncEventBus{}
+			chatManage := &types.ChatManage{PipelineContext: types.PipelineContext{EventBus: bus}}
+			plugin := &PluginChatCompletionStream{modelService: &stubModelService{model: &tc.model}}
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			nextCalled := false
+			err := plugin.OnEvent(ctx, types.CHAT_COMPLETION_STREAM, chatManage, func() *PluginError {
+				nextCalled = true
+				return nil
+			})
+			require.NotNil(t, err)
+			require.EqualError(t, err.Err, tc.wantErr.Error())
+			require.Equal(t, ErrModelCall.ErrorType, err.ErrorType)
+			require.False(t, nextCalled)
+			require.NoError(t, ctx.Err())
+			require.ErrorIs(t, tc.model.streamCtx.Err(), context.Canceled)
+			if tc.partial != "" {
+				require.Equal(t, tc.partial, strings.Join(bus.finalAnswerContents(), ""))
+			}
+			for _, evt := range bus.events {
+				require.NotEqual(t, types.EventType(event.EventError), evt.Type)
+			}
+			for _, answer := range bus.finalAnswerEvents() {
+				require.False(t, answer.Done)
+			}
+		})
+	}
+}
+
+func TestStreamReturnsDeadlineWithoutProviderEOF(t *testing.T) {
+	bus := &syncEventBus{}
+	model := &openStreamChat{}
+	plugin := &PluginChatCompletionStream{modelService: &stubModelService{model: model}}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	err := plugin.OnEvent(ctx, types.CHAT_COMPLETION_STREAM, &types.ChatManage{PipelineContext: types.PipelineContext{EventBus: bus}}, func() *PluginError {
+		t.Error("next called after timeout")
+		return nil
+	})
+	require.NotNil(t, err)
+	require.ErrorIs(t, err.Err, context.DeadlineExceeded)
+	require.Empty(t, bus.events)
+}
+
+func TestStreamReturnsOnDoneWithoutProviderEOF(t *testing.T) {
+	bus := &syncEventBus{}
+	model := &openStreamChat{chunks: []types.StreamResponse{
+		{ResponseType: types.ResponseTypeAnswer, Content: "complete answer", Done: true},
+	}}
+	plugin := &PluginChatCompletionStream{modelService: &stubModelService{model: model}}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	nextCalled := false
+	err := plugin.OnEvent(ctx, types.CHAT_COMPLETION_STREAM, &types.ChatManage{PipelineContext: types.PipelineContext{EventBus: bus}}, func() *PluginError {
+		nextCalled = true
+		return nil
+	})
+	require.Nil(t, err)
+	require.True(t, nextCalled)
+	require.NoError(t, ctx.Err())
+	require.ErrorIs(t, model.streamCtx.Err(), context.Canceled)
+	require.Equal(t, []event.AgentFinalAnswerData{{Content: "complete answer", Done: true}}, bus.finalAnswerEvents())
+}
+
+func TestStreamFlushesDecoderTailsBeforeReturning(t *testing.T) {
+	for _, terminal := range []string{"done", "error", "EOF"} {
+		t.Run(terminal, func(t *testing.T) {
+			bus := &syncEventBus{}
+			model := &openStreamChat{closeStream: terminal == "EOF", chunks: []types.StreamResponse{
+				{ResponseType: types.ResponseTypeThinking, Content: "thinking after"},
+			}}
+			if terminal == "done" {
+				model.chunks = append(model.chunks, types.StreamResponse{
+					ResponseType: types.ResponseTypeAnswer, Content: "answer after", Done: true,
+				})
+			} else if terminal == "error" {
+				model.chunks = append(model.chunks, types.StreamResponse{
+					ResponseType: types.ResponseTypeError, Content: "service unavailable",
+				})
+			}
+			chatManage := &types.ChatManage{}
+			chatManage.UserContent = "resource://AbCdEfGhIjKlMnOpQrStUv"
+			chatManage.EventBus = bus
+			plugin := &PluginChatCompletionStream{modelService: &stubModelService{model: model}}
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			err := plugin.OnEvent(ctx, types.CHAT_COMPLETION_STREAM, chatManage, func() *PluginError { return nil })
+			if terminal == "done" {
+				require.Nil(t, err)
+			} else {
+				require.NotNil(t, err)
+			}
+			var thinking string
+			thinkingDone := 0
+			for _, evt := range bus.events {
+				if data, ok := evt.Data.(event.AgentThoughtData); ok {
+					thinking += data.Content
+					if data.Done {
+						thinkingDone++
+					}
+				}
+			}
+			require.Equal(t, "thinking after", thinking)
+			require.Equal(t, 1, thinkingDone)
+			last := bus.events[len(bus.events)-1]
+			if terminal == "done" {
+				require.Equal(t, types.EventType(event.EventAgentFinalAnswer), last.Type)
+				require.Equal(t, event.AgentFinalAnswerData{Content: "answer after", Done: true}, last.Data)
+			} else {
+				require.Equal(t, types.EventType(event.EventAgentThought), last.Type)
+				require.True(t, last.Data.(event.AgentThoughtData).Done)
+			}
+		})
+	}
 }
 
 func TestStreamIgnoresDuplicateTerminalAnswer(t *testing.T) {
