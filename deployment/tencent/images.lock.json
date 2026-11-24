@@ -3,10 +3,10 @@
   "platform": "linux/amd64",
   "images": [
     {
-      "tag": "boyankb/app:v0.8.2-qa-failure-v1",
-      "id": "sha256:07eaa5f40986159341486cc780ab0de02c3cf471e5d01bcb45ecf9eda3567f21",
+      "tag": "boyankb/app:v0.8.2-feishu-slides-371e9ce15",
+      "id": "sha256:a0b2ad27e92b9494bf8b025300b50956a456816a5e95c2c019fbbd515695cb1a",
       "digests": [
-        "boyankb/app@sha256:07eaa5f40986159341486cc780ab0de02c3cf471e5d01bcb45ecf9eda3567f21"
+        "boyankb/app@sha256:a0b2ad27e92b9494bf8b025300b50956a456816a5e95c2c019fbbd515695cb1a"
       ]
     },
     {

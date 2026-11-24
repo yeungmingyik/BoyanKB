@@ -77,7 +77,7 @@ services:
 
   app:
     <<: *runtime
-    image: boyankb/app:v0.8.2-qa-failure-v1@sha256:07eaa5f40986159341486cc780ab0de02c3cf471e5d01bcb45ecf9eda3567f21
+    image: boyankb/app:v0.8.2-feishu-slides-371e9ce15@sha256:a0b2ad27e92b9494bf8b025300b50956a456816a5e95c2c019fbbd515695cb1a
     environment:
       GIN_MODE: release
       TZ: Asia/Shanghai

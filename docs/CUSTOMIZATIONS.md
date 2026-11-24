@@ -422,3 +422,6 @@
 | `internal/datasource/connector/feishu/core/{client,slides}.go`、`wiki/{connector,slides}.go` 及同目录测试 | v0.8.2 跳过原生演示文稿。对已选 Wiki 空间中的原始节点校验阅读与导出权限，调用飞书只读接口，按幻灯片页序同步可选文字。升级时核对 Wiki 来源、存量游标首次补入、新增修改、权限拒绝、无可选文字和源删保留。 |
 | `internal/infrastructure/docparser/anydoc/{backend_cgo,pptx_text}.go` 及同目录测试 | 含大量媒体的 PPTX 可能因嵌入资源总量超限而失去可检索的文字。在指定限额错误下从 OOXML 提取文字并保留页序。升级时复跑正常演示稿、超限、无可选文字和损坏文件的用例。 |
 | `scripts/tencent-feishu-spaces.py`、`scripts/test_tencent_feishu_spaces.py` | 对账逐项核对来源节点类型、权限和云端解析结果。遇到其他不支持的格式时列出节点，同一空间的受支持文档可以继续处理。 |
+| `internal/datasource/connector/feishu/wiki/{slides,connector}.go`、`slides_test.go`、`connector_test.go` | 原生稿整份只有空白页时，记录来源链接和 `source_empty=true`。升级后验证空白、无修改、同一节点新增文字这三个连续状态。图片稿与损坏文件仍须分别处理。 |
+| `internal/infrastructure/docparser/anydoc/{backend_cgo,docx_text}.go`、`docx_text_test.go`、`convert_linked_test.go` | 大体积 Word 教学案例的内嵌图片触发 `max_asset_total_bytes`。遇到该错误时在内存中保留必要的 OOXML 文本部件，交给已有的 Word 解析器。单部件限 8 MiB，总量限 32 MiB，原件仍可下载。升级时用链接 Rust 的 AnyDoc 测试和真实案例中的课程短句核验。 |
+| `docker-compose.tencent.yml`、`deployment/tencent/images.lock.json` | 2026-11-24 按生产发布报告锁定经验证的后端镜像 `v0.8.2-feishu-slides-371e9ce15`。镜像摘要、回滚备份和三空间逐项对账结果见[云端发布记录](22-feishu-knowledge-review.md)。 |

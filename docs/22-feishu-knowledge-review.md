@@ -1,6 +1,47 @@
 # 三个飞书知识空间与企业问答
 
-2026-11-18。按资料负责人指定的范围，三个飞书空间共用总部现有的「合作伙伴专用空间」。现有知识库的授权用户使用同一批资料。每个飞书空间对应一条独立的云端数据源，按空间 ID 遍历全树，各自保存增量游标。新增源沿用每 30 分钟增量、修改覆盖、源端删除后保留本地副本的策略。
+## 2026-11-24 腾讯云发布
+
+北京时间 11:16 启动生产切换。上线的后端为 `boyankb/app:v0.8.2-feishu-slides-371e9ce15@sha256:a0b2ad27e92b9494bf8b025300b50956a456816a5e95c2c019fbbd515695cb1a`。镜像复用原生产镜像的 31 层，仅追加后端二进制。发布工具短暂重建 app 和 frontend，前端镜像摘要与发布前相同。发布报告为 `VERIFIED`，9 个容器健康，公网 `/login` 返回 200，未登录请求知识库返回 401，公开注册返回 403。
+
+生产发布报告和两份配置备份位于 `/opt/boyankb/backups/frontend-20261124T031606Z-70c203c2/`。核验时可先查看该目录的 `report.json`。若需回滚，取报告的 `previous_image`、`previous_app_image`，按原顺序传给 `scripts/tencent-update-frontend.py --image … --app-image …` 做预检，核对生产变更范围并获授权后加 `--apply`。镜像回滚仅恢复服务版本，已入库的知识条目单独核对。
+
+发布后逐空间从飞书根目录对账，以下为北京时间 11:20–11:26 之间各空间最后一次成功核验的结果。三条来源均为 `active`，最近一次同步均为 `success`。各空间 `missing`、`retained` 和 `parse_errors` 为空。
+
+| 飞书空间 | 应用可见节点 | 云端有效条目 | 解析完成 |
+| --- | ---: | ---: | ---: |
+| 01 核心交付库 | 21 | 21 | 21 |
+| 02 招商展示 | 25 | 25 | 25 |
+| 03 线上引流素材 | 5 | 5 | 5 |
+| 合计 | 51 | 51 | 51 |
+
+普通成员全库混合检索的三个问题分别首条命中对应的原稿。《博研.pptx》首次重解析得到 3 个有效正文分块，检索结果含 2021 和广东乐博士。石碣四海学校案例能检索到机器人套件那句原文。原生《招商 PPT》能检索到空白说明并回到原始 Wiki 节点。
+
+北京时间 11:21:12，学校案例的飞书来源更新时间发生变化。同一 Wiki 节点的 DOCX 由 152,756,222 字节变为 152,756,216 字节。11:21:21 发起的增量于 11:24:10 成功结束，共更新 3 篇、失败 0 篇。该节点只剩一个有效版本，重新解析得到 4 个正文分块。原生《招商 PPT》在这轮仍是同一个云端条目，只有一份空白状态与原稿链接。其原稿日后首次补写文字的真实验收有待资料负责人正常编辑后完成。
+
+## 2026-11-24 飞书原稿和修复范围
+
+应用身份的 `slides:presentation:read` 已开通。使用同步应用分别验证《招商 PPT》的阅读、导出权限并成功读取原生演示稿 XML。原稿共一页，页面内容区有 0 个对象、0 个文字字符，备注也为空。核验时原稿 XML 的 SHA-256 为 `26f1da1bde3727553ea7dfaa0fdd438ca8d403d7074018a5903b5a0f5af46730`。这个节点可以记录来源链接与空白状态，目前无法引用它回答招商条款。[飞书原生稿](https://leboshiedu.feishu.cn/wiki/NML4w5Gj1i3lAWkPKXtcF0cLnQg)
+
+本次生产构建用提交 `371e9ce15`。飞书连接器回归覆盖同一 Wiki 节点从空白、原稿未变到有文字的连续增量；Word 超限回归用实际链接的 Rust 解析器检查正文。构建内六个 Go 包测试通过。另行运行腾讯云脚本测试，218 项中通过 212 项、跳过 6 项。
+
+使用总部普通成员账号进行全库混合检索，公司介绍问题首条命中《广东博研文化服务有限公司》，正文可支持学校、师资、科创服务与合作对象。进校业务问题第 2 条命中《博研人工智能进校-标准化落地手册》。询问 2025 年实际营业收入和经审计净利润时，返回材料没有给出可核实的经营数字。这类问题宜回答“现有资料无法确认，建议联系博研负责人”，对做法或计划则可注明假设后给出建议。
+
+### 当日 10:30 发布前基线
+
+云端发布脚本以只读模式核验了候选镜像，9 个服务健康，公网 HTTPS 登录页返回 200。三条数据源均为 active，北京时间 10:30 的同步记录均为 success。按 Wiki 节点逐一对账，01 有 21/21 篇解析完成，03 有 5/5 篇解析完成，02 的 23 个节点有 22 个云端条目，20 个已解析。三个空间合计 49 个节点、48 个条目、46 个解析完成。
+
+02 缺少的条目是原生《招商 PPT》。以同步应用读取原稿正文仍返回飞书 `99991672`。除已知的《博研.pptx》，新增《东莞市石碣四海学校学校》也触发 AnyDoc 内嵌媒体累计字节上限。其导出的 DOCX 为 152,756,222 字节，原稿的应用阅读、导出权限均已验证，使用飞书正文接口可取得去除标题后的 2,204 个非空白字符。当前候选镜像对超限文档的文本回退专用于 PPTX。复核命令见下文三空间对账和候选镜像预检小节。[学校文档原稿](https://leboshiedu.feishu.cn/wiki/Ri8NwuNbIi3VkukKYcocGK6snlh)
+
+### 现有同步配置
+
+三个飞书空间共用总部现有的「合作伙伴专用空间」。现有知识库的授权用户使用同一批资料。每个飞书空间对应一条独立的云端数据源，按空间 ID 遍历全树，各自保存增量游标。云端每 30 分钟增量同步，原稿修改后覆盖，源端删除后保留本地副本。
+
+### 复核云端资料
+
+1. 在本地检出本分支并运行下方 `scripts/tencent-feishu-spaces.py` 的只读命令。逐空间核对 `expected` 与 `documents`、`missing`、`incomplete_rows` 和 `verified`。
+2. 用普通成员账号进入总部知识库的「检索测试」，以“博研公司成立于哪年、战略合作方是谁”搜索，核对《博研.pptx》第 3 页。以“石碣四海学校的机器人编程课程依托什么”搜索，核对学校案例中“机器人编程课程依托各类机器人套件”这句。大文件走文本回退时，可打开原件查阅配图。
+3. 搜索“招商 PPT 飞书原稿为空白幻灯片”并打开来源。需要人工验证后续真实编辑时，记录业务人员正常补写的一句独有文字和保存时间。下一次半小时同步完成后，核对同一 Wiki 节点只有一条有效资料，能够命中新句、定位页次和打开飞书原稿。
 
 ## 来源与入库口径
 
@@ -105,7 +146,9 @@ python3 /opt/boyankb/scripts/tencent-update-frontend.py \
 
 ## 上游版本取舍
 
-针对这两份演示稿，已核对 v0.9.0 和 11 月 18 日的 main 快照。两者的 Wiki 连接器均跳过原生 Slides。两者在 PowerPoint 资源提取失败后仍调用同一 Rust 引擎尝试文本转换，第二次也超限时会返回错误。后续升级应在测试环境保留两项定制，以真实两份原稿验收，再决定能否移除。[v0.9.0 支持的飞书类型](https://github.com/Tencent/WeKnora/blob/v0.9.0/internal/datasource/connector/feishu/core/shared.go) · [main 的 Wiki 读取分支](https://github.com/Tencent/WeKnora/blob/7d064bc3a259f87634840199f565ec4dd644ba1e/internal/datasource/connector/feishu/wiki/connector.go) · [main 的 PowerPoint 文本回退](https://github.com/Tencent/WeKnora/blob/7d064bc3a259f87634840199f565ec4dd644ba1e/internal/infrastructure/docparser/anydoc/backend_cgo.go)
+11 月 24 日复核，官方最新正式版仍为 v0.9.0。此时 `main`（`032c67f30`）比正式版多 378 个提交，飞书类型判断依然跳过原生幻灯片。建议将 v0.9.0 作为隔离测试环境的升级目标。先在备份副本验证目录重同步、普通成员检索、原生幻灯片和含大量图片的 Word、PowerPoint，再决定生产切换日期。[正式版本](https://github.com/Tencent/WeKnora/releases/tag/v0.9.0) · [11 月 24 日的 Wiki 类型判断](https://github.com/Tencent/WeKnora/blob/032c67f30d63f744ffa9131887c35f7d15121224/internal/datasource/connector/feishu/core/shared.go) · [正式版至该提交的差异](https://github.com/Tencent/WeKnora/compare/v0.9.0...032c67f30d63f744ffa9131887c35f7d15121224)
+
+针对两份演示稿，v0.9.0 和 11 月 18 日的 main 快照在 PowerPoint 资源提取失败后仍调用同一 Rust 引擎尝试文本转换，第二次也超限时会返回错误。[v0.9.0 支持的飞书类型](https://github.com/Tencent/WeKnora/blob/v0.9.0/internal/datasource/connector/feishu/core/shared.go) · [11 月 18 日的 PowerPoint 文本回退](https://github.com/Tencent/WeKnora/blob/7d064bc3a259f87634840199f565ec4dd644ba1e/internal/infrastructure/docparser/anydoc/backend_cgo.go)
 
 11 月 18 日查询时官方最新正式版为 v0.9.0。企业基线是 v0.8.2，至 v0.9.0 相差 601 个提交，main 在正式版之后又有 309 个提交。建议单独开测试分支升级到固定版本 v0.9.0，再评估需要的后续修复。当前版本已有按空间白名单增量同步能力，三空间入库可以先做。[正式发布记录](https://github.com/Tencent/WeKnora/releases/tag/v0.9.0) · [正式版到本次 main 的差异](https://github.com/Tencent/WeKnora/compare/v0.9.0...7d064bc3a259f87634840199f565ec4dd644ba1e)
 
