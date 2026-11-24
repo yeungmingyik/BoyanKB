@@ -46,27 +46,40 @@ func backendConvert(data []byte, opts Options) (*Result, error) {
 
 func markdownResult(data []byte, format *upstream.Format, assetsErr error) (*Result, error) {
 	// The Rust Markdown serializer also materializes embedded media. Only fall
-	// back when that specific budget blocked an otherwise readable PPTX.
-	if !pptxAssetLimit(format, assetsErr) {
+	// back when that specific budget blocked an otherwise readable Office file.
+	if !officeAssetLimit(format, assetsErr) {
 		markdown, err := upstream.ToMarkdownBytes(data, format)
 		if err == nil {
 			return &Result{Markdown: markdown, AssetsError: assetsErr}, nil
 		}
-		if !pptxAssetLimit(format, err) {
+		if !officeAssetLimit(format, err) {
 			return nil, fmt.Errorf("anydoc: markdown conversion failed: %w", err)
 		}
 		assetsErr = err
 	}
-	text, err := pptxText(data)
+	var text string
+	var err error
+	if *format == upstream.FormatDocx {
+		var document []byte
+		document, err = docxWithoutMedia(data)
+		if err == nil {
+			text, err = upstream.ToMarkdownBytes(document, format)
+			if err == nil && strings.TrimSpace(text) == "" {
+				err = errors.New("no extractable Word text")
+			}
+		}
+	} else {
+		text, err = pptxText(data)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("anydoc: %w (PPTX text extraction: %v)", assetsErr, err)
+		return nil, fmt.Errorf("anydoc: %w (%s text extraction: %v)", assetsErr, *format, err)
 	}
 	return &Result{Markdown: text, AssetsError: assetsErr}, nil
 }
 
-func pptxAssetLimit(format *upstream.Format, err error) bool {
+func officeAssetLimit(format *upstream.Format, err error) bool {
 	var cause *upstream.ConvertError
-	return format != nil && *format == upstream.FormatPptx && errors.As(err, &cause) &&
+	return format != nil && (*format == upstream.FormatPptx || *format == upstream.FormatDocx) && errors.As(err, &cause) &&
 		cause.Kind == "resource_limit" && strings.HasPrefix(cause.Detail, "resource limit exceeded (max_asset_total_bytes):")
 }
 

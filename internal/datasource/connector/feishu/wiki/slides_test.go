@@ -17,11 +17,16 @@ const exampleSlides = `<presentation xmlns="http://www.larkoffice.com/sml/2.0">
   <slide><data><table><tr><td><content><ul><li><p>表格<br/>内容</p></li></ul></content></td></tr></table></data></slide>
 </presentation>`
 
+const blankSlides = `<presentation xmlns="https://www.larkoffice.com/sml/2.0"><slide><style/><data/><note><content/></note></slide></presentation>`
+
 func TestSlidesMarkdown(t *testing.T) {
 	got, err := slidesMarkdown(exampleSlides)
 	want := "## 第 1 页\n\n示例 标题\n\n## 第 3 页\n\n表格\n内容"
 	if err != nil || got != want {
 		t.Fatalf("got %q, %v; want %q", got, err, want)
+	}
+	if content, err := slidesMarkdown(blankSlides); err != nil || content != "" {
+		t.Fatalf("blank slide: got %q, %v", content, err)
 	}
 	for _, sml := range []string{"<presentation>", "<other/>", "<presentation><slide><data><img/></data></slide></presentation>"} {
 		if _, err := slidesMarkdown(sml); err == nil {
@@ -52,7 +57,7 @@ func TestSlidesDeniedExportDoesNotReadContent(t *testing.T) {
 }
 
 func TestSlidesBackfillsLegacyCursorOnceThenTracksEdits(t *testing.T) {
-	node := core.WikiNode{NodeToken: "wiki-node", ObjToken: "object", Title: "演示", ObjType: "slides", ObjEditTime: "100"}
+	node := core.WikiNode{NodeToken: "wiki-node", ObjToken: "initially-blank", Title: "演示", ObjType: "slides", ObjEditTime: "100"}
 	nodes := []core.WikiNode{node}
 	server, cfg := fakeFeishu(nodes)
 	defer server.Close()
@@ -73,9 +78,14 @@ func TestSlidesBackfillsLegacyCursorOnceThenTracksEdits(t *testing.T) {
 		if step.emits != 0 {
 			item := h.emitted[0]
 			wantURL := core.RegionFeishu.WikiURL("wiki-node")
+			wantText := "示例"
+			if step.edited == "100" {
+				wantText = "原稿为空白"
+			}
 			if item.ExternalID != "wiki-node" || item.URL != wantURL || item.Metadata["source_url"] != wantURL ||
+				(item.Metadata["source_empty"] == "true") != (step.edited == "100") ||
 				!strings.HasSuffix(string(item.Content), "[飞书原稿]("+wantURL+")") ||
-				!strings.Contains(string(item.Content), "示例") || !item.UpdatedAt.Equal(core.ParseFeishuTimestamp(step.edited)) {
+				!strings.Contains(string(item.Content), wantText) || !item.UpdatedAt.Equal(core.ParseFeishuTimestamp(step.edited)) {
 				t.Fatalf("unexpected presentation identity, version or content: %+v", item)
 			}
 		}

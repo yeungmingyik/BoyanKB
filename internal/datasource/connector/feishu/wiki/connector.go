@@ -393,6 +393,12 @@ func fetchNodeContent(ctx context.Context, client *core.Client, node core.WikiNo
 		}
 		sourceURL := region.WikiURL(url.PathEscape(node.NodeToken))
 		baseMeta["source_url"] = sourceURL
+		if content == "" {
+			// Keep the source link and version so clearing a previously populated
+			// presentation also replaces any stale text in the index.
+			baseMeta["source_empty"] = "true"
+			content = "飞书原稿为空白幻灯片。"
+		}
 		content += "\n\n[飞书原稿](" + sourceURL + ")"
 		return []*types.FetchedItem{{
 			ExternalID: node.NodeToken, Title: node.Title, Content: []byte(content),

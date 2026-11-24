@@ -36,7 +36,7 @@ func TestSupportedFileTypesMatchTheConverter(t *testing.T) {
 	}
 }
 
-func TestPPTXAssetLimitIsSpecific(t *testing.T) {
+func TestOfficeAssetLimitIsSpecific(t *testing.T) {
 	const detail = "resource limit exceeded (max_asset_total_bytes): embedded assets exceed the retained-bytes cap"
 	for _, tc := range []struct {
 		format       upstream.Format
@@ -44,12 +44,13 @@ func TestPPTXAssetLimitIsSpecific(t *testing.T) {
 		want         bool
 	}{
 		{upstream.FormatPptx, "resource_limit", detail, true},
-		{upstream.FormatDocx, "resource_limit", detail, false},
+		{upstream.FormatDocx, "resource_limit", detail, true},
+		{upstream.FormatXlsx, "resource_limit", detail, false},
 		{upstream.FormatPptx, "malformed", detail, false},
 		{upstream.FormatPptx, "resource_limit", "resource limit exceeded (max_part_bytes): XML exceeds budget", false},
 	} {
 		cause := &upstream.ConvertError{Kind: tc.kind, Detail: tc.detail}
-		if pptxAssetLimit(&tc.format, fmt.Errorf("conversion: %w", cause)) != tc.want {
+		if officeAssetLimit(&tc.format, fmt.Errorf("conversion: %w", cause)) != tc.want {
 			t.Fatalf("unexpected match for %s, %s, %s", tc.format, tc.kind, tc.detail)
 		}
 	}
@@ -58,6 +59,12 @@ func TestPPTXAssetLimitIsSpecific(t *testing.T) {
 	result, err := markdownResult(pptxArchive(t, textOnlyFixture()), &format, cause)
 	if err != nil || result.AssetsError != cause || len(result.Assets) != 0 || !strings.Contains(result.Markdown, "spoken words") {
 		t.Fatalf("asset cap fallback failed: %+v, %v", result, err)
+	}
+	format = upstream.FormatDocx
+	result, err = markdownResult(buildDocx(t), &format, cause)
+	if err != nil || result.AssetsError != cause || len(result.Assets) != 0 ||
+		!strings.Contains(result.Markdown, "Quarterly report") || !strings.Contains(result.Markdown, "Closing remarks.") {
+		t.Fatalf("DOCX body unavailable after media budget failure: %+v, %v", result, err)
 	}
 }
 

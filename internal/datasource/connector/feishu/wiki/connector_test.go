@@ -38,8 +38,12 @@ func fakeFeishu(nodes []core.WikiNode) (*httptest.Server, *core.Config) {
 		writeJSON(w, map[string]any{"code": 0, "data": map[string]bool{"auth_result": true}})
 	})
 	mux.HandleFunc("/open-apis/slides_ai/v1/xml_presentations/{id}", func(w http.ResponseWriter, r *http.Request) {
+		sml := exampleSlides
+		if r.PathValue("id") == "initially-blank" && nodes[0].ObjEditTime == "100" {
+			sml = blankSlides
+		}
 		writeJSON(w, map[string]any{"code": 0, "data": map[string]any{"xml_presentation": map[string]any{
-			"presentation_id": r.PathValue("id"), "content": exampleSlides,
+			"presentation_id": r.PathValue("id"), "content": sml,
 		}}})
 	})
 

@@ -15,6 +15,8 @@ func slidesMarkdown(sml string) (string, error) {
 	var out, paragraph strings.Builder
 	depth, page, contentDepth, paragraphDepth := 0, 0, 0, 0
 	var rootSeen, inSlide, inData, hasText, pageHasText bool
+	var dataPages int
+	var hasPageObjects bool
 	for {
 		token, err := d.Token()
 		if err == io.EOF {
@@ -26,6 +28,9 @@ func slidesMarkdown(sml string) (string, error) {
 		switch v := token.(type) {
 		case xml.StartElement:
 			depth++
+			if inData {
+				hasPageObjects = true
+			}
 			switch {
 			case depth == 1:
 				if rootSeen || v.Name.Local != "presentation" {
@@ -37,6 +42,7 @@ func slidesMarkdown(sml string) (string, error) {
 				inSlide, pageHasText = true, false
 			case inSlide && depth == 3 && v.Name.Local == "data":
 				inData = true
+				dataPages++
 			case inData && v.Name.Local == "content":
 				contentDepth = depth
 			case contentDepth > 0 && v.Name.Local == "p":
@@ -46,6 +52,9 @@ func slidesMarkdown(sml string) (string, error) {
 				paragraph.WriteByte('\n')
 			}
 		case xml.CharData:
+			if inData && strings.TrimSpace(string(v)) != "" {
+				hasPageObjects = true
+			}
 			if paragraphDepth > 0 {
 				paragraph.Write([]byte(v))
 			}
@@ -72,6 +81,9 @@ func slidesMarkdown(sml string) (string, error) {
 		}
 	}
 	if !hasText {
+		if page > 0 && dataPages == page && !hasPageObjects {
+			return "", nil
+		}
 		return "", errors.New("no visible presentation text available for indexing")
 	}
 	return strings.TrimSpace(out.String()), nil
